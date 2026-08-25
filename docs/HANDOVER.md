@@ -1,14 +1,16 @@
 # Facture PWA — HANDOVER CANONIQUE
 
-Date : 25 août 2026
+Date : 26 août 2026
 
 ## À lire dans une nouvelle fenêtre
 
 1. `docs/HANDOVER.md`
 2. `docs/ROADMAP.md`
-3. `docs/E0_ONBOARDING.md`
-4. `docs/UI_V1_MOBILE_SPEC.md`
-5. `docs/mockups/MOCKUPS_LOCK.md`
+3. `docs/PDF_ORIGINAL_REFERENCE.md`
+4. `docs/E0_ONBOARDING.md`
+5. `docs/UI_V1_MOBILE_SPEC.md`
+6. `docs/mockups/MOCKUPS_LOCK.md`
+7. `docs/VISUAL_POLISH_V1.md`
 
 ## Projet
 
@@ -41,6 +43,12 @@ Tous sont candidats fonctionnels, non certifiés runtime/visuellement.
 - **E5** : historique + lifecycle Brouillon/Finalisé/Payé/Annulé.
 - **E6** : identité société, backup, PWA, préfixes de numérotation.
 
+## Visual Polish V1
+
+Candidat visuel à **9,2/10**, non certifié runtime.
+
+Couche `src/polish.css` : profondeur glass renforcée, bottom bar / FAB retravaillés, cartes / éditeur / historique / réglages harmonisés. Score officiel uniquement après 390/430/768 réels.
+
 ## LOT 1 — moteur métier
 
 **CANDIDAT TECHNIQUE, runtime non certifié.**
@@ -53,96 +61,71 @@ Gates ouvertes : `001→002`, annulation puis `003`, séquences indépendantes, 
 
 **CANDIDAT TECHNIQUE, runtime non certifié.**
 
-### Stockage
+IndexedDB DB v3 avec `clients` + `catalog`.
 
-IndexedDB est maintenant en **DB v3** avec :
+Clients : fiche locale, autocomplétion, bottom sheet rapide, snapshot historique `clientAddress/clientIce/clientIfNumber`.
 
-- `documents`
-- `settings`
-- `counters`
-- `clients`
-- `catalog`
+Catalogue : apprentissage après finalisation uniquement, prestations fréquentes, dernier PU HT / TVA / unité, déduplication insensible à casse/accents/espaces.
 
-### Clients
+Backup JSON v2 inclut documents + société + clients + catalogue. Restore v1 reste accepté.
 
-`ClientProfile` contient :
+## LOT 3 — PDF Original
 
-- nom ;
-- société ;
-- adresse ;
-- ICE ;
-- IF ;
-- téléphone ;
-- email ;
-- usageCount ;
-- timestamps.
+**ACTIF. Référence source verrouillée.**
 
-Dans E3 :
+Lire `docs/PDF_ORIGINAL_REFERENCE.md`.
 
-- saisie client avec suggestions locales ;
-- recherche par nom / société / ICE / téléphone ;
-- fiche client rapide en bottom sheet ;
-- sélection en un tap ;
-- édition d’une fiche existante ;
-- déduplication insensible à casse, accents et espaces.
+### Données réellement supportées par les PDF fournis
 
-### Snapshot client historique
+Société :
+- Benmoussa Rachid ;
+- TAPISTOR SABRE ;
+- adresse `484, Cit Amal 5, 040 163, MASSIRA, CYM, RABAT` ;
+- RC `82972 RABAT` ;
+- Patente `26450045` ;
+- CNSS `7121982` ;
+- ICE `001806241000086` ;
+- IF `35789182` ;
+- RIB `181 810 21211 52654410108 03`.
 
-Le document conserve :
+TEL / FAX / email / banque ne sont pas présents dans les références et restent vides dans le fixture.
 
-- `clientId`
-- `clientAddress`
-- `clientIce`
-- `clientIfNumber`
+Cas source principal :
+- Facture / BL détaillé `#0107-2026` ;
+- date `06 Juillet 2026` ;
+- client `SECRÉTARIAT D’ETAT CHARGÉ DE L’ARTISANAT ET DE L’ECONOMIE SOCIALE ET SOLIDAIRE` ;
+- objet source conservé tel quel dans la fixture ;
+- `Capitonnage de porte en similicuir` + `70cm/200cm` ;
+- unité Pièce ; quantité 10 ; PU HT 800 ; TVA 20 % ; HT 8000 ; TVA 1600 ; TTC 9600.
 
-Ces données sont copiées au moment de la sélection et restent dans le document. Une modification future de la fiche client ne doit donc pas modifier l’historique du document finalisé.
+BL simple : `#06-07-2026`, mêmes données non financières, sans colonnes prix ni totaux.
 
-### Catalogue
+### Fixture
 
-Après **finalisation réussie uniquement**, l’app apprend les lignes utilisées :
+`src/referenceFixture.ts` contient ces cas et **n’est jamais injecté automatiquement dans IndexedDB**. Il sert uniquement aux tests et à la comparaison PDF.
 
-- désignation ;
-- unité ;
-- dernier PU HT ;
-- dernière TVA ;
-- fréquence d’utilisation.
+Les tests purs utilisent désormais ce fixture pour ancrer le calcul `8000 / 1600 / 9600`.
 
-Dans E3 :
+### Logo temporaire
 
-- bloc « Prestations fréquentes » ;
-- tap pour insérer une prestation ;
-- suggestions pendant la saisie ;
-- sélection d’une suggestion remplit désignation + unité + PU + TVA.
+`src/brand.ts` contient un logo fictif temporaire : fond vert + canapé stylisé + initiales `TS`.
 
-La mémoire LOT2 est un confort non critique : une erreur de mémorisation ne peut jamais annuler une finalisation déjà réussie.
+`defaultCompany.logoDataUrl` l’utilise tant que le vrai logo n’est pas chargé via E0/E6.
 
-### Backup
+Ce logo n’est pas un actif de marque officiel et devra être remplacé dès que le vrai fichier est disponible.
 
-Backup JSON passé en **version 2** :
+### NEXT LOT3
 
-- documents ;
-- société ;
-- clients ;
-- catalogue.
+1. rapprocher géométriquement le PDF Original de la référence ;
+2. présenter correctement les remises quand elles existent ;
+3. intégrer snapshot client quand disponible sans casser la fidélité source ;
+4. générer le fixture source ;
+5. render source et généré en PNG ;
+6. comparer et corriger jusqu’à score >=9,5.
 
-Les backups version 1 restent acceptés. Leur restauration crée simplement clients/catalogue vides.
+## PDF Premium
 
-### Gates LOT2 ouvertes
-
-- créer puis retrouver une fiche client ;
-- vérifier snapshot inchangé après modification de la fiche ;
-- finaliser une prestation puis la retrouver avec PU/TVA/unité ;
-- vérifier fréquence et déduplication ;
-- export/restore backup v2 ;
-- restore backup v1 ;
-- 390/430/768 sans overflow ;
-- tests/build HEAD exact.
-
-## PDF
-
-Original et Premium existent mais restent non certifiés >=9,5.
-
-Prochaine correction : exploiter les snapshots client adresse/ICE/IF et présenter proprement les remises, puis comparer Original aux références fournies.
+Existe techniquement, non certifié >=9,5. LOT4 après fermeture visuelle de LOT3.
 
 ## CI
 
@@ -150,7 +133,7 @@ Workflow Actions = `workflow_dispatch` uniquement. Ne pas lancer de run intermé
 
 ## NEXT EXACT
 
-**LOT 3 — PDF Original : fidélité source + snapshot client + remises.**
+**LOT 3 — PDF Original : géométrie/fidélité à la source verrouillée.**
 
 Puis :
 
@@ -163,4 +146,4 @@ Puis :
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. LOT1 et LOT2 sont candidats techniques non certifiés runtime. NEXT EXACT = LOT3 PDF Original, fidélité aux sources + snapshot client + remises. Respecte les mockups. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/PDF_ORIGINAL_REFERENCE.md sur m0/pwa-foundation. LOT1/LOT2 sont candidats techniques non certifiés runtime. LOT3 est actif : reproduire le PDF Original à partir du fixture source exact dans src/referenceFixture.ts. Logo TS temporaire seulement. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
