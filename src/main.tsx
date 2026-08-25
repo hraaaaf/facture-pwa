@@ -7,6 +7,7 @@ import type { CommercialDocument, CompanySettings } from './types'
 import './styles.css'
 import './editor.css'
 import './overlay.css'
+import './preview-fix.css'
 
 registerSW({ immediate: true })
 
