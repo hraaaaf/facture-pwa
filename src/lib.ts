@@ -2,13 +2,13 @@ import type { CommercialDocument, DocumentLine, DocumentType, NumberingPrefixes 
 import { defaultNumberingPrefixes } from './types'
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-const clampPercent = (value: number) => Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0))
+const clampPercent = (value: number | undefined) => Math.min(100, Math.max(0, Number.isFinite(value) ? value as number : 0))
 
 export const lineSubtotalHT = (line: DocumentLine) =>
   roundMoney(line.quantity * line.unitPriceHT)
 
 export const lineTotalHT = (line: DocumentLine) =>
-  roundMoney(lineSubtotalHT(line) * (1 - clampPercent(line.discountPercent ?? 0) / 100))
+  roundMoney(lineSubtotalHT(line) * (1 - clampPercent(line.discountPercent) / 100))
 
 export const documentTotals = (doc: CommercialDocument) => {
   const linesHT = doc.lines.reduce((sum, line) => sum + lineTotalHT(line), 0)
@@ -48,12 +48,13 @@ export const validateDocument = (doc: CommercialDocument): ValidationIssue[] => 
 
   doc.lines.forEach((line, index) => {
     const label = `Article ${index + 1}`
-    const lineDiscount = line.discountPercent ?? 0
     if (!line.designation.trim()) issues.push({ field: `lines.${index}.designation`, message: `${label} : désignation obligatoire.` })
     if (!(line.quantity > 0)) issues.push({ field: `lines.${index}.quantity`, message: `${label} : quantité supérieure à 0 requise.` })
     if (line.unitPriceHT < 0) issues.push({ field: `lines.${index}.unitPriceHT`, message: `${label} : prix négatif interdit.` })
     if (line.vatRate < 0 || line.vatRate > 100) issues.push({ field: `lines.${index}.vatRate`, message: `${label} : TVA entre 0 et 100 %.` })
-    if (lineDiscount < 0 || lineDiscount > 100) issues.push({ field: `lines.${index}.discountPercent`, message: `${label} : remise entre 0 et 100 %.` })
+    if ((line.discountPercent ?? 0) < 0 || (line.discountPercent ?? 0) > 100) {
+      issues.push({ field: `lines.${index}.discountPercent`, message: `${label} : remise entre 0 et 100 %.` })
+    }
   })
 
   return issues
@@ -133,16 +134,11 @@ export const formatDocumentNumber = (
   prefixes: NumberingPrefixes = defaultNumberingPrefixes
 ) => `${prefixes[type]}-${year}-${String(sequence).padStart(3, '0')}`
 
-export function createBlankDocument(type: DocumentType, defaultVatRate: number, sourceDocumentId?: string): CommercialDocument
-/** @deprecated temporary compatibility with the pre-LOT1 call signature */
-export function createBlankDocument(type: DocumentType, legacyExistingCount: number, defaultVatRate: number): CommercialDocument
-export function createBlankDocument(
+export const createBlankDocument = (
   type: DocumentType,
-  second: number,
-  third: string | number = ''
-): CommercialDocument {
-  const defaultVatRate = typeof third === 'number' ? third : second
-  const sourceDocumentId = typeof third === 'string' ? third : ''
+  defaultVatRate: number,
+  sourceDocumentId = ''
+): CommercialDocument => {
   const now = new Date()
   return {
     id: crypto.randomUUID(),
@@ -150,6 +146,10 @@ export function createBlankDocument(
     number: '',
     date: localIsoDate(now),
     client: '',
+    clientId: '',
+    clientAddress: '',
+    clientIce: '',
+    clientIfNumber: '',
     object: '',
     blShowPrices: false,
     globalDiscountPercent: 0,
