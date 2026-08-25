@@ -12,6 +12,7 @@ import './editor.css'
 import './history.css'
 import './overlay.css'
 import './preview-fix.css'
+import './polish.css'
 
 registerSW({ immediate: true })
 
