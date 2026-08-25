@@ -18,6 +18,32 @@ const formattedDate = (iso: string) => {
   }).format(date)
 }
 
+const drawFooter = (pdf: jsPDF, company: CompanySettings) => {
+  pdf.setDrawColor(100)
+  pdf.setLineWidth(0.2)
+  pdf.line(62, 264, 148, 264)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setTextColor(35, 35, 35)
+  pdf.setFontSize(8)
+  pdf.text(company.address, 105, 272, { align: 'center', maxWidth: 190 })
+  pdf.setFontSize(6.5)
+  pdf.text(pdf.splitTextToSize(company.legalLine, 190), 105, 279, { align: 'center' })
+}
+
+const vatLabel = (commercialDocument: CommercialDocument) => {
+  const rates = [...new Set(commercialDocument.lines.map(line => line.vatRate))]
+  if (rates.length !== 1) return 'TVA :'
+  const rate = Number.isInteger(rates[0]) ? String(rates[0]) : String(rates[0]).replace('.', ',')
+  return `TVA ${rate}% :`
+}
+
+const stoppedAtLabel = (commercialDocument: CommercialDocument) => {
+  if (commercialDocument.type === 'FACTURE') return 'ARRÊTÉE LA PRÉSENTE FACTURE À LA SOMME DE'
+  if (commercialDocument.type === 'DEVIS') return 'ARRÊTÉ LE PRÉSENT DEVIS À LA SOMME DE'
+  if (commercialDocument.type === 'BL') return 'ARRÊTÉ LE PRÉSENT BON DE LIVRAISON À LA SOMME DE'
+  return 'ARRÊTÉ LE PRÉSENT BON DE COMMANDE À LA SOMME DE'
+}
+
 export const generatePdf = (commercialDocument: CommercialDocument, company: CompanySettings) => {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const typeLabel = documentLabel(commercialDocument.type).toUpperCase()
@@ -26,43 +52,43 @@ export const generatePdf = (commercialDocument: CommercialDocument, company: Com
 
   pdf.setTextColor(17, 17, 17)
   pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(22)
-  pdf.text(typeLabel, 15, 20)
-  pdf.setFontSize(15)
-  pdf.text(`#${commercialDocument.number}`, 15, 31)
+  pdf.setFontSize(18)
+  pdf.text(typeLabel, 15, 17)
+  pdf.setFontSize(13)
+  pdf.text(`#${commercialDocument.number}`, 15, 27)
 
   pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(13)
-  pdf.text(company.name, 145, 16, { align: 'center' })
-  pdf.setFontSize(9)
-  pdf.text(company.brand, 145, 22, { align: 'center' })
+  pdf.setFontSize(12)
+  pdf.text(company.name, 150, 14, { align: 'center' })
+  pdf.setFontSize(8.5)
+  pdf.text(company.brand, 150, 20, { align: 'center' })
 
   if (company.logoDataUrl) {
     try {
-      pdf.addImage(company.logoDataUrl, imageFormat(company.logoDataUrl), 130, 25, 30, 30, undefined, 'FAST')
+      pdf.addImage(company.logoDataUrl, imageFormat(company.logoDataUrl), 135, 23, 30, 24, undefined, 'FAST')
     } catch {
-      // A malformed local image must never block document generation.
+      // Une image locale invalide ne doit jamais bloquer la génération du document.
     }
   }
 
-  pdf.setFontSize(9)
   if (commercialDocument.client) {
     pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(9)
     const clientLines = pdf.splitTextToSize(`Client : ${commercialDocument.client}`, 105)
-    pdf.text(clientLines, 15, 42)
+    pdf.text(clientLines, 15, 40)
   }
 
-  pdf.setFontSize(10)
+  pdf.setFontSize(9.5)
   pdf.setFont('helvetica', 'bold')
-  const objectLines = pdf.splitTextToSize(`OBJET : ${commercialDocument.object || '—'}`, 120)
-  pdf.text(objectLines, 15, 57)
+  const objectLines = pdf.splitTextToSize(`OBJET : ${commercialDocument.object || '—'}`, 118)
+  pdf.text(objectLines, 15, 53)
 
-  pdf.setFontSize(9)
-  pdf.text(`${company.cityLabel} LE :`, 165, 54, { align: 'center' })
+  pdf.setFontSize(8.5)
+  pdf.text(`${company.cityLabel} LE :`, 165, 51, { align: 'center' })
   pdf.setFont('helvetica', 'normal')
-  pdf.text(formattedDate(commercialDocument.date), 165, 59, { align: 'center' })
+  pdf.text(formattedDate(commercialDocument.date), 165, 57, { align: 'center' })
   pdf.setDrawColor(220)
-  pdf.line(130, 61, 195, 61)
+  pdf.line(133, 60, 196, 60)
 
   const body = commercialDocument.lines.map(line => {
     const base = [line.designation || '—', line.unit || '—', String(line.quantity)]
@@ -88,7 +114,8 @@ export const generatePdf = (commercialDocument: CommercialDocument, company: Com
       lineWidth: 0.35,
       valign: 'middle',
       halign: 'center',
-      minCellHeight: 18
+      minCellHeight: 18,
+      overflow: 'linebreak'
     },
     headStyles: {
       fillColor: [255, 255, 255],
@@ -109,36 +136,43 @@ export const generatePdf = (commercialDocument: CommercialDocument, company: Com
           1: { cellWidth: 47 },
           2: { cellWidth: 52 }
         },
-    margin: { left: 11.5, right: 11.5 }
+    margin: { left: 11.5, right: 11.5, top: 18, bottom: 36 },
+    didDrawPage: () => drawFooter(pdf, company)
   })
 
-  const tableEnd = ((pdf as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 105)
+  let tableEnd = ((pdf as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 105)
   let contentEnd = tableEnd
 
   if (pricingVisible) {
-    const totalsTop = Math.min(Math.max(tableEnd + 10, 118), 155)
+    if (tableEnd > 155) {
+      pdf.addPage()
+      drawFooter(pdf, company)
+      tableEnd = 25
+    }
+
+    const totalsTop = Math.max(tableEnd + 10, 118)
+    pdf.setTextColor(17, 17, 17)
     pdf.setFont('helvetica', 'bold')
     pdf.setFontSize(10)
     pdf.text(`TOTAL HT : ${money(totals.totalHT)}`, 103, totalsTop)
-    pdf.text(`TVA : ${money(totals.totalVAT)}`, 103, totalsTop + 8)
+    pdf.text(`${vatLabel(commercialDocument)} ${money(totals.totalVAT)}`, 103, totalsTop + 8)
     pdf.text(`TOTAL TTC : ${money(totals.totalTTC)}`, 190, totalsTop + 18, { align: 'right' })
 
-    const wording =
-      commercialDocument.type === 'FACTURE'
-        ? 'ARRÊTÉE LA PRÉSENTE FACTURE À LA SOMME DE'
-        : commercialDocument.type === 'DEVIS'
-          ? 'ARRÊTÉ LE PRÉSENT DEVIS À LA SOMME DE'
-          : commercialDocument.type === 'BL'
-            ? 'ARRÊTÉ LE PRÉSENT BON DE LIVRAISON À LA SOMME DE'
-            : 'ARRÊTÉ LE PRÉSENT BON DE COMMANDE À LA SOMME DE'
-
-    pdf.setFontSize(11)
-    const amountText = `${wording} ${amountToFrenchDirhams(totals.totalTTC)} TTC`
-    pdf.text(pdf.splitTextToSize(amountText, 170), 15, totalsTop + 38)
-    contentEnd = totalsTop + 48
+    pdf.setFontSize(10.5)
+    const amountText = `${stoppedAtLabel(commercialDocument)} ${amountToFrenchDirhams(totals.totalTTC)} TTC`
+    const amountLines = pdf.splitTextToSize(amountText, 170)
+    pdf.text(amountLines, 15, totalsTop + 38)
+    contentEnd = totalsTop + 38 + amountLines.length * 5
   }
 
-  const signatureY = Math.max(225, Math.min(contentEnd + 28, 242))
+  if (!pricingVisible && tableEnd > 205) {
+    pdf.addPage()
+    drawFooter(pdf, company)
+    contentEnd = 25
+  }
+
+  const signatureY = Math.max(220, Math.min(contentEnd + 28, 238))
+  pdf.setTextColor(17, 17, 17)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8)
   pdf.text('Le Client', 26, signatureY)
@@ -146,18 +180,20 @@ export const generatePdf = (commercialDocument: CommercialDocument, company: Com
 
   if (company.managerSignatureDataUrl) {
     try {
-      pdf.addImage(company.managerSignatureDataUrl, imageFormat(company.managerSignatureDataUrl), 150, signatureY - 5, 36, 18, undefined, 'FAST')
+      pdf.addImage(
+        company.managerSignatureDataUrl,
+        imageFormat(company.managerSignatureDataUrl),
+        150,
+        signatureY - 5,
+        36,
+        18,
+        undefined,
+        'FAST'
+      )
     } catch {
-      // Keep the PDF usable even when a signature image cannot be decoded.
+      // Une signature locale invalide ne doit jamais rendre le PDF inutilisable.
     }
   }
-
-  pdf.setDrawColor(100)
-  pdf.line(62, 275, 148, 275)
-  pdf.setFontSize(8)
-  pdf.text(company.address, 105, 282, { align: 'center', maxWidth: 190 })
-  pdf.setFontSize(6.5)
-  pdf.text(pdf.splitTextToSize(company.legalLine, 190), 105, 287, { align: 'center' })
 
   pdf.save(`${typeLabel.toLowerCase().replaceAll(' ', '-')}-${commercialDocument.number}.pdf`)
 }
