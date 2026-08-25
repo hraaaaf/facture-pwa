@@ -10,7 +10,7 @@
 html { background: #f3f3f1; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, textarea { font: inherit; }
-button { cursor: pointer; }
+button { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 .app-shell { min-height: 100vh; }
 .screen {
@@ -81,7 +81,8 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .text-button, .danger-link {
   border: 0;
   background: transparent;
-  padding: 10px 0;
+  min-height: 44px;
+  padding: 10px 6px;
   color: #111;
   font-weight: 750;
 }
@@ -132,7 +133,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 
 .line-list { display: grid; gap: 12px; }
 .line-card { display: grid; gap: 12px; }
-.line-title { justify-content: space-between; }
+.line-title { justify-content: space-between; min-height: 44px; }
 .line-total { border-top: 1px solid #eee; padding-top: 12px; display: flex; justify-content: space-between; }
 .totals-card { margin-top: 18px; display: grid; gap: 10px; }
 .totals-card > div { display: flex; justify-content: space-between; gap: 16px; }
@@ -166,11 +167,12 @@ h2 { margin-bottom: 0; font-size: 18px; }
   background: #fff;
   border: 1px solid #e1e1de;
   border-radius: 18px;
-  padding: 8px 12px 8px 8px;
+  padding: 6px 8px;
 }
 .history-main {
   flex: 1;
   min-width: 0;
+  min-height: 56px;
   border: 0;
   background: transparent;
   display: grid;
