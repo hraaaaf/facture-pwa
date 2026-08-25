@@ -1,0 +1,8 @@
+.pdf-paper {
+  aspect-ratio: 210 / 297;
+  min-height: 0;
+}
+
+@media (min-width: 760px) {
+  .pdf-paper { min-height: 0; }
+}
