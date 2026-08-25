@@ -335,7 +335,7 @@ export const rememberDocument = async (document: CommercialDocument): Promise<vo
             client.id === document.clientId || canonicalText(clientDisplayName(client)) === key
           )
           const learned: ClientProfile = {
-            id: existing?.id ?? document.clientId || crypto.randomUUID(),
+            id: existing?.id ?? (document.clientId || crypto.randomUUID()),
             name: existing?.name || clientName,
             company: existing?.company || '',
             address: document.clientAddress || existing?.address || '',
