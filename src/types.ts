@@ -13,6 +13,31 @@ export interface DocumentLine {
   discountPercent?: number
 }
 
+export interface ClientProfile {
+  id: string
+  name: string
+  company: string
+  address: string
+  ice: string
+  ifNumber: string
+  phone: string
+  email: string
+  usageCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CatalogItem {
+  id: string
+  designation: string
+  unit: string
+  lastUnitPriceHT: number
+  vatRate: number
+  usageCount: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface CommercialDocument {
   id: string
   type: DocumentType
@@ -20,6 +45,12 @@ export interface CommercialDocument {
   number: string
   date: string
   client: string
+  /** Optional link to the local reusable client profile. */
+  clientId: string
+  /** Snapshot fields kept on the document so historical output does not change when a client profile changes later. */
+  clientAddress: string
+  clientIce: string
+  clientIfNumber: string
   object: string
   lines: DocumentLine[]
   blShowPrices: boolean
@@ -95,6 +126,9 @@ export const defaultCompany: CompanySettings = {
   onboardingCompleted: false,
   numberingPrefixes: defaultNumberingPrefixes
 }
+
+export const clientDisplayName = (client: Pick<ClientProfile, 'name' | 'company'>) =>
+  client.company.trim() || client.name.trim()
 
 export const companyLegalLine = (company: CompanySettings) => {
   const structured = [
