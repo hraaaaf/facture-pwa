@@ -18,29 +18,19 @@ Branche active : `m0/pwa-foundation`
 PR active : `#1 — M0 — Fondation PWA facturation`
 Base : `main`
 
-## Contraintes utilisateur à respecter
+## Contraintes à respecter
 
 - ne pas utiliser Replit ;
-- GitHub Actions sont limités : workflow manuel seulement, éviter tout run inutile ;
+- GitHub Actions limités : workflow manuel seulement, éviter tout run inutile ;
 - ne pas lancer Vercel sans autorisation explicite ;
 - mobile-first iPhone + Android ;
-- objectif visuel premium, pas une app administrative basique ;
+- objectif visuel premium ;
 - conserver l’app simple pour l’utilisateur final ;
 - fournir des preuves avant de déclarer un lot fermé.
 
 ## Direction visuelle verrouillée
 
-Le mockup validé sert de cible.
-
-- glassmorphism ;
-- accent vert ;
-- surfaces claires/translucides ;
-- gros contrôles tactiles ;
-- bottom navigation `Accueil | + | Historique` ;
-- bouton + central flottant ;
-- safe areas iOS ;
-- interactions type app native moderne ;
-- pas de surcharge fonctionnelle visible.
+Le mockup validé sert de cible : glassmorphism, accent vert, surfaces claires/translucides, gros contrôles tactiles, bottom navigation `Accueil | + | Historique`, bouton + central flottant, safe areas iOS et aucune surcharge visible.
 
 Mockup canonique : `docs/mockups/UI_V1_MASTER.jpg`
 Règles de lock : `docs/mockups/MOCKUPS_LOCK.md`
@@ -48,17 +38,31 @@ Spec UI : `docs/UI_V1_MOBILE_SPEC.md`
 
 ## État produit au handover
 
+### E0 Premier démarrage
+
+CANDIDAT ✅ fonctionnel, non certifié visuellement.
+
+Fresh install : l’application ne montre pas le dashboard tant que la société n’est pas configurée.
+
+Parcours en 5 étapes :
+
+1. identité : raison sociale, marque, logo ;
+2. coordonnées : adresse, ville, téléphone, fax, email ;
+3. identifiants : ICE, IF, RC, Patente, CNSS ;
+4. banque : banque, RIB ;
+5. documents : TVA par défaut, PDF Original/Premium, signature.
+
+Règles : nom + adresse requis, TVA 0..100, `onboardingCompleted` persisté. Les anciennes installations déjà configurées sont migrées sans être rebloquées. Tous ces champs restent modifiables dans E6.
+
+Les champs juridiques structurés régénèrent automatiquement `legalLine` pour préserver les PDF et la compatibilité des anciennes données.
+
 ### E1 Accueil
 
-CANDIDAT ✅
-
-Dashboard premium, recherche, cartes statistiques, récents, bottom nav glass et bouton +.
+CANDIDAT ✅ : dashboard premium, recherche, cartes statistiques, récents, bottom nav glass et bouton +.
 
 ### E2 Nouveau document
 
-CANDIDAT ✅
-
-Bottom sheet avec Devis / Facture / BL / BC en un tap.
+CANDIDAT ✅ : bottom sheet Devis / Facture / BL / BC en un tap.
 
 ### E3 Éditeur
 
@@ -70,25 +74,13 @@ Non production-grade : numérotation irréversible, statuts, remises, validation
 
 ### E4 Aperçu / PDF
 
-CANDIDAT ✅ fonctionnel.
+CANDIDAT ✅ fonctionnel : aperçu dans l’app, Original/Premium, modèle par défaut persistant, partage, téléchargement, impression, Page X/Y, métadonnées et overlay conservant le brouillon.
 
-- aperçu dans l’app ;
-- modèles Original / Premium ;
-- modèle PDF par défaut désormais persistant ;
-- partage ;
-- téléchargement ;
-- impression ;
-- pagination Page X/Y ;
-- métadonnées ;
-- overlay qui conserve le brouillon en mémoire.
-
-Important : aucun score 9,5 n’est certifié tant que les PDF n’ont pas été comparés visuellement aux références.
+Aucun score 9,5 n’est certifié tant que les PDF n’ont pas été comparés visuellement aux références.
 
 ### E5 Historique
 
-CANDIDAT ✅
-
-Recherche, filtres, cartes premium, ouverture, duplication, Devis → Facture, Devis → BL, suppression confirmée.
+CANDIDAT ✅ : recherche, filtres, cartes premium, ouverture, duplication, Devis → Facture, Devis → BL, suppression confirmée.
 
 Les statuts comptables n’ont volontairement pas été simulés.
 
@@ -96,38 +88,15 @@ Les statuts comptables n’ont volontairement pas été simulés.
 
 CANDIDAT ✅ fonctionnel, non certifié visuellement.
 
-Implémenté :
+Implémenté : identité société structurée, adresse, ville, TEL, FAX, email, ICE, IF, RC, Patente, CNSS, banque, RIB, TVA, logo, signature, préférence PDF, compteur documents, export/restore JSON et installation PWA.
 
-- écran premium glass ;
-- identité société, marque, adresse, mentions légales ;
-- ville et TVA par défaut ;
-- logo avec aperçu / remplacement / retrait ;
-- signature avec aperçu / remplacement / retrait ;
-- préférence PDF Original / Premium persistée ;
-- compteur de documents locaux ;
-- export JSON complet ;
-- restauration JSON validée puis appliquée transactionnellement dans IndexedDB ;
-- prise en charge des anciens réglages via valeurs par défaut fusionnées ;
-- section installation PWA ;
-- capture de `beforeinstallprompt` quand disponible ;
-- fallback instructions iOS / Android.
-
-Décision importante : la configuration de numérotation n’est pas exposée comme un réglage cosmétique. Elle est déplacée au LOT 1 et devra être réellement connectée à des séquences persistantes irréversibles.
+Décision importante : la configuration de numérotation n’est pas exposée comme un réglage cosmétique. Elle passe au LOT 1 et devra être réellement connectée à des séquences persistantes irréversibles.
 
 ## Moteur métier actuel
 
-Déjà présent :
+Déjà présent : Total ligne HT = quantité × PU HT, somme des lignes, TVA ligne par ligne, total HT/TVA/TTC, montant en lettres et conversions Devis → Facture / BL.
 
-- Total ligne HT = quantité × PU HT ;
-- somme des lignes ;
-- TVA ligne par ligne ;
-- total HT ;
-- total TVA ;
-- total TTC ;
-- montant en lettres ;
-- conversions Devis → Facture / BL.
-
-Risque connu à corriger : la numérotation actuelle repose encore sur le nombre de documents existants + 1. Une suppression peut donc créer un risque de réutilisation future d’un numéro. Ne pas considérer la numérotation actuelle comme production-grade.
+Risque connu : la numérotation repose encore sur le nombre de documents existants + 1. Une suppression peut entraîner une réutilisation future. Ne pas considérer cette numérotation comme production-grade.
 
 Cible : brouillon sans numéro définitif, numéro réservé à finalisation, numéro final jamais réutilisé.
 
@@ -135,56 +104,24 @@ Cible : brouillon sans numéro définitif, numéro réservé à finalisation, nu
 
 IndexedDB reste la source locale.
 
-Le backup E6 contient :
+Le backup contient version, date d’export, tous les documents et tous les réglages société structurés. La restauration refuse un format inconnu, valide les documents/lignes, normalise les réglages et remplace documents + société dans une transaction multi-store.
 
-- `version: 1` ;
-- date d’export ;
-- tous les documents ;
-- tous les réglages société, y compris le template PDF par défaut.
-
-La restauration :
-
-- refuse un format inconnu ;
-- valide les documents et leurs lignes ;
-- normalise les réglages ;
-- remplace documents + société dans une transaction multi-store.
-
-À certifier plus tard sur runtime réel : export → suppression/modification locale → restauration → réouverture des documents.
+À certifier sur runtime réel : export → modification/suppression locale → restauration → réouverture.
 
 ## PDF
 
-Deux familles :
-
-### Original
-
-Doit reproduire les documents source avec une fidélité >= 9,5/10.
-
-### Premium
-
-Doit être clairement plus haut de gamme visuellement, tout en conservant les mêmes données métier, >= 9,5/10.
-
-Les deux moteurs existent mais restent à certifier visuellement.
-
-## Références fonctionnelles importantes
-
-- BL sans prix ;
-- BL avec prix ;
-- Facture à 5 colonnes ;
-- TVA source 20 % mais configurable ;
-- total TTC en lettres ;
-- identité société modifiable ;
-- logo et signature modifiables.
+Deux familles : Original, fidèle aux documents source, et Premium, plus haut de gamme. Les deux moteurs existent mais restent à certifier visuellement >= 9,5.
 
 ## GitHub / CI
 
-Workflow `.github/workflows/ci.yml` configuré en `workflow_dispatch` uniquement.
+Workflow `.github/workflows/ci.yml` en `workflow_dispatch` uniquement. Ne pas multiplier les runs. Stratégie : un run final utile sur le candidat prêt à certifier.
 
-Ne pas multiplier les runs. La stratégie est de faire **un run final utile** sur le candidat prêt à certifier.
-
-Un ancien run rouge n’a exécuté aucune étape et n’a alloué aucun runner. Il ne doit pas être interprété comme une preuve d’échec produit.
+Un ancien run rouge n’a exécuté aucune étape et n’a alloué aucun runner. Il ne prouve pas un échec produit.
 
 ## Gates avant merge
 
+- E0 réel sur stockage vierge ;
+- E0 ne réapparaît plus après validation/réouverture ;
 - build/test sur HEAD exact ;
 - screenshots 390 / 430 / 768 ;
 - 0 overflow horizontal ;
@@ -213,13 +150,13 @@ Ordre :
 5. remises ;
 6. préfixes / format configurables réellement branchés au moteur ;
 7. tests unitaires moteur ;
-8. puis clients & catalogue ;
+8. clients & catalogue ;
 9. PDF Original fidelity ;
 10. PDF Premium polish ;
-11. audit mobile + certification finale ;
+11. audit mobile incluant E0/E6 + certification finale ;
 12. un seul run GitHub Actions si utile ;
 13. human gate puis merge.
 
 ## Prompt de reprise conseillé
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur la branche m0/pwa-foundation. Respecte le mockup verrouillé dans docs/mockups. E1 à E6 sont des candidats fonctionnels non certifiés. Commence exactement par LOT 1 — moteur métier production-grade, sans lancer d’Actions GitHub inutilement et sans Vercel.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur la branche m0/pwa-foundation. Respecte le mockup verrouillé dans docs/mockups. E0 à E6 sont des candidats fonctionnels non certifiés. Commence exactement par LOT 1 — moteur métier production-grade, sans lancer d’Actions GitHub inutilement et sans Vercel.`
