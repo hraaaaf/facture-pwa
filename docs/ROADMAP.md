@@ -16,6 +16,7 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 - fonctionnement hors ligne à certifier ;
 - interface française ;
 - design premium glassmorphism inspiré des interactions mobiles modernes ;
+- **premier lancement = onboarding société E0 obligatoire** ;
 - bottom navigation `Accueil | + | Historique` ;
 - cibles tactiles critiques >= 44 px ;
 - safe areas iOS ;
@@ -52,7 +53,10 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 - [x] montant TTC en lettres
 - [x] historique local
 - [x] recherche locale
+- [x] **E0 onboarding premier lancement**
 - [x] réglages société premium
+- [x] identité société structurée : adresse / TEL / FAX / email / ICE / IF / RC / Patente / CNSS / banque / RIB
+- [x] logo + signature locaux
 - [x] génération PDF A4
 - [x] GitHub Actions passé en `workflow_dispatch` uniquement
 - [x] safe areas iOS
@@ -72,6 +76,34 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 ---
 
 # UI V1 MOBILE
+
+## E0 — Premier démarrage / société
+
+**État : ✅ candidat fonctionnel, non certifié visuellement**
+
+Déclenché uniquement quand aucune société n’a encore été configurée sur l’appareil.
+
+### Parcours
+
+1. **Identité** : raison sociale, marque, logo ;
+2. **Coordonnées** : adresse, ville, téléphone, fax, email ;
+3. **Identifiants légaux** : ICE, IF, RC, Patente, CNSS ;
+4. **Banque** : banque, RIB ;
+5. **Documents** : TVA par défaut, modèle PDF Original/Premium, signature.
+
+### Comportements
+
+- premier lancement bloqué sur E0 jusqu’à validation ;
+- nom / raison sociale requis ;
+- adresse requise ;
+- TVA bornée 0..100 ;
+- logo et signature stockés localement ;
+- `onboardingCompleted` persisté dans les réglages ;
+- anciennes installations déjà configurées ne sont pas bloquées par la migration ;
+- les champs structurés génèrent automatiquement la ligne légale utilisée dans les PDF ;
+- tous les champs restent éditables ensuite dans E6.
+
+**Score cible : UI 9,4 / UX 9,8**
 
 ## E1 — Accueil
 
@@ -162,7 +194,9 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 
 - [x] refonte premium de l’écran ;
 - [x] identité société ;
-- [x] adresse + mentions légales ;
+- [x] adresse / ville / TEL / FAX / email ;
+- [x] ICE / IF / RC / Patente / CNSS ;
+- [x] banque / RIB ;
 - [x] TVA par défaut 0..100 côté UI ;
 - [x] logo avec aperçu / remplacement / retrait ;
 - [x] signature avec aperçu / remplacement / retrait ;
@@ -260,6 +294,8 @@ La **configuration de numérotation** n’est pas exposée comme un faux réglag
 
 **État : À CERTIFIER**
 
+- [ ] E0 premier lancement réel sur stockage vierge ;
+- [ ] E0 fermeture/réouverture : ne doit plus réapparaître après validation ;
 - [ ] screenshots réels 390 px ;
 - [ ] screenshots réels 430 px ;
 - [ ] screenshots réels 768 px ;
@@ -300,7 +336,7 @@ Le mockup est une **cible**, pas une décoration. Toute modification majeure de 
 2. Clients & catalogue rapide.
 3. Revue PDF Original vs références.
 4. Revue PDF Premium et corrections jusqu’à >= 9,5.
-5. Audit 390 / 430 / 768, incluant E6.
+5. Audit 390 / 430 / 768, incluant **E0 et E6**.
 6. Certification backup/restore + PWA iOS / Android / offline.
 7. Un seul run Actions final si utile.
 8. Human gate → merge.
@@ -309,6 +345,7 @@ Le mockup est une **cible**, pas une décoration. Toute modification majeure de 
 
 Le projet n’est pas DONE parce qu’il compile ou parce qu’un mockup est joli. Il est DONE quand :
 
+- le premier lancement E0 configure correctement l’identité société ;
 - le calcul est juste et couvert par tests ;
 - la numérotation ne peut pas être corrompue ;
 - les données survivent à la fermeture et peuvent être sauvegardées/restaurées ;
