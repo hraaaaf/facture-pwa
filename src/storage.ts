@@ -99,24 +99,51 @@ const isCommercialDocument = (value: unknown): value is CommercialDocument => {
     && typeof value.updatedAt === 'string'
 }
 
-const normalizeCompany = (value: unknown): CompanySettings => {
+const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySettings => {
   if (!isRecord(value)) throw new Error('Réglages société invalides dans la sauvegarde')
-  const merged = { ...defaultCompany, ...value }
+
+  const merged: CompanySettings = {
+    ...defaultCompany,
+    ...value,
+    onboardingCompleted:
+      typeof value.onboardingCompleted === 'boolean'
+        ? value.onboardingCompleted
+        : assumeConfigured
+  } as CompanySettings
+
+  const strings = [
+    merged.name,
+    merged.brand,
+    merged.address,
+    merged.cityLabel,
+    merged.phone,
+    merged.fax,
+    merged.email,
+    merged.ice,
+    merged.ifNumber,
+    merged.rc,
+    merged.patente,
+    merged.cnss,
+    merged.bankName,
+    merged.rib,
+    merged.legalLine,
+    merged.logoDataUrl,
+    merged.managerSignatureDataUrl
+  ]
+
   if (
-    typeof merged.name !== 'string'
-    || typeof merged.brand !== 'string'
-    || typeof merged.address !== 'string'
-    || typeof merged.legalLine !== 'string'
-    || typeof merged.cityLabel !== 'string'
+    strings.some(item => typeof item !== 'string')
     || typeof merged.defaultVatRate !== 'number'
     || !Number.isFinite(merged.defaultVatRate)
-    || typeof merged.logoDataUrl !== 'string'
-    || typeof merged.managerSignatureDataUrl !== 'string'
+    || merged.defaultVatRate < 0
+    || merged.defaultVatRate > 100
     || (merged.pdfTemplate !== 'original' && merged.pdfTemplate !== 'premium')
+    || typeof merged.onboardingCompleted !== 'boolean'
   ) {
     throw new Error('Réglages société invalides dans la sauvegarde')
   }
-  return merged as CompanySettings
+
+  return merged
 }
 
 export const getDocuments = async (): Promise<CommercialDocument[]> => {
@@ -132,7 +159,8 @@ export const removeDocument = (id: string) =>
 
 export const getCompany = async (): Promise<CompanySettings> => {
   const saved = await transact<Partial<CompanySettings> | undefined>(SETTINGS_STORE, 'readonly', store => store.get('company'))
-  return saved ? { ...defaultCompany, ...saved } : defaultCompany
+  // Une installation déjà configurée avant E0 ne doit pas être bloquée par la migration.
+  return saved ? normalizeCompany(saved, true) : { ...defaultCompany }
 }
 
 export const saveCompany = (company: CompanySettings) =>
@@ -155,7 +183,8 @@ export const restoreLocalBackup = async (value: unknown): Promise<void> => {
   if (!value.documents.every(isCommercialDocument)) {
     throw new Error('Les documents de la sauvegarde sont invalides')
   }
-  const company = normalizeCompany(value.company)
+
+  const company = normalizeCompany(value.company, true)
   const documents = value.documents as CommercialDocument[]
   const db = await openDb()
 
