@@ -6,6 +6,7 @@ import PdfPreviewScreen from './Preview'
 import type { CommercialDocument, CompanySettings } from './types'
 import './styles.css'
 import './editor.css'
+import './overlay.css'
 
 registerSW({ immediate: true })
 
