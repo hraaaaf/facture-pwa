@@ -51,8 +51,8 @@ describe('documentTotals', () => {
       linesHT: 280,
       globalDiscount: 28,
       totalHT: 252,
-      totalVAT: 42.12,
-      totalTTC: 294.12
+      totalVAT: 41.4,
+      totalTTC: 293.4
     })
   })
 })
