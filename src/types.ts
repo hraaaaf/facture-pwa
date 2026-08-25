@@ -1,3 +1,5 @@
+import { temporaryTapistorLogoDataUrl } from './brand'
+
 export type DocumentType = 'DEVIS' | 'FACTURE' | 'BL' | 'BC'
 export type PdfTemplatePreference = 'original' | 'premium'
 export type DocumentStatus = 'DRAFT' | 'FINALIZED' | 'PAID' | 'CANCELLED'
@@ -120,7 +122,8 @@ export const defaultCompany: CompanySettings = {
   rib: '181 810 21211 52654410108 03',
   legalLine: '',
   defaultVatRate: 20,
-  logoDataUrl: '',
+  // Temporary fictitious mark used until the real logo is uploaded in E0/E6.
+  logoDataUrl: temporaryTapistorLogoDataUrl,
   managerSignatureDataUrl: '',
   pdfTemplate: 'premium',
   onboardingCompleted: false,
