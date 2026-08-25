@@ -12,12 +12,14 @@ export default defineConfig({
         name: 'Facture PWA',
         short_name: 'Facture',
         description: 'Devis, factures, bons de livraison et bons de commande.',
-        theme_color: '#111111',
-        background_color: '#f5f5f5',
+        theme_color: '#eef3ef',
+        background_color: '#eef3ef',
         display: 'standalone',
+        orientation: 'portrait-primary',
         start_url: '/',
         scope: '/',
         lang: 'fr',
+        categories: ['business', 'productivity'],
         icons: [
           {
             src: '/icon.svg',
