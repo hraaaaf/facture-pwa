@@ -1,13 +1,28 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
-import { createBlankDocument, documentLabel, documentTotals, lineTotalHT } from './lib'
+import { amountToFrenchDirhams, createBlankDocument, documentLabel, documentTotals, lineTotalHT } from './lib'
 import { generatePdf } from './pdf'
 import { getCompany, getDocuments, removeDocument, saveCompany, saveDocument } from './storage'
 import type { CommercialDocument, CompanySettings, DocumentLine, DocumentType } from './types'
 import { defaultCompany } from './types'
 
 type View = 'home' | 'editor' | 'history' | 'settings'
-
-type IconName = 'home' | 'history' | 'plus' | 'settings' | 'search' | 'file' | 'invoice' | 'truck' | 'order' | 'chevron' | 'back'
+type IconName =
+  | 'home'
+  | 'history'
+  | 'plus'
+  | 'settings'
+  | 'search'
+  | 'file'
+  | 'invoice'
+  | 'truck'
+  | 'order'
+  | 'chevron'
+  | 'back'
+  | 'save'
+  | 'eye'
+  | 'trash'
+  | 'more'
+  | 'check'
 
 const money = (value: number) =>
   new Intl.NumberFormat('fr-FR', {
@@ -17,9 +32,7 @@ const money = (value: number) =>
   }).format(value)
 
 const shortMoney = (value: number) =>
-  new Intl.NumberFormat('fr-FR', {
-    maximumFractionDigits: 0
-  }).format(value) + ' MAD'
+  new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value) + ' MAD'
 
 const shortDate = (iso: string) =>
   new Intl.DateTimeFormat('fr-FR').format(new Date(`${iso}T12:00:00`))
@@ -271,7 +284,6 @@ function Home({
       </section>
 
       <div className="local-pill"><span className="status-dot" /> Données locales · hors ligne</div>
-
       <BottomNav active="home" onHome={() => undefined} onNew={onNew} onHistory={onHistory} />
     </main>
   )
@@ -331,9 +343,7 @@ function BottomNav({
         <Icon name="home" />
         <span>Accueil</span>
       </button>
-      <button className="fab" onClick={onNew} aria-label="Nouveau document">
-        <Icon name="plus" />
-      </button>
+      <button className="fab" onClick={onNew} aria-label="Nouveau document"><Icon name="plus" /></button>
       <button className={`nav-item ${active === 'history' ? 'active' : ''}`} onClick={onHistory}>
         <Icon name="history" />
         <span>Historique</span>
@@ -362,10 +372,7 @@ function History({
   return (
     <main className="screen with-bottom-nav">
       <header className="history-header">
-        <div>
-          <p className="eyebrow">ARCHIVES LOCALES</p>
-          <h1>Historique</h1>
-        </div>
+        <div><p className="eyebrow">ARCHIVES LOCALES</p><h1>Historique</h1></div>
       </header>
       <label className="search-surface interactive-search">
         <Icon name="search" />
@@ -441,85 +448,126 @@ function Editor({
 
   return (
     <main className="screen editor-screen">
-      <ScreenHeader title={documentLabel(value.type)} onBack={onBack} />
-
-      <section className="form-card">
-        <div className="two-columns">
-          <label className="field">
-            <span>N°</span>
-            <input value={value.number} onChange={event => patch({ number: event.target.value })} />
-          </label>
-          <label className="field">
-            <span>Date</span>
-            <input type="date" value={value.date} onChange={event => patch({ date: event.target.value })} />
-          </label>
+      <header className="editor-header">
+        <button className="back-button" onClick={onBack} aria-label="Retour"><Icon name="back" /></button>
+        <div className="editor-title">
+          <span className={`editor-type-icon ${typeClass[value.type]}`}><Icon name={documentIcon[value.type]} /></span>
+          <div>
+            <h1>{documentLabel(value.type)}</h1>
+            <span className="draft-status"><span className="status-dot" /> Brouillon</span>
+          </div>
         </div>
-        <label className="field">
-          <span>Client</span>
-          <input value={value.client} onChange={event => patch({ client: event.target.value })} placeholder="Nom ou organisme" />
+        <button className="editor-more" aria-label="Plus d’options"><Icon name="more" /></button>
+      </header>
+
+      <section className="editor-meta glass-panel">
+        <label>
+          <span>N° document</span>
+          <input value={value.number} onChange={event => patch({ number: event.target.value })} />
         </label>
-        <label className="field">
-          <span>Objet</span>
-          <textarea value={value.object} onChange={event => patch({ object: event.target.value })} placeholder="Objet du document" rows={3} />
+        <label>
+          <span>Date</span>
+          <input type="date" value={value.date} onChange={event => patch({ date: event.target.value })} />
         </label>
-        {value.type === 'BL' && (
-          <label className="toggle-row">
-            <span>
-              <strong>Afficher les prix</strong>
-              <small>Sinon le BL contient seulement désignation, unité et quantité.</small>
-            </span>
-            <input type="checkbox" checked={value.blShowPrices} onChange={event => patch({ blShowPrices: event.target.checked })} />
-          </label>
-        )}
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>Lignes</h2>
-          <button className="text-button" onClick={addLine}>+ Ajouter</button>
+      <section className="editor-section">
+        <div className="editor-section-title">
+          <div><span className="section-kicker">Destinataire</span><h2>Client</h2></div>
         </div>
-        <div className="line-list">
+        <div className="glass-panel client-panel">
+          <label className="client-field">
+            <Icon name="search" />
+            <input value={value.client} onChange={event => patch({ client: event.target.value })} placeholder="Nom du client ou organisme" />
+          </label>
+          <p>Les clients mémorisés et l’auto-complétion arrivent dans le lot Clients.</p>
+        </div>
+      </section>
+
+      <section className="editor-section">
+        <div className="editor-section-title"><div><span className="section-kicker">Description</span><h2>Objet</h2></div></div>
+        <div className="glass-panel object-panel">
+          <textarea value={value.object} onChange={event => patch({ object: event.target.value })} placeholder="Objet du document" rows={3} />
+        </div>
+      </section>
+
+      {value.type === 'BL' && (
+        <section className="glass-panel bl-price-panel">
+          <span>
+            <strong>Afficher les prix</strong>
+            <small>Sinon le BL affiche seulement désignation, unité et quantité.</small>
+          </span>
+          <label className="switch-control">
+            <input type="checkbox" checked={value.blShowPrices} onChange={event => patch({ blShowPrices: event.target.checked })} />
+            <span />
+          </label>
+        </section>
+      )}
+
+      <section className="editor-section articles-section">
+        <div className="editor-section-title">
+          <div><span className="section-kicker">Contenu</span><h2>Articles</h2></div>
+          <button className="add-article-button" onClick={addLine}><Icon name="plus" /> Ajouter</button>
+        </div>
+
+        <div className="line-list premium-lines">
           {value.lines.map((line, index) => (
-            <article className="line-card" key={line.id}>
-              <div className="line-title">
-                <strong>Ligne {index + 1}</strong>
+            <article className="article-card" key={line.id}>
+              <div className="article-head">
+                <div>
+                  <span className="article-index">{String(index + 1).padStart(2, '0')}</span>
+                  <strong>Article</strong>
+                </div>
                 {value.lines.length > 1 && (
-                  <button className="danger-link" onClick={() => removeLine(line.id)}>Supprimer</button>
+                  <button className="trash-button" onClick={() => removeLine(line.id)} aria-label={`Supprimer l’article ${index + 1}`}>
+                    <Icon name="trash" />
+                  </button>
                 )}
               </div>
-              <label className="field">
+
+              <label className="article-designation">
                 <span>Désignation</span>
-                <textarea rows={2} value={line.designation} onChange={event => updateLine(line.id, { designation: event.target.value })} />
+                <textarea rows={2} value={line.designation} onChange={event => updateLine(line.id, { designation: event.target.value })} placeholder="Prestation ou article" />
               </label>
-              <div className="two-columns">
-                <label className="field">
+
+              <div className={`article-fields ${pricingVisible ? '' : 'no-price'}`}>
+                <label>
                   <span>Unité</span>
                   <input value={line.unit} onChange={event => updateLine(line.id, { unit: event.target.value })} />
                 </label>
-                <NumberField label="Quantité" value={line.quantity} onChange={quantity => updateLine(line.id, { quantity })} />
+                <NumberField compact label="Qté" value={line.quantity} onChange={quantity => updateLine(line.id, { quantity })} />
+                {pricingVisible && <NumberField compact label="PU HT" value={line.unitPriceHT} step="0.01" onChange={unitPriceHT => updateLine(line.id, { unitPriceHT })} />}
+                {pricingVisible && <NumberField compact label="TVA %" value={line.vatRate} step="0.01" onChange={vatRate => updateLine(line.id, { vatRate })} />}
               </div>
+
               {pricingVisible && (
-                <div className="two-columns">
-                  <NumberField label="PU HT (MAD)" value={line.unitPriceHT} step="0.01" onChange={unitPriceHT => updateLine(line.id, { unitPriceHT })} />
-                  <NumberField label="TVA %" value={line.vatRate} step="0.01" onChange={vatRate => updateLine(line.id, { vatRate })} />
+                <div className="article-total">
+                  <span>Total HT</span>
+                  <strong>{money(lineTotalHT(line))}</strong>
                 </div>
               )}
-              {pricingVisible && <div className="line-total">Total HT <strong>{money(lineTotalHT(line))}</strong></div>}
             </article>
           ))}
         </div>
       </section>
 
       {pricingVisible && (
-        <section className="totals-card">
-          <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div>
+        <section className="premium-totals">
+          <div><span>Sous-total HT</span><strong>{money(totals.totalHT)}</strong></div>
           <div><span>TVA</span><strong>{money(totals.totalVAT)}</strong></div>
-          <div className="grand-total"><span>Total TTC</span><strong>{money(totals.totalTTC)}</strong></div>
+          <div className="premium-grand-total"><span>Total TTC</span><strong>{money(totals.totalTTC)}</strong></div>
+        </section>
+      )}
+
+      {pricingVisible && (
+        <section className="amount-words-card">
+          <span className="section-kicker">Montant en lettres</span>
+          <p>{amountToFrenchDirhams(totals.totalTTC)}</p>
         </section>
       )}
 
       {value.type === 'DEVIS' && (
-        <section className="conversion-card">
+        <section className="conversion-card premium-conversion">
           <span>Créer depuis ce devis</span>
           <div>
             <button className="secondary-button" onClick={() => onConvert('FACTURE')}>→ Facture</button>
@@ -528,10 +576,11 @@ function Editor({
         </section>
       )}
 
-      <div className="editor-actions glass-actions">
-        <button className="primary-button" onClick={() => void onSave(value)}>Enregistrer</button>
-        <button className="secondary-button" onClick={() => onPdf(value)}>Générer le PDF</button>
-      </div>
+      <nav className="editor-bottom-bar" aria-label="Actions document">
+        <button className="editor-action" onClick={() => onPdf(value)}><Icon name="eye" /><span>Aperçu PDF</span></button>
+        <button className="editor-save" onClick={() => void onSave(value)}><Icon name="save" /><span>Enregistrer</span></button>
+        <button className="editor-action" onClick={addLine}><Icon name="plus" /><span>Article</span></button>
+      </nav>
     </main>
   )
 }
@@ -580,15 +629,17 @@ function NumberField({
   label,
   value,
   step = '1',
-  onChange
+  onChange,
+  compact = false
 }: {
   label: string
   value: number
   step?: string
   onChange: (value: number) => void
+  compact?: boolean
 }) {
   return (
-    <label className="field">
+    <label className={compact ? 'compact-number-field' : 'field'}>
       <span>{label}</span>
       <input
         type="number"
@@ -624,7 +675,16 @@ function Icon({ name }: { name: IconName }) {
     truck: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
     order: <><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 9h8M8 13h8M8 17h5"/></>,
     chevron: <path d="m9 5 7 7-7 7"/>,
-    back: <><path d="m15 5-7 7 7 7"/></>
+    back: <path d="m15 5-7 7 7 7"/>,
+    save: <><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></>,
+    eye: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></>,
+    trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></>,
+    more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></>,
+    check: <path d="m5 12 4 4L19 6"/>
   }
-  return <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
+  return (
+    <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  )
 }
