@@ -1,4 +1,5 @@
 export type DocumentType = 'DEVIS' | 'FACTURE' | 'BL' | 'BC'
+export type PdfTemplatePreference = 'original' | 'premium'
 
 export interface DocumentLine {
   id: string
@@ -31,6 +32,7 @@ export interface CompanySettings {
   defaultVatRate: number
   logoDataUrl: string
   managerSignatureDataUrl: string
+  pdfTemplate: PdfTemplatePreference
 }
 
 export const defaultCompany: CompanySettings = {
@@ -41,5 +43,6 @@ export const defaultCompany: CompanySettings = {
   cityLabel: 'RABAT',
   defaultVatRate: 20,
   logoDataUrl: '',
-  managerSignatureDataUrl: ''
+  managerSignatureDataUrl: '',
+  pdfTemplate: 'premium'
 }
