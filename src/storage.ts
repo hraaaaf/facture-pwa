@@ -31,10 +31,28 @@ const transact = async <T>(
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, mode)
     const request = run(tx.objectStore(storeName))
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-    tx.oncomplete = () => db.close()
-    tx.onerror = () => reject(tx.error)
+    let result: T
+    let settled = false
+
+    const fail = (error: DOMException | null) => {
+      if (settled) return
+      settled = true
+      db.close()
+      reject(error ?? new Error('Erreur IndexedDB'))
+    }
+
+    request.onsuccess = () => {
+      result = request.result
+    }
+    request.onerror = () => fail(request.error)
+    tx.onerror = () => fail(tx.error)
+    tx.onabort = () => fail(tx.error)
+    tx.oncomplete = () => {
+      if (settled) return
+      settled = true
+      db.close()
+      resolve(result)
+    }
   })
 }
 
