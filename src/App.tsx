@@ -87,6 +87,34 @@ export default function App() {
     setView('editor')
   }
 
+  const duplicateDocument = (document: CommercialDocument) => {
+    const count = documents.filter(item => item.type === document.type).length
+    const blank = createBlankDocument(document.type, count, company.defaultVatRate)
+    setDraft({
+      ...blank,
+      client: document.client,
+      object: document.object,
+      lines: document.lines.map(line => ({ ...line, id: crypto.randomUUID() })),
+      blShowPrices: document.blShowPrices
+    })
+    setView('editor')
+    showNotice('Copie créée en brouillon')
+  }
+
+  const convertDocument = (document: CommercialDocument, targetType: DocumentType) => {
+    const count = documents.filter(item => item.type === targetType).length
+    const blank = createBlankDocument(targetType, count, company.defaultVatRate)
+    setDraft({
+      ...blank,
+      client: document.client,
+      object: document.object,
+      lines: document.lines.map(line => ({ ...line, id: crypto.randomUUID() })),
+      blShowPrices: targetType === 'BL' ? document.blShowPrices : false
+    })
+    setView('editor')
+    showNotice(`${documentLabel(targetType)} créé sans ressaisie`)
+  }
+
   const persistDraft = async (document: CommercialDocument) => {
     const saved = { ...document, updatedAt: new Date().toISOString() }
     await saveDocument(saved)
@@ -103,16 +131,7 @@ export default function App() {
 
   const convertDraft = (targetType: DocumentType) => {
     if (!draft) return
-    const count = documents.filter(document => document.type === targetType).length
-    const blank = createBlankDocument(targetType, count, company.defaultVatRate)
-    setDraft({
-      ...blank,
-      client: draft.client,
-      object: draft.object,
-      lines: draft.lines.map(line => ({ ...line, id: crypto.randomUUID() })),
-      blShowPrices: targetType === 'BL' ? draft.blShowPrices : false
-    })
-    showNotice(`${documentLabel(targetType)} créé sans ressaisie`)
+    convertDocument(draft, targetType)
   }
 
   const filteredDocuments = useMemo(() => {
@@ -150,6 +169,8 @@ export default function App() {
           onHome={() => setView('home')}
           onNew={() => setNewOpen(true)}
           onEdit={editDocument}
+          onDuplicate={duplicateDocument}
+          onConvert={convertDocument}
           onDelete={deleteDocument}
         />
       )}
@@ -359,6 +380,8 @@ function History({
   onHome,
   onNew,
   onEdit,
+  onDuplicate,
+  onConvert,
   onDelete
 }: {
   documents: CommercialDocument[]
@@ -367,37 +390,90 @@ function History({
   onHome: () => void
   onNew: () => void
   onEdit: (document: CommercialDocument) => void
+  onDuplicate: (document: CommercialDocument) => void
+  onConvert: (document: CommercialDocument, targetType: DocumentType) => void
   onDelete: (id: string) => void
 }) {
+  const [filter, setFilter] = useState<'ALL' | DocumentType>('ALL')
+  const visibleDocuments = filter === 'ALL' ? documents : documents.filter(document => document.type === filter)
+  const filters: Array<{ value: 'ALL' | DocumentType; label: string }> = [
+    { value: 'ALL', label: 'Tous' },
+    { value: 'FACTURE', label: 'Factures' },
+    { value: 'DEVIS', label: 'Devis' },
+    { value: 'BL', label: 'BL' },
+    { value: 'BC', label: 'BC' }
+  ]
+
   return (
-    <main className="screen with-bottom-nav">
-      <header className="history-header">
-        <div><p className="eyebrow">ARCHIVES LOCALES</p><h1>Historique</h1></div>
+    <main className="screen with-bottom-nav history-screen">
+      <header className="history-header premium-history-header">
+        <div>
+          <p className="eyebrow">ARCHIVES LOCALES</p>
+          <h1>Historique</h1>
+          <p className="muted">{visibleDocuments.length} document{visibleDocuments.length > 1 ? 's' : ''}</p>
+        </div>
       </header>
-      <label className="search-surface interactive-search">
+
+      <label className="search-surface interactive-search history-search">
         <Icon name="search" />
         <input value={search} onChange={event => onSearch(event.target.value)} placeholder="Client, numéro, objet…" />
       </label>
-      <div className="document-list standalone-list glass-list">
-        {documents.map(document => {
+
+      <div className="history-filters" role="group" aria-label="Filtrer les documents">
+        {filters.map(item => (
+          <button
+            key={item.value}
+            className={filter === item.value ? 'active' : ''}
+            onClick={() => setFilter(item.value)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="premium-history-list">
+        {visibleDocuments.map(document => {
           const totals = documentTotals(document)
           const showAmount = document.type !== 'BL' || document.blShowPrices
           return (
-            <div className="history-card" key={document.id}>
-              <button className="history-main" onClick={() => onEdit(document)}>
+            <article className="premium-history-card" key={document.id}>
+              <button className="premium-history-main" onClick={() => onEdit(document)}>
                 <span className={`document-badge small ${typeClass[document.type]}`}><Icon name={documentIcon[document.type]} /></span>
-                <span className="row-main">
-                  <strong>{document.client || documentLabel(document.type)}</strong>
-                  <small>{documentLabel(document.type)} · #{document.number}</small>
-                  <small>{shortDate(document.date)}{showAmount ? ` · ${money(totals.totalTTC)}` : ''}</small>
+                <span className="history-copy">
+                  <span className="history-card-topline">
+                    <strong>{document.client || documentLabel(document.type)}</strong>
+                    <span className="saved-chip"><span className="status-dot" /> Enregistré</span>
+                  </span>
+                  <span className="history-number">{documentLabel(document.type)} · #{document.number}</span>
+                  <span className="history-object">{document.object || 'Sans objet'}</span>
+                  <span className="history-meta-line">
+                    <span>{shortDate(document.date)}</span>
+                    {showAmount && <strong>{money(totals.totalTTC)}</strong>}
+                  </span>
                 </span>
+                <Icon name="chevron" />
               </button>
-              <button className="danger-link" onClick={() => onDelete(document.id)} aria-label="Supprimer">Supprimer</button>
-            </div>
+
+              <div className="history-card-actions">
+                <button onClick={() => onEdit(document)}>Ouvrir</button>
+                <button onClick={() => onDuplicate(document)}>Dupliquer</button>
+                {document.type === 'DEVIS' && <button onClick={() => onConvert(document, 'FACTURE')}>→ Facture</button>}
+                {document.type === 'DEVIS' && <button onClick={() => onConvert(document, 'BL')}>→ BL</button>}
+                <button className="danger" onClick={() => onDelete(document.id)}>Supprimer</button>
+              </div>
+            </article>
           )
         })}
-        {documents.length === 0 && <div className="empty-state"><strong>Aucun résultat</strong></div>}
+
+        {visibleDocuments.length === 0 && (
+          <div className="empty-state history-empty">
+            <span className="empty-icon"><Icon name="search" /></span>
+            <strong>Aucun document</strong>
+            <span>Modifiez la recherche ou le filtre.</span>
+          </div>
+        )}
       </div>
+
       <BottomNav active="history" onHome={onHome} onNew={onNew} onHistory={() => undefined} />
     </main>
   )
