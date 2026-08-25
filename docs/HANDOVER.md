@@ -74,6 +74,7 @@ CANDIDAT ✅ fonctionnel.
 
 - aperçu dans l’app ;
 - modèles Original / Premium ;
+- modèle PDF par défaut désormais persistant ;
 - partage ;
 - téléchargement ;
 - impression ;
@@ -93,9 +94,25 @@ Les statuts comptables n’ont volontairement pas été simulés.
 
 ### E6 Réglages
 
-NEXT EXACT ⏭️
+CANDIDAT ✅ fonctionnel, non certifié visuellement.
 
-À faire : refonte premium, choix template PDF, numérotation, export/restore local, installation PWA et consolidation des réglages société.
+Implémenté :
+
+- écran premium glass ;
+- identité société, marque, adresse, mentions légales ;
+- ville et TVA par défaut ;
+- logo avec aperçu / remplacement / retrait ;
+- signature avec aperçu / remplacement / retrait ;
+- préférence PDF Original / Premium persistée ;
+- compteur de documents locaux ;
+- export JSON complet ;
+- restauration JSON validée puis appliquée transactionnellement dans IndexedDB ;
+- prise en charge des anciens réglages via valeurs par défaut fusionnées ;
+- section installation PWA ;
+- capture de `beforeinstallprompt` quand disponible ;
+- fallback instructions iOS / Android.
+
+Décision importante : la configuration de numérotation n’est pas exposée comme un réglage cosmétique. Elle est déplacée au LOT 1 et devra être réellement connectée à des séquences persistantes irréversibles.
 
 ## Moteur métier actuel
 
@@ -113,6 +130,26 @@ Déjà présent :
 Risque connu à corriger : la numérotation actuelle repose encore sur le nombre de documents existants + 1. Une suppression peut donc créer un risque de réutilisation future d’un numéro. Ne pas considérer la numérotation actuelle comme production-grade.
 
 Cible : brouillon sans numéro définitif, numéro réservé à finalisation, numéro final jamais réutilisé.
+
+## Stockage / backup
+
+IndexedDB reste la source locale.
+
+Le backup E6 contient :
+
+- `version: 1` ;
+- date d’export ;
+- tous les documents ;
+- tous les réglages société, y compris le template PDF par défaut.
+
+La restauration :
+
+- refuse un format inconnu ;
+- valide les documents et leurs lignes ;
+- normalise les réglages ;
+- remplace documents + société dans une transaction multi-store.
+
+À certifier plus tard sur runtime réel : export → suppression/modification locale → restauration → réouverture des documents.
 
 ## PDF
 
@@ -154,7 +191,9 @@ Un ancien run rouge n’a exécuté aucune étape et n’a alloué aucun runner.
 - 0 erreur console ;
 - 0 contrôle critique < 44 px ;
 - création → sauvegarde → réouverture → aperçu → PDF ;
+- backup export → restore réel ;
 - offline réel ;
+- installation iOS + Android ;
 - partage iOS + Android ;
 - Original comparé aux références ;
 - Premium scoré >= 9,5 ;
@@ -163,20 +202,24 @@ Un ancien run rouge n’a exécuté aucune étape et n’a alloué aucun runner.
 
 ## NEXT EXACT
 
-**E6 — Réglages premium**.
+**LOT 1 — Moteur métier production-grade.**
 
-Ensuite :
+Ordre :
 
-1. backup/restore local ;
-2. moteur métier production-grade ;
-3. clients & catalogue ;
-4. PDF Original fidelity ;
-5. PDF Premium polish ;
-6. audit mobile ;
-7. certification finale ;
-8. run GitHub Actions unique si utile ;
-9. human gate puis merge.
+1. remplacer la numérotation `count + 1` par des séquences persistantes irréversibles ;
+2. brouillon sans numéro final puis finalisation ;
+3. statuts Brouillon / Finalisé / Payé / Annulé ;
+4. validations métier et règles d’arrondi ;
+5. remises ;
+6. préfixes / format configurables réellement branchés au moteur ;
+7. tests unitaires moteur ;
+8. puis clients & catalogue ;
+9. PDF Original fidelity ;
+10. PDF Premium polish ;
+11. audit mobile + certification finale ;
+12. un seul run GitHub Actions si utile ;
+13. human gate puis merge.
 
 ## Prompt de reprise conseillé
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur la branche m0/pwa-foundation. Respecte le mockup verrouillé dans docs/mockups. Commence exactement par le NEXT EXACT, sans lancer d’Actions GitHub inutilement et sans Vercel.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur la branche m0/pwa-foundation. Respecte le mockup verrouillé dans docs/mockups. E1 à E6 sont des candidats fonctionnels non certifiés. Commence exactement par LOT 1 — moteur métier production-grade, sans lancer d’Actions GitHub inutilement et sans Vercel.`
