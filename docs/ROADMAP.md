@@ -52,11 +52,14 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 - [x] montant TTC en lettres
 - [x] historique local
 - [x] recherche locale
-- [x] réglages société de base
+- [x] réglages société premium
 - [x] génération PDF A4
 - [x] GitHub Actions passé en `workflow_dispatch` uniquement
 - [x] safe areas iOS
 - [x] cibles tactiles principales >= 44 px
+- [x] export / restauration JSON locale
+- [x] préférence PDF Original / Premium persistée
+- [x] section installation PWA avec prompt natif quand disponible + instructions iOS/Android
 
 ### Reste à certifier
 
@@ -122,6 +125,7 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 
 - aperçu A4 dans l’app ;
 - bascule Original / Premium ;
+- préférence de modèle par défaut persistée dans les réglages ;
 - partage Web Share avec fallback ;
 - téléchargement PDF ;
 - impression ;
@@ -152,21 +156,27 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 
 ## E6 — Réglages
 
-**État : ⏭️ NEXT EXACT**
+**État : ✅ CANDIDAT FONCTIONNEL, non certifié visuellement**
 
-### À implémenter
+### Implémenté
 
-- [ ] refonte premium de l’écran ;
-- [ ] identité société ;
-- [ ] adresse + mentions légales ;
-- [ ] TVA par défaut ;
-- [ ] logo ;
-- [ ] signature ;
-- [ ] choix PDF Original / Premium ;
-- [ ] configuration de numérotation ;
-- [ ] export JSON de toutes les données locales ;
-- [ ] restauration JSON ;
-- [ ] section installation PWA / données locales.
+- [x] refonte premium de l’écran ;
+- [x] identité société ;
+- [x] adresse + mentions légales ;
+- [x] TVA par défaut 0..100 côté UI ;
+- [x] logo avec aperçu / remplacement / retrait ;
+- [x] signature avec aperçu / remplacement / retrait ;
+- [x] choix PDF Original / Premium persisté ;
+- [x] export JSON de toutes les données locales ;
+- [x] restauration JSON avec validation et remplacement transactionnel IndexedDB ;
+- [x] compteur de documents locaux ;
+- [x] section installation PWA ;
+- [x] prompt d’installation natif quand le navigateur l’expose ;
+- [x] instructions manuelles iPhone / Android en fallback.
+
+### Décision d’architecture
+
+La **configuration de numérotation** n’est pas exposée comme un faux réglage tant que le moteur irréversible n’existe pas. Elle est montrée comme « prochain lot » dans E6 et déplacée dans **LOT 1**, où elle sera réellement reliée à des séquences persistantes et non réutilisables.
 
 **Score cible : UI 9,2 / UX 9,5**
 
@@ -174,10 +184,11 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 
 # LOT 1 — Moteur métier production-grade
 
-**État : À FAIRE après E6**
+**État : ⏭️ NEXT EXACT**
 
 - [ ] brouillon sans consommation d’un numéro définitif ;
 - [ ] séquence indépendante Facture / Devis / BL / BC ;
+- [ ] préfixes / format de numérotation configurables réellement reliés au moteur ;
 - [ ] numéro réservé à la finalisation ;
 - [ ] numéro finalisé jamais réutilisé, même après annulation ;
 - [ ] statuts Brouillon / Finalisé / Payé / Annulé ;
@@ -259,6 +270,7 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 - [ ] installation Android ;
 - [ ] offline réel ;
 - [ ] fermeture / réouverture sans perte ;
+- [ ] export puis restauration d’un backup réel ;
 - [ ] partage PDF réel iOS ;
 - [ ] partage PDF réel Android ;
 - [ ] test création → sauvegarde → réouverture → aperçu → PDF ;
@@ -284,16 +296,14 @@ Le mockup est une **cible**, pas une décoration. Toute modification majeure de 
 
 # NEXT EXACT
 
-1. **E6 — Réglages premium**.
-2. Export / restauration locale dans E6.
-3. Moteur métier : numérotation irréversible + statuts + validations + remises.
-4. Clients & catalogue rapide.
-5. Revue PDF Original vs références.
-6. Revue PDF Premium et corrections jusqu’à >= 9,5.
-7. Audit 390 / 430 / 768.
-8. Certification PWA iOS / Android / offline.
-9. Un seul run Actions final si utile.
-10. Human gate → merge.
+1. **LOT 1 — Moteur métier production-grade** : numérotation irréversible + statuts + validations + remises.
+2. Clients & catalogue rapide.
+3. Revue PDF Original vs références.
+4. Revue PDF Premium et corrections jusqu’à >= 9,5.
+5. Audit 390 / 430 / 768, incluant E6.
+6. Certification backup/restore + PWA iOS / Android / offline.
+7. Un seul run Actions final si utile.
+8. Human gate → merge.
 
 ## Définition de DONE
 
