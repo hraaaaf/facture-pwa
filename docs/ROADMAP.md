@@ -2,31 +2,30 @@
 
 Dernière mise à jour : 25 août 2026
 
-> Source de vérité du projet. En cas de nouvelle fenêtre : `docs/HANDOVER.md` → ce fichier → `docs/E0_ONBOARDING.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
+> Source de vérité du projet. Nouvelle fenêtre : `docs/HANDOVER.md` → ce fichier → `docs/E0_ONBOARDING.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
 ## Goal
 
-Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement simple à utiliser, permettant de créer des **Devis, Factures, Bons de livraison (BL) et Bons de commande (BC)**, avec calculs fiables, stockage local et PDF A4 professionnels.
+Créer une PWA mobile-first iPhone + Android, extrêmement simple, pour **Devis, Factures, BL et BC**, avec moteur fiable, mémoire locale rapide et PDF A4 professionnels.
 
 ## Principes verrouillés
 
-- mobile-first, iPhone + Android ;
 - local-first, sans compte obligatoire ;
-- IndexedDB pour les données métier ;
-- premier lancement = onboarding société E0 obligatoire ;
-- interface française, premium glassmorphism ;
+- IndexedDB pour données métier, clients et catalogue ;
+- E0 onboarding société au premier lancement ;
+- UI française premium glassmorphism ;
 - bottom navigation `Accueil | + | Historique` ;
 - cibles tactiles critiques >= 44 px ;
 - safe areas iOS ;
 - Devis → Facture / BL sans ressaisie ;
-- BL sans prix ou avec prix ;
-- deux modèles PDF : **Original** et **Premium** ;
-- GitHub Actions **manuel uniquement**, à utiliser avec parcimonie ;
-- aucun déploiement Vercel sans autorisation explicite.
+- BL avec ou sans prix ;
+- PDF **Original** et **Premium** ;
+- GitHub Actions manuel uniquement, à économiser ;
+- aucun Vercel sans autorisation explicite.
 
-## État Git canonique
+## Git canonique
 
-- repository : `hraaaaf/facture-pwa`
+- repo : `hraaaaf/facture-pwa`
 - branche : `m0/pwa-foundation`
 - PR : `#1 — M0 — Fondation PWA facturation`
 - base : `main`
@@ -47,18 +46,18 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 - [x] historique / recherche
 - [x] E0 onboarding premier lancement
 - [x] E1 à E6 candidats fonctionnels
-- [x] identité société structurée : adresse / TEL / FAX / email / ICE / IF / RC / Patente / CNSS / banque / RIB
-- [x] logo + signature locaux
-- [x] export / restauration JSON locale
+- [x] identité société structurée
+- [x] logo + signature
+- [x] backup / restore JSON
 - [x] préférence PDF Original / Premium
-- [x] installation PWA : prompt natif + fallback iOS/Android
+- [x] installation PWA : prompt + fallback iOS/Android
 - [x] GitHub Actions en `workflow_dispatch` uniquement
 
 ### Reste à certifier
 
-- [ ] `npm test` sur HEAD exact
-- [ ] `npm run build` sur HEAD exact
-- [ ] revue réelle 390 / 430 / 768
+- [ ] `npm test` HEAD exact
+- [ ] `npm run build` HEAD exact
+- [ ] 390 / 430 / 768
 - [ ] 0 overflow horizontal
 - [ ] 0 erreur console
 
@@ -66,105 +65,47 @@ Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement sim
 
 # UI V1 MOBILE
 
-## E0 — Premier démarrage / société
+## E0 — Premier démarrage
 
-**État : ✅ candidat fonctionnel, non certifié visuellement**
+**✅ candidat fonctionnel, non certifié visuellement**
 
-5 étapes : Identité → Coordonnées → Identifiants → Banque → Documents.
-
-- raison sociale + adresse requises ;
-- TEL / FAX / email ;
-- ICE / IF / RC / Patente / CNSS ;
-- banque / RIB ;
-- logo / signature ;
-- TVA ;
-- modèle PDF ;
-- `onboardingCompleted` persisté ;
-- anciennes installations configurées non rebloquées.
-
-**Score cible : UI 9,4 / UX 9,8**
+Identité → Coordonnées → Identifiants → Banque → Documents. Société/adresse requises, TVA 0..100, logo/signature, `onboardingCompleted` persistant.
 
 ## E1 — Accueil
 
-**État : ✅ candidat**
-
-Dashboard premium, compteurs, recherche, récents, bottom nav glass, bouton +.
-
-**Score cible : UI 9,5 / UX 9,7**
+**✅ candidat** : dashboard, compteurs, récents, bottom nav glass, bouton +.
 
 ## E2 — Nouveau document
 
-**État : ✅ candidat**
-
-Bottom sheet Devis / Facture / BL / BC en un tap.
-
-**Score cible : UI 9,4 / UX 9,8**
+**✅ candidat** : Devis / Facture / BL / BC en un tap.
 
 ## E3 — Éditeur
 
-**État : ✅ candidat UI + moteur LOT1 branché**
+**✅ candidat UI + LOT1 + LOT2 branchés**
 
-- client / objet / articles ;
-- quantité / PU HT / TVA ;
-- remise ligne % ;
-- remise globale % ;
-- calculs live ;
-- BL avec/sans prix ;
-- montant en lettres ;
 - brouillon sans numéro final ;
-- bouton **Finaliser** ;
-- document finalisé en lecture seule ;
-- conversion Devis → Facture / BL avec `sourceDocumentId` ;
-- bottom action bar glass.
-
-**Reste :** autosave/recovery à ajouter ou certifier avant DONE.
-
-**Score cible : UI 9,4 / UX 9,8 / moteur 9,8**
+- client / objet / articles ;
+- quantité / PU / TVA / remises ;
+- calculs live ;
+- finalisation ;
+- document final en lecture seule ;
+- **autocomplétion clients** ;
+- **fiche client rapide** ;
+- **prestations fréquentes** ;
+- **suggestions article avec dernier PU/TVA/unité** ;
+- conversion Devis → Facture / BL.
 
 ## E4 — Aperçu / PDF
 
-**État : ✅ candidat fonctionnel, non certifié visuellement**
-
-- aperçu A4 ;
-- Original / Premium ;
-- partage / téléchargement / impression ;
-- Page X/Y ;
-- métadonnées ;
-- préférence de modèle persistée.
-
-**Important :** les remises sont déjà intégrées aux totaux moteur. Leur présentation PDF détaillée sera harmonisée lors des LOT 3/4.
-
-**Score cible : Original >= 9,5 / Premium >= 9,5**
+**✅ candidat technique, visuel non certifié** : Original/Premium, partage, téléchargement, impression, Page X/Y.
 
 ## E5 — Historique
 
-**État : ✅ candidat + lifecycle branché**
-
-- recherche / filtres ;
-- ouvrir / dupliquer ;
-- Devis → Facture / BL ;
-- statuts **Brouillon / Finalisé / Payé / Annulé** ;
-- seule une facture peut être marquée payée ;
-- document finalisé non supprimable ;
-- annulation conserve définitivement le numéro ;
-- seul un brouillon peut être supprimé.
-
-**Score cible : UI 9,3 / UX 9,6**
+**✅ candidat + lifecycle** : Brouillon / Finalisé / Payé / Annulé, duplication, conversion, suppression uniquement brouillon.
 
 ## E6 — Réglages
 
-**État : ✅ candidat fonctionnel**
-
-- identité complète ;
-- TVA ;
-- logo / signature ;
-- Original / Premium ;
-- backup / restore ;
-- installation PWA ;
-- **préfixes de numérotation configurables** pour Devis / Facture / BL / BC ;
-- préfixes réellement connectés au moteur LOT1.
-
-**Score cible : UI 9,2 / UX 9,5**
+**✅ candidat** : identité société, TVA, logo/signature, PDF, backup/restore, PWA, préfixes de numérotation.
 
 ---
 
@@ -174,71 +115,95 @@ Bottom sheet Devis / Facture / BL / BC en un tap.
 
 ### Implémenté
 
-- [x] brouillon sans consommation d’un numéro définitif ;
-- [x] séquence indépendante par `type + année` ;
-- [x] préfixes configurables réellement reliés au moteur ;
-- [x] numéro réservé dans la même transaction IndexedDB que la finalisation ;
-- [x] numéro finalisé jamais réutilisé après annulation ;
-- [x] suppression interdite après finalisation ;
-- [x] document finalisé verrouillé en lecture seule ;
+- [x] brouillon sans numéro définitif ;
+- [x] séquence indépendante `type + année` ;
+- [x] préfixes configurables ;
+- [x] réservation atomique compteur + document ;
+- [x] numéro jamais réutilisé après annulation ;
+- [x] document finalisé non supprimable et lecture seule ;
 - [x] statuts `DRAFT / FINALIZED / PAID / CANCELLED` ;
-- [x] `PAID` limité aux factures ;
-- [x] validation client / objet / date / désignation ;
-- [x] validation quantité > 0 ;
-- [x] prix >= 0 ;
-- [x] TVA 0..100 ;
-- [x] remise ligne 0..100 % ;
-- [x] remise globale 0..100 % ;
-- [x] arrondi monétaire déterministe à 2 décimales ;
-- [x] TVA calculée après remises ;
-- [x] traçabilité conversion via `sourceDocumentId` ;
-- [x] migration des anciens documents vers le lifecycle ;
-- [x] protection contre un brouillon obsolète qui tenterait d’écraser un document finalisé ;
-- [x] protection contre double finalisation / double consommation de numéro ;
-- [x] compteurs IndexedDB `counters` DB v2 ;
-- [x] restauration backup : compteurs reconstruits depuis les numéros immuables ;
-- [x] tests purs : facture référence, remises/multi-TVA, validation, numérotation, préfixes.
+- [x] `PAID` réservé aux factures ;
+- [x] validations métier ;
+- [x] remise ligne + globale ;
+- [x] arrondis 2 décimales ;
+- [x] TVA après remises ;
+- [x] `sourceDocumentId` pour conversions ;
+- [x] migration anciens documents ;
+- [x] protection stale draft ;
+- [x] protection double finalisation ;
+- [x] IndexedDB store `counters` ;
+- [x] tests purs calculs / validations / numérotation.
 
-### Gates LOT1 avant fermeture définitive
+### Gates LOT1
 
-- [ ] test runtime `F-2026-001 → F-2026-002` ;
-- [ ] suppression/annulation du 001 puis prochaine facture = 003, jamais 001 ;
-- [ ] Devis / Facture / BL / BC ont des séquences indépendantes ;
-- [ ] reset annuel vérifié ;
-- [ ] double tap Finaliser ne réserve qu’un numéro ;
-- [ ] stale draft ne peut pas écraser un finalisé ;
-- [ ] migration d’un ancien document numéroté ;
-- [ ] build TypeScript exact HEAD ;
-- [ ] tests exact HEAD.
+- [ ] runtime `F-2026-001 → 002` ;
+- [ ] annulation 001 puis prochaine = 003 ;
+- [ ] séquences indépendantes ;
+- [ ] reset annuel ;
+- [ ] double tap = un numéro ;
+- [ ] stale draft rejeté ;
+- [ ] migration legacy ;
+- [ ] build/tests HEAD exact.
 
 ---
 
 # LOT 2 — Clients & catalogue rapide
 
-**État : ⏭️ NEXT EXACT**
+**État : ✅ CANDIDAT TECHNIQUE, runtime non certifié**
 
-- [ ] clients réutilisables ;
-- [ ] nom / société / adresse / ICE / IF optionnels ;
-- [ ] recherche et autocomplétion ;
-- [ ] articles/prestations mémorisés ;
-- [ ] dernier PU HT et TVA réutilisables ;
-- [ ] duplication rapide ;
-- [ ] aucune complexité ERP visible à l’utilisateur.
+### Implémenté
+
+- [x] IndexedDB DB v3 avec stores `clients` et `catalog` ;
+- [x] clients réutilisables ;
+- [x] fiche client : nom, société, adresse, ICE, IF, téléphone, email ;
+- [x] recherche/autocomplétion locale ;
+- [x] sélection client en un tap ;
+- [x] snapshot client sur le document (`clientAddress`, `clientIce`, `clientIfNumber`) pour préserver l’historique ;
+- [x] `clientId` local optionnel ;
+- [x] prestations/articles appris après finalisation réussie ;
+- [x] dernier PU HT mémorisé ;
+- [x] dernière TVA mémorisée ;
+- [x] unité mémorisée ;
+- [x] prestations fréquentes proposées en raccourcis ;
+- [x] suggestions pendant la saisie d’une désignation ;
+- [x] duplication/conversion conserve le snapshot client ;
+- [x] mémoire client/catalogue non critique : une erreur de mémoire ne peut pas annuler une finalisation réussie ;
+- [x] backup JSON passé en **version 2** avec clients + catalogue ;
+- [x] restauration des backups v1 toujours acceptée ;
+- [x] déduplication locale insensible à casse/accents/espaces ;
+- [x] cibles tactiles LOT2 >= 44 px.
+
+### Règle produit
+
+Le catalogue se nourrit **après finalisation**, pas sur chaque brouillon. Cela évite qu’une saisie incomplète ou erronée devienne une suggestion persistante.
+
+### Gates LOT2 avant fermeture
+
+- [ ] créer une fiche client puis la retrouver par autocomplétion ;
+- [ ] modifier la fiche ensuite : un document finalisé garde son snapshot historique ;
+- [ ] finaliser une prestation puis la retrouver dans un nouveau document avec PU/TVA/unité ;
+- [ ] vérifier classement par fréquence ;
+- [ ] éviter doublons `Client`, `client`, `Clïent` ;
+- [ ] backup v2 export → restore clients + catalogue ;
+- [ ] restore backup v1 ;
+- [ ] 390 / 430 / 768 sans overflow des suggestions/sheet client ;
+- [ ] build/tests HEAD exact.
 
 ---
 
 # LOT 3 — PDF Original
 
-**État : CANDIDAT TECHNIQUE, fidélité à certifier**
+**État : ⏭️ NEXT EXACT**
 
 - [x] A4 / tableau / HT / TVA / TTC / montant en lettres ;
 - [x] BL sans prix ;
 - [x] footer / signatures / multi-page / Page X/Y ;
-- [ ] présentation explicite des remises quand utilisées ;
+- [ ] afficher proprement snapshot client adresse/ICE/IF ;
+- [ ] présenter explicitement les remises ;
 - [ ] reproduction quasi exacte des références ;
 - [ ] typographie / marges / géométrie ;
 - [ ] logo exact ;
-- [ ] comparaison visuelle golden ;
+- [ ] comparaison golden ;
 - [ ] score >= 9,5.
 
 ---
@@ -248,11 +213,11 @@ Bottom sheet Devis / Facture / BL / BC en un tap.
 **État : CANDIDAT TECHNIQUE, design à scorer**
 
 - [x] second template ;
-- [x] hiérarchie, tableau, totaux, montant en lettres, signatures/footer ;
+- [x] hiérarchie / tableau / totaux / signatures ;
 - [x] partage / téléchargement / impression ;
+- [ ] snapshot client premium ;
 - [ ] présentation premium des remises ;
-- [ ] revue visuelle réelle ;
-- [ ] corrections ;
+- [ ] revue visuelle ;
 - [ ] score >= 9,5.
 
 ---
@@ -261,23 +226,22 @@ Bottom sheet Devis / Facture / BL / BC en un tap.
 
 **État : À CERTIFIER**
 
-- [ ] E0 stockage vierge puis réouverture ;
+- [ ] E0 stockage vierge + réouverture ;
 - [ ] screenshots 390 / 430 / 768 ;
-- [ ] zéro overflow ;
-- [ ] zéro contrôle critique < 44 px ;
+- [ ] zéro overflow / zéro contrôle critique <44 px ;
 - [ ] clavier mobile ;
-- [ ] installation iPhone / Android ;
+- [ ] iPhone / Android installation ;
 - [ ] offline réel ;
-- [ ] fermeture / réouverture sans perte ;
-- [ ] backup export / restore réel ;
-- [ ] partage PDF iOS / Android ;
-- [ ] création → sauvegarde → finalisation → réouverture → PDF ;
-- [ ] gates runtime LOT1 ;
+- [ ] fermeture/réouverture sans perte ;
+- [ ] backup/restore réel, incluant mémoire LOT2 ;
+- [ ] partage PDF iOS/Android ;
+- [ ] parcours création → finalisation → réouverture → PDF ;
+- [ ] gates runtime LOT1 + LOT2 ;
 - [ ] Original vs références ;
 - [ ] Premium >= 9,5 ;
-- [ ] un seul run GitHub Actions final si utile ;
+- [ ] un seul run Actions final si utile ;
 - [ ] human gate ;
-- [ ] aucun Vercel sans feu vert explicite.
+- [ ] aucun Vercel sans feu vert.
 
 ---
 
@@ -287,20 +251,17 @@ Bottom sheet Devis / Facture / BL / BC en un tap.
 - `docs/mockups/MOCKUPS_LOCK.md`
 - `docs/UI_V1_MOBILE_SPEC.md`
 
-Le mockup est une **cible**, pas une décoration.
-
 ---
 
 # NEXT EXACT
 
-1. **LOT 2 — Clients & catalogue rapide**.
-2. LOT 3 — fidélité PDF Original + remises.
-3. LOT 4 — PDF Premium + remises + polish.
-4. Audit 390 / 430 / 768, E0 à E6.
-5. Gates runtime LOT1 + backup + offline + installation + partage.
-6. Un seul run Actions final si utile.
-7. Human gate → merge.
+1. **LOT 3 — PDF Original : fidélité source + snapshot client + remises**.
+2. LOT 4 — PDF Premium : client/remises + polish.
+3. Audit 390 / 430 / 768.
+4. Gates runtime LOT1 + LOT2 + backup/offline/PWA/partage.
+5. Un seul run Actions final si utile.
+6. Human gate → merge.
 
-## Définition de DONE
+## DONE
 
-Le projet est DONE quand : onboarding fiable, calculs prouvés, numérotation incorruptible, données sauvegardables/restaurables, mobile 390/430/768 propre, PDF Original/Premium >= 9,5, parcours téléphone complet, gates prouvés et validation humaine avant merge/déploiement.
+DONE exige : onboarding fiable, calculs/numérotation prouvés, mémoire client/catalogue fiable, backup restaurable, mobile propre, PDF Original/Premium >=9,5, parcours téléphone complet et validation humaine avant merge/déploiement.
