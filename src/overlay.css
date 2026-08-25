@@ -1,0 +1,9 @@
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #edf3ef;
+}
+body:has(.preview-overlay) { overflow: hidden; }
