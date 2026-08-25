@@ -10,14 +10,26 @@ import {
 import { generatePdf } from './pdf'
 import {
   finalizeDocument,
+  getCatalogItems,
+  getClients,
   getCompany,
   getDocuments,
+  rememberDocument,
   removeDocument,
+  saveClientProfile,
   saveDocument,
   setDocumentStatus
 } from './storage'
-import type { CommercialDocument, CompanySettings, DocumentLine, DocumentStatus, DocumentType } from './types'
-import { defaultCompany } from './types'
+import type {
+  CatalogItem,
+  ClientProfile,
+  CommercialDocument,
+  CompanySettings,
+  DocumentLine,
+  DocumentType
+} from './types'
+import { clientDisplayName, defaultCompany } from './types'
+import './memory.css'
 
 type View = 'home' | 'editor' | 'history'
 type IconName = 'home' | 'history' | 'plus' | 'settings' | 'search' | 'file' | 'invoice' | 'truck' | 'order' | 'chevron' | 'back' | 'save' | 'eye' | 'trash' | 'more' | 'check'
@@ -25,23 +37,47 @@ type IconName = 'home' | 'history' | 'plus' | 'settings' | 'search' | 'file' | '
 const money = (value: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 }).format(value)
 const shortMoney = (value: number) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value) + ' MAD'
 const shortDate = (iso: string) => new Intl.DateTimeFormat('fr-FR').format(new Date(`${iso}T12:00:00`))
+const canonical = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr')
 
 const documentIcon: Record<DocumentType, IconName> = { DEVIS: 'file', FACTURE: 'invoice', BL: 'truck', BC: 'order' }
 const typeClass: Record<DocumentType, string> = { DEVIS: 'type-devis', FACTURE: 'type-facture', BL: 'type-bl', BC: 'type-bc' }
+
+const newClientProfile = (name = ''): ClientProfile => {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    name,
+    company: '',
+    address: '',
+    ice: '',
+    ifNumber: '',
+    phone: '',
+    email: '',
+    usageCount: 0,
+    createdAt: now,
+    updatedAt: now
+  }
+}
 
 export default function App() {
   const [view, setView] = useState<View>('home')
   const [documents, setDocuments] = useState<CommercialDocument[]>([])
   const [company, setCompany] = useState<CompanySettings>(defaultCompany)
+  const [clients, setClients] = useState<ClientProfile[]>([])
+  const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [draft, setDraft] = useState<CommercialDocument | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const [newOpen, setNewOpen] = useState(false)
 
   const refresh = async () => {
-    const [savedDocuments, savedCompany] = await Promise.all([getDocuments(), getCompany()])
+    const [savedDocuments, savedCompany, savedClients, savedCatalog] = await Promise.all([
+      getDocuments(), getCompany(), getClients(), getCatalogItems()
+    ])
     setDocuments(savedDocuments)
     setCompany(savedCompany)
+    setClients(savedClients)
+    setCatalog(savedCatalog)
   }
 
   useEffect(() => { void refresh() }, [])
@@ -67,6 +103,10 @@ export default function App() {
     setDraft({
       ...blank,
       client: document.client,
+      clientId: document.clientId,
+      clientAddress: document.clientAddress,
+      clientIce: document.clientIce,
+      clientIfNumber: document.clientIfNumber,
       object: document.object,
       lines: document.lines.map(line => ({ ...line, id: crypto.randomUUID() })),
       globalDiscountPercent: document.globalDiscountPercent,
@@ -81,6 +121,10 @@ export default function App() {
     setDraft({
       ...blank,
       client: document.client,
+      clientId: document.clientId,
+      clientAddress: document.clientAddress,
+      clientIce: document.clientIce,
+      clientIfNumber: document.clientIfNumber,
       object: document.object,
       lines: document.lines.map(line => ({ ...line, id: crypto.randomUUID() })),
       globalDiscountPercent: document.globalDiscountPercent,
@@ -107,11 +151,23 @@ export default function App() {
       if (!window.confirm('Finaliser ce document ? Son numéro deviendra définitif et ne sera jamais réutilisé.')) return
       const saved = await finalizeDocument(document, company)
       setDraft(saved)
+      try {
+        await rememberDocument(saved)
+      } catch {
+        // La mémoire rapide est un confort. Elle ne doit jamais remettre en cause une finalisation réussie.
+      }
       await refresh()
       showNotice(`Finalisé · ${saved.number}`)
     } catch (error) {
       showNotice(error instanceof Error ? error.message : 'Finalisation impossible')
     }
+  }
+
+  const persistClient = async (profile: ClientProfile) => {
+    const saved = await saveClientProfile(profile)
+    setClients(await getClients())
+    showNotice('Client mémorisé')
+    return saved
   }
 
   const changeStatus = async (id: string, status: 'PAID' | 'CANCELLED') => {
@@ -175,10 +231,13 @@ export default function App() {
         <Editor
           value={draft}
           company={company}
+          clients={clients}
+          catalog={catalog}
           onChange={setDraft}
           onBack={() => setView('home')}
           onSave={persistDraft}
           onFinalize={finalizeDraft}
+          onSaveClient={persistClient}
           onPdf={document => generatePdf(document, company)}
           onConvert={targetType => convertDocument(draft, targetType)}
         />
@@ -345,85 +404,274 @@ function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplica
   )
 }
 
-function Editor({ value, company, onChange, onBack, onSave, onFinalize, onPdf, onConvert }: {
+function Editor({ value, company, clients, catalog, onChange, onBack, onSave, onFinalize, onSaveClient, onPdf, onConvert }: {
   value: CommercialDocument
   company: CompanySettings
+  clients: ClientProfile[]
+  catalog: CatalogItem[]
   onChange: (document: CommercialDocument) => void
   onBack: () => void
   onSave: (document: CommercialDocument) => Promise<void>
   onFinalize: (document: CommercialDocument) => Promise<void>
+  onSaveClient: (client: ClientProfile) => Promise<ClientProfile>
   onPdf: (document: CommercialDocument) => void
   onConvert: (type: DocumentType) => void
 }) {
+  const [clientForm, setClientForm] = useState<ClientProfile | null>(null)
   const totals = documentTotals(value)
   const pricingVisible = value.type !== 'BL' || value.blShowPrices
   const editable = value.status === 'DRAFT'
   const patch = (next: Partial<CommercialDocument>) => { if (editable) onChange({ ...value, ...next }) }
   const updateLine = (id: string, next: Partial<DocumentLine>) => patch({ lines: value.lines.map(line => line.id === id ? { ...line, ...next } : line) })
+
+  const selectClient = (client: ClientProfile) => patch({
+    client: clientDisplayName(client),
+    clientId: client.id,
+    clientAddress: client.address,
+    clientIce: client.ice,
+    clientIfNumber: client.ifNumber
+  })
+
+  const clientSuggestions = (() => {
+    const query = canonical(value.client)
+    if (!query) return clients.slice(0, 4)
+    return clients.filter(client => {
+      const text = canonical([client.name, client.company, client.ice, client.phone].join(' '))
+      return text.includes(query)
+    }).slice(0, 4)
+  })()
+
+  const catalogMatches = (query: string) => {
+    const needle = canonical(query)
+    if (needle.length < 2) return []
+    return catalog.filter(item => canonical(item.designation).includes(needle)).slice(0, 3)
+  }
+
+  const insertCatalogItem = (item: CatalogItem) => {
+    if (!editable) return
+    const blank = value.lines.find(line => !line.designation.trim() && line.unitPriceHT === 0)
+    const next = {
+      designation: item.designation,
+      unit: item.unit,
+      unitPriceHT: item.lastUnitPriceHT,
+      vatRate: item.vatRate,
+      discountPercent: 0
+    }
+    if (blank) updateLine(blank.id, next)
+    else patch({ lines: [...value.lines, { id: crypto.randomUUID(), quantity: 1, ...next }] })
+  }
+
   const addLine = () => {
     if (!editable) return
     patch({ lines: [...value.lines, { id: crypto.randomUUID(), designation: '', unit: 'Pièce', quantity: 1, unitPriceHT: 0, vatRate: company.defaultVatRate, discountPercent: 0 }] })
   }
   const removeLine = (id: string) => { if (editable && value.lines.length > 1) patch({ lines: value.lines.filter(line => line.id !== id) }) }
 
+  const openClientForm = () => {
+    const existing = clients.find(client => client.id === value.clientId)
+    setClientForm(existing ? structuredClone(existing) : newClientProfile(value.client))
+  }
+
+  const saveClient = async (profile: ClientProfile) => {
+    const saved = await onSaveClient(profile)
+    selectClient(saved)
+    setClientForm(null)
+  }
+
   return (
-    <main className={`screen editor-screen ${editable ? '' : 'editor-readonly'}`}>
-      <header className="editor-header">
-        <button className="back-button" onClick={onBack} aria-label="Retour"><Icon name="back" /></button>
-        <div className="editor-title"><span className={`editor-type-icon ${typeClass[value.type]}`}><Icon name={documentIcon[value.type]} /></span><div><h1>{documentLabel(value.type)}</h1><span className="draft-status"><span className="status-dot" /> {documentStatusLabel(value.status)}</span></div></div>
-        <button className="editor-more" aria-label="Plus d’options"><Icon name="more" /></button>
-      </header>
+    <>
+      <main className={`screen editor-screen ${editable ? '' : 'editor-readonly'}`}>
+        <header className="editor-header">
+          <button className="back-button" onClick={onBack} aria-label="Retour"><Icon name="back" /></button>
+          <div className="editor-title"><span className={`editor-type-icon ${typeClass[value.type]}`}><Icon name={documentIcon[value.type]} /></span><div><h1>{documentLabel(value.type)}</h1><span className="draft-status"><span className="status-dot" /> {documentStatusLabel(value.status)}</span></div></div>
+          <button className="editor-more" aria-label="Plus d’options"><Icon name="more" /></button>
+        </header>
 
-      {!editable && <section className="amount-words-card"><span className="section-kicker">Document verrouillé</span><p>Le numéro {value.number} est définitif. Les données métier sont en lecture seule.</p></section>}
+        {!editable && <section className="amount-words-card"><span className="section-kicker">Document verrouillé</span><p>Le numéro {value.number} est définitif. Les données métier sont en lecture seule.</p></section>}
 
-      <section className="editor-meta glass-panel">
-        <label><span>N° document</span><input value={value.number || 'Attribué à la finalisation'} readOnly /></label>
-        <label><span>Date</span><input type="date" value={value.date} disabled={!editable} onChange={event => patch({ date: event.target.value })} /></label>
-      </section>
+        <section className="editor-meta glass-panel">
+          <label><span>N° document</span><input value={value.number || 'Attribué à la finalisation'} readOnly /></label>
+          <label><span>Date</span><input type="date" value={value.date} disabled={!editable} onChange={event => patch({ date: event.target.value })} /></label>
+        </section>
 
-      <section className="editor-section"><div className="editor-section-title"><div><span className="section-kicker">Destinataire</span><h2>Client</h2></div></div><div className="glass-panel client-panel"><label className="client-field"><Icon name="search" /><input disabled={!editable} value={value.client} onChange={event => patch({ client: event.target.value })} placeholder="Nom du client ou organisme" /></label></div></section>
-      <section className="editor-section"><div className="editor-section-title"><div><span className="section-kicker">Description</span><h2>Objet</h2></div></div><div className="glass-panel object-panel"><textarea disabled={!editable} value={value.object} onChange={event => patch({ object: event.target.value })} placeholder="Objet du document" rows={3} /></div></section>
+        <section className="editor-section">
+          <div className="editor-section-title">
+            <div><span className="section-kicker">Destinataire</span><h2>Client</h2></div>
+            {editable && <button className="memory-mini-action" onClick={openClientForm}>{value.clientId ? 'Fiche' : '+ Mémoriser'}</button>}
+          </div>
+          <div className="glass-panel client-panel memory-client-panel">
+            <label className="client-field">
+              <Icon name="search" />
+              <input
+                disabled={!editable}
+                value={value.client}
+                onChange={event => patch({
+                  client: event.target.value,
+                  clientId: '',
+                  clientAddress: '',
+                  clientIce: '',
+                  clientIfNumber: ''
+                })}
+                placeholder="Nom du client ou organisme"
+              />
+            </label>
 
-      {value.type === 'BL' && <section className="glass-panel bl-price-panel"><span><strong>Afficher les prix</strong><small>Sinon le BL affiche seulement désignation, unité et quantité.</small></span><label className="switch-control"><input type="checkbox" disabled={!editable} checked={value.blShowPrices} onChange={event => patch({ blShowPrices: event.target.checked })} /><span /></label></section>}
-
-      <section className="editor-section articles-section">
-        <div className="editor-section-title"><div><span className="section-kicker">Contenu</span><h2>Articles</h2></div>{editable && <button className="add-article-button" onClick={addLine}><Icon name="plus" /> Ajouter</button>}</div>
-        <div className="line-list premium-lines">
-          {value.lines.map((line, index) => (
-            <article className="article-card" key={line.id}>
-              <div className="article-head"><div><span className="article-index">{String(index + 1).padStart(2, '0')}</span><strong>Article</strong></div>{editable && value.lines.length > 1 && <button className="trash-button" onClick={() => removeLine(line.id)} aria-label={`Supprimer l’article ${index + 1}`}><Icon name="trash" /></button>}</div>
-              <label className="article-designation"><span>Désignation</span><textarea disabled={!editable} rows={2} value={line.designation} onChange={event => updateLine(line.id, { designation: event.target.value })} placeholder="Prestation ou article" /></label>
-              <div className={`article-fields ${pricingVisible ? '' : 'no-price'}`}>
-                <label><span>Unité</span><input disabled={!editable} value={line.unit} onChange={event => updateLine(line.id, { unit: event.target.value })} /></label>
-                <NumberField disabled={!editable} compact label="Qté" value={line.quantity} onChange={quantity => updateLine(line.id, { quantity })} />
-                {pricingVisible && <NumberField disabled={!editable} compact label="PU HT" value={line.unitPriceHT} step="0.01" onChange={unitPriceHT => updateLine(line.id, { unitPriceHT })} />}
-                {pricingVisible && <NumberField disabled={!editable} compact label="TVA %" value={line.vatRate} step="0.01" onChange={vatRate => updateLine(line.id, { vatRate })} />}
-                {pricingVisible && <NumberField disabled={!editable} compact label="Remise %" value={line.discountPercent ?? 0} step="0.01" onChange={discountPercent => updateLine(line.id, { discountPercent })} />}
+            {editable && clientSuggestions.length > 0 && (
+              <div className="memory-suggestions" aria-label="Clients suggérés">
+                {clientSuggestions.map(client => (
+                  <button key={client.id} onClick={() => selectClient(client)}>
+                    <span>{clientDisplayName(client)}</span>
+                    <small>{client.company && client.name ? client.name : client.ice ? `ICE ${client.ice}` : 'Client mémorisé'}</small>
+                  </button>
+                ))}
               </div>
-              {pricingVisible && <div className="article-total"><span>Total HT après remise</span><strong>{money(lineTotalHT(line))}</strong></div>}
-            </article>
-          ))}
+            )}
+
+            {(value.clientAddress || value.clientIce || value.clientIfNumber) && (
+              <div className="client-snapshot">
+                {value.clientAddress && <span>{value.clientAddress}</span>}
+                <small>{[value.clientIce && `ICE ${value.clientIce}`, value.clientIfNumber && `IF ${value.clientIfNumber}`].filter(Boolean).join(' · ')}</small>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="editor-section"><div className="editor-section-title"><div><span className="section-kicker">Description</span><h2>Objet</h2></div></div><div className="glass-panel object-panel"><textarea disabled={!editable} value={value.object} onChange={event => patch({ object: event.target.value })} placeholder="Objet du document" rows={3} /></div></section>
+
+        {value.type === 'BL' && <section className="glass-panel bl-price-panel"><span><strong>Afficher les prix</strong><small>Sinon le BL affiche seulement désignation, unité et quantité.</small></span><label className="switch-control"><input type="checkbox" disabled={!editable} checked={value.blShowPrices} onChange={event => patch({ blShowPrices: event.target.checked })} /><span /></label></section>}
+
+        <section className="editor-section articles-section">
+          <div className="editor-section-title"><div><span className="section-kicker">Contenu</span><h2>Articles</h2></div>{editable && <button className="add-article-button" onClick={addLine}><Icon name="plus" /> Ajouter</button>}</div>
+
+          {editable && catalog.length > 0 && (
+            <div className="catalog-quick-block">
+              <span>Prestations fréquentes</span>
+              <div className="catalog-quick-row">
+                {catalog.slice(0, 4).map(item => (
+                  <button key={item.id} onClick={() => insertCatalogItem(item)}>
+                    <strong>{item.designation}</strong>
+                    <small>{money(item.lastUnitPriceHT)} · TVA {item.vatRate}%</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="line-list premium-lines">
+            {value.lines.map((line, index) => {
+              const matches = catalogMatches(line.designation)
+              return (
+                <article className="article-card" key={line.id}>
+                  <div className="article-head"><div><span className="article-index">{String(index + 1).padStart(2, '0')}</span><strong>Article</strong></div>{editable && value.lines.length > 1 && <button className="trash-button" onClick={() => removeLine(line.id)} aria-label={`Supprimer l’article ${index + 1}`}><Icon name="trash" /></button>}</div>
+                  <label className="article-designation"><span>Désignation</span><textarea disabled={!editable} rows={2} value={line.designation} onChange={event => updateLine(line.id, { designation: event.target.value })} placeholder="Prestation ou article" /></label>
+                  {editable && matches.length > 0 && (
+                    <div className="catalog-suggestions">
+                      {matches.map(item => (
+                        <button key={item.id} onClick={() => updateLine(line.id, {
+                          designation: item.designation,
+                          unit: item.unit,
+                          unitPriceHT: item.lastUnitPriceHT,
+                          vatRate: item.vatRate
+                        })}>
+                          <span>{item.designation}</span>
+                          <small>{item.unit} · {money(item.lastUnitPriceHT)} · TVA {item.vatRate}%</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className={`article-fields ${pricingVisible ? '' : 'no-price'}`}>
+                    <label><span>Unité</span><input disabled={!editable} value={line.unit} onChange={event => updateLine(line.id, { unit: event.target.value })} /></label>
+                    <NumberField disabled={!editable} compact label="Qté" value={line.quantity} onChange={quantity => updateLine(line.id, { quantity })} />
+                    {pricingVisible && <NumberField disabled={!editable} compact label="PU HT" value={line.unitPriceHT} step="0.01" onChange={unitPriceHT => updateLine(line.id, { unitPriceHT })} />}
+                    {pricingVisible && <NumberField disabled={!editable} compact label="TVA %" value={line.vatRate} step="0.01" onChange={vatRate => updateLine(line.id, { vatRate })} />}
+                    {pricingVisible && <NumberField disabled={!editable} compact label="Remise %" value={line.discountPercent ?? 0} step="0.01" onChange={discountPercent => updateLine(line.id, { discountPercent })} />}
+                  </div>
+                  {pricingVisible && <div className="article-total"><span>Total HT après remise</span><strong>{money(lineTotalHT(line))}</strong></div>}
+                </article>
+              )
+            })}
+          </div>
+        </section>
+
+        {pricingVisible && (
+          <section className="premium-totals">
+            <div><span>Total lignes HT</span><strong>{money(totals.linesHT)}</strong></div>
+            {editable && <div><span>Remise globale %</span><NumberField compact label="" value={value.globalDiscountPercent} step="0.01" onChange={globalDiscountPercent => patch({ globalDiscountPercent: Math.min(100, globalDiscountPercent) })} /></div>}
+            {totals.globalDiscount > 0 && <div><span>Remise globale</span><strong>- {money(totals.globalDiscount)}</strong></div>}
+            <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div><div><span>TVA</span><strong>{money(totals.totalVAT)}</strong></div><div className="premium-grand-total"><span>Total TTC</span><strong>{money(totals.totalTTC)}</strong></div>
+          </section>
+        )}
+        {pricingVisible && <section className="amount-words-card"><span className="section-kicker">Montant en lettres</span><p>{amountToFrenchDirhams(totals.totalTTC)}</p></section>}
+
+        {value.type === 'DEVIS' && value.status !== 'CANCELLED' && <section className="conversion-card premium-conversion"><span>Créer depuis ce devis</span><div><button className="secondary-button" onClick={() => onConvert('FACTURE')}>→ Facture</button><button className="secondary-button" onClick={() => onConvert('BL')}>→ BL</button></div></section>}
+
+        <nav className="editor-bottom-bar" aria-label="Actions document">
+          <button className="editor-action" onClick={() => onPdf(value)}><Icon name="eye" /><span>Aperçu PDF</span></button>
+          {editable && <button className="editor-action" onClick={() => void onSave(value)}><Icon name="save" /><span>Enregistrer</span></button>}
+          {editable && <button className="editor-save" onClick={() => void onFinalize(value)}><Icon name="check" /><span>Finaliser</span></button>}
+        </nav>
+      </main>
+
+      {clientForm && (
+        <ClientQuickForm
+          value={clientForm}
+          onClose={() => setClientForm(null)}
+          onSave={saveClient}
+        />
+      )}
+    </>
+  )
+}
+
+function ClientQuickForm({ value, onClose, onSave }: {
+  value: ClientProfile
+  onClose: () => void
+  onSave: (profile: ClientProfile) => Promise<void>
+}) {
+  const [draft, setDraft] = useState(value)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const patch = (next: Partial<ClientProfile>) => setDraft(current => ({ ...current, ...next }))
+
+  const save = async () => {
+    if (!clientDisplayName(draft)) {
+      setError('Renseigne un nom ou une société.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await onSave(draft)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Impossible d’enregistrer le client.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="client-form-layer" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+      <section className="client-form-sheet" role="dialog" aria-modal="true" aria-label="Fiche client">
+        <div className="sheet-handle" />
+        <header>
+          <div><span className="section-kicker">Mémoire locale</span><h2>Fiche client</h2></div>
+          <button onClick={onClose} aria-label="Fermer">×</button>
+        </header>
+        <div className="client-form-grid">
+          <label><span>Nom</span><input value={draft.name} onChange={event => patch({ name: event.target.value })} /></label>
+          <label><span>Société</span><input value={draft.company} onChange={event => patch({ company: event.target.value })} /></label>
+          <label className="wide"><span>Adresse</span><textarea rows={2} value={draft.address} onChange={event => patch({ address: event.target.value })} /></label>
+          <label><span>ICE</span><input inputMode="numeric" value={draft.ice} onChange={event => patch({ ice: event.target.value })} /></label>
+          <label><span>IF</span><input inputMode="numeric" value={draft.ifNumber} onChange={event => patch({ ifNumber: event.target.value })} /></label>
+          <label><span>Téléphone</span><input inputMode="tel" value={draft.phone} onChange={event => patch({ phone: event.target.value })} /></label>
+          <label><span>Email</span><input type="email" value={draft.email} onChange={event => patch({ email: event.target.value })} /></label>
+        </div>
+        {error && <p className="client-form-error">{error}</p>}
+        <div className="client-form-actions">
+          <button onClick={onClose}>Annuler</button>
+          <button className="client-form-save" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Mémoriser le client'}</button>
         </div>
       </section>
-
-      {pricingVisible && (
-        <section className="premium-totals">
-          <div><span>Total lignes HT</span><strong>{money(totals.linesHT)}</strong></div>
-          {editable && <div><span>Remise globale %</span><NumberField compact label="" value={value.globalDiscountPercent} step="0.01" onChange={globalDiscountPercent => patch({ globalDiscountPercent: Math.min(100, globalDiscountPercent) })} /></div>}
-          {totals.globalDiscount > 0 && <div><span>Remise globale</span><strong>- {money(totals.globalDiscount)}</strong></div>}
-          <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div><div><span>TVA</span><strong>{money(totals.totalVAT)}</strong></div><div className="premium-grand-total"><span>Total TTC</span><strong>{money(totals.totalTTC)}</strong></div>
-        </section>
-      )}
-      {pricingVisible && <section className="amount-words-card"><span className="section-kicker">Montant en lettres</span><p>{amountToFrenchDirhams(totals.totalTTC)}</p></section>}
-
-      {value.type === 'DEVIS' && value.status !== 'CANCELLED' && <section className="conversion-card premium-conversion"><span>Créer depuis ce devis</span><div><button className="secondary-button" onClick={() => onConvert('FACTURE')}>→ Facture</button><button className="secondary-button" onClick={() => onConvert('BL')}>→ BL</button></div></section>}
-
-      <nav className="editor-bottom-bar" aria-label="Actions document">
-        <button className="editor-action" onClick={() => onPdf(value)}><Icon name="eye" /><span>Aperçu PDF</span></button>
-        {editable && <button className="editor-action" onClick={() => void onSave(value)}><Icon name="save" /><span>Enregistrer</span></button>}
-        {editable && <button className="editor-save" onClick={() => void onFinalize(value)}><Icon name="check" /><span>Finaliser</span></button>}
-      </nav>
-    </main>
+    </div>
   )
 }
 
