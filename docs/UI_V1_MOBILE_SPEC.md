@@ -202,7 +202,8 @@ Voir exactement ce qui sera envoyé ou imprimé.
 - aucune ligne coupée de manière illisible ;
 - Page X/Y ;
 - nom de fichier propre ;
-- aucun élément UI dans le PDF.
+- aucun élément UI dans le PDF ;
+- modèle préféré lu depuis E6 mais changeable dans l’aperçu.
 
 ### Critères de succès
 
@@ -262,52 +263,66 @@ UI 9.3 / UX 9.6
 
 ---
 
-## E6 — Réglages
+## E6 — Réglages ✅ candidat
 
 ### But
 
 Configurer une fois, puis oublier.
 
-### Sections
+### Sections implémentées
 
 - Entreprise ;
-- Numérotation ;
 - TVA ;
 - Modèle PDF ;
 - Logo ;
 - Signature ;
 - Sauvegarde / restauration ;
-- PWA / installation.
+- PWA / installation ;
+- aperçu de la numérotation future sans exposer un réglage non fonctionnel.
 
 ### Entreprise
 
 - nom / raison sociale ;
 - marque ;
 - adresse ;
-- ICE / IF / RC / CNSS ;
-- RIB ;
+- mentions légales contenant actuellement RC / PATENTE / CNSS / ICE / IF / RIB ;
 - ville ;
-- mentions légales.
+- TVA par défaut.
 
 ### PDF
 
-- Original / Premium ;
-- aperçu miniature ;
-- logo ;
-- signature ;
-- footer.
+- Original / Premium comme préférence persistée ;
+- logo avec aperçu ;
+- signature avec aperçu ;
+- retrait / remplacement des assets ;
+- préférence appliquée au prochain aperçu PDF.
 
 ### Sauvegarde
 
-- exporter toutes les données locales en fichier ;
-- restaurer depuis un fichier ;
+- export JSON versionné de tous les documents + réglages ;
+- restauration JSON après validation ;
+- remplacement transactionnel des stores IndexedDB ;
+- compatibilité des anciens réglages via fusion avec les valeurs par défaut ;
 - aucune dépendance à un compte ou cloud pour la V1.
+
+### Installation PWA
+
+- capture du prompt natif `beforeinstallprompt` quand disponible ;
+- bouton Installer maintenant dans ce cas ;
+- détection du mode standalone ;
+- fallback instructions Safari iPhone/iPad et navigateur Android.
+
+### Numérotation
+
+La vraie configuration est déplacée au lot moteur métier. E6 affiche seulement l’état futur des préfixes afin de ne pas créer un réglage qui n’aurait aucun effet sur la séquence actuelle `count + 1`.
 
 ### Critères de succès
 
 - réglages compréhensibles sans manuel ;
 - aucune option technique exposée inutilement ;
-- export / import simple et sûr.
+- export / import simple et sûr ;
+- contrôles importants >= 44 px ;
+- revue réelle 390 / 430 / 768 à faire avant certification.
 
 ### Score cible
 
@@ -363,12 +378,13 @@ UI 9.2 / UX 9.5
 4. E3 Éditeur et moteur live. ✅ candidat
 5. E4 Aperçu PDF. ✅ candidat
 6. E5 Historique. ✅ candidat
-7. E6 Réglages.
-8. Audit 390 / 430 / 768.
-9. Audit tactile >= 44 px.
-10. Offline + reprise après fermeture.
-11. Partage / téléchargement / impression PDF.
-12. Certification finale.
+7. E6 Réglages. ✅ candidat
+8. LOT 1 moteur métier production-grade. ⏭️
+9. Audit 390 / 430 / 768.
+10. Audit tactile >= 44 px.
+11. Offline + reprise après fermeture.
+12. Partage / téléchargement / impression PDF.
+13. Certification finale.
 
 ## Gates de certification V1
 
@@ -376,6 +392,8 @@ UI 9.2 / UX 9.5
 - 0 erreur console ;
 - 0 contrôle critique < 44 px ;
 - création → sauvegarde → réouverture → PDF validée ;
+- export → restauration locale validée ;
+- installation PWA iOS + Android validée ;
 - offline validé ;
 - Original PDF >= 9.5 ;
 - Premium PDF >= 9.5 ;
