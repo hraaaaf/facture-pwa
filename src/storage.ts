@@ -34,7 +34,7 @@ const transact = async <T>(
     let result: T
     let settled = false
 
-    const fail = (error: DOMException | null) => {
+    const fail = (error: unknown) => {
       if (settled) return
       settled = true
       db.close()
