@@ -6,6 +6,7 @@ import {
   numberToFrench,
   validateDocument
 } from './lib'
+import { sourceReferenceInvoice, sourceReferenceSimpleDeliveryNote } from './referenceFixture'
 import type { CommercialDocument } from './types'
 
 const baseDocument = (): CommercialDocument => ({
@@ -34,14 +35,21 @@ const baseDocument = (): CommercialDocument => ({
 })
 
 describe('documentTotals', () => {
-  it('reproduit le calcul de la facture de référence', () => {
-    expect(documentTotals(baseDocument())).toEqual({
+  it('reproduit exactement le calcul de la facture source de juillet 2026', () => {
+    expect(documentTotals(sourceReferenceInvoice())).toEqual({
       linesHT: 8000,
       globalDiscount: 0,
       totalHT: 8000,
       totalVAT: 1600,
       totalTTC: 9600
     })
+  })
+
+  it('conserve le BL simple sans prix comme fixture indépendante', () => {
+    const bl = sourceReferenceSimpleDeliveryNote()
+    expect(bl.blShowPrices).toBe(false)
+    expect(bl.number).toBe('06-07-2026')
+    expect(bl.lines[0]).toMatchObject({ quantity: 10, unit: 'Pièce', unitPriceHT: 800, vatRate: 20 })
   })
 
   it('applique remise ligne puis remise globale avant TVA', () => {
