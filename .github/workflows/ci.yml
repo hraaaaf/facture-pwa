@@ -1,10 +1,10 @@
 name: CI
 
+# GitHub Actions est volontairement manuel pour économiser les minutes.
+# À lancer uniquement pour une certification utile : avant merge important,
+# release, ou lorsqu'un changement touche le build/tests critiques.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
