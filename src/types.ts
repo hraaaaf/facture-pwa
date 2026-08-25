@@ -1,5 +1,6 @@
 export type DocumentType = 'DEVIS' | 'FACTURE' | 'BL' | 'BC'
 export type PdfTemplatePreference = 'original' | 'premium'
+export type DocumentStatus = 'DRAFT' | 'FINALIZED' | 'PAID' | 'CANCELLED'
 
 export interface DocumentLine {
   id: string
@@ -8,19 +9,34 @@ export interface DocumentLine {
   quantity: number
   unitPriceHT: number
   vatRate: number
+  discountPercent: number
 }
 
 export interface CommercialDocument {
   id: string
   type: DocumentType
+  /** Empty while draft. Assigned atomically at finalization and never reused. */
   number: string
   date: string
   client: string
   object: string
   lines: DocumentLine[]
   blShowPrices: boolean
+  globalDiscountPercent: number
+  status: DocumentStatus
+  finalizedAt: string
+  paidAt: string
+  cancelledAt: string
+  sourceDocumentId: string
   createdAt: string
   updatedAt: string
+}
+
+export interface NumberingPrefixes {
+  DEVIS: string
+  FACTURE: string
+  BL: string
+  BC: string
 }
 
 export interface CompanySettings {
@@ -45,6 +61,14 @@ export interface CompanySettings {
   managerSignatureDataUrl: string
   pdfTemplate: PdfTemplatePreference
   onboardingCompleted: boolean
+  numberingPrefixes: NumberingPrefixes
+}
+
+export const defaultNumberingPrefixes: NumberingPrefixes = {
+  DEVIS: 'DEV',
+  FACTURE: 'F',
+  BL: 'BL',
+  BC: 'BC'
 }
 
 export const defaultCompany: CompanySettings = {
@@ -67,7 +91,8 @@ export const defaultCompany: CompanySettings = {
   logoDataUrl: '',
   managerSignatureDataUrl: '',
   pdfTemplate: 'premium',
-  onboardingCompleted: false
+  onboardingCompleted: false,
+  numberingPrefixes: defaultNumberingPrefixes
 }
 
 export const companyLegalLine = (company: CompanySettings) => {
@@ -83,7 +108,5 @@ export const companyLegalLine = (company: CompanySettings) => {
     company.rib && `RIB : ${company.rib}`
   ].filter(Boolean)
 
-  // Les anciennes installations stockaient tout dans legalLine. On la conserve
-  // uniquement en fallback pour éviter de dupliquer les mêmes identifiants.
   return structured.length > 0 ? structured.join(' · ') : company.legalLine
 }
