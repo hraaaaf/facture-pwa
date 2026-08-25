@@ -116,7 +116,7 @@ const normalizeCompany = (value: unknown): CompanySettings => {
   ) {
     throw new Error('Réglages société invalides dans la sauvegarde')
   }
-  return merged
+  return merged as CompanySettings
 }
 
 export const getDocuments = async (): Promise<CommercialDocument[]> => {
