@@ -1,5 +1,5 @@
 import type { CommercialDocument, CompanySettings, DocumentLine, DocumentType } from './types'
-import { defaultCompany } from './types'
+import { companyLegalLine, defaultCompany } from './types'
 
 const DB_NAME = 'facture-pwa'
 const DB_VERSION = 1
@@ -19,12 +19,8 @@ const openDb = (): Promise<IDBDatabase> =>
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = () => {
       const db = request.result
-      if (!db.objectStoreNames.contains(DOCS_STORE)) {
-        db.createObjectStore(DOCS_STORE, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
-        db.createObjectStore(SETTINGS_STORE)
-      }
+      if (!db.objectStoreNames.contains(DOCS_STORE)) db.createObjectStore(DOCS_STORE, { keyPath: 'id' })
+      if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE)
     }
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
@@ -49,9 +45,7 @@ const transact = async <T>(
       reject(error ?? new Error('Erreur IndexedDB'))
     }
 
-    request.onsuccess = () => {
-      result = request.result
-    }
+    request.onsuccess = () => { result = request.result }
     request.onerror = () => fail(request.error)
     tx.onerror = () => fail(tx.error)
     tx.onabort = () => fail(tx.error)
@@ -99,12 +93,27 @@ const isCommercialDocument = (value: unknown): value is CommercialDocument => {
     && typeof value.updatedAt === 'string'
 }
 
+const stringOr = (record: Record<string, unknown>, key: string, fallback = '') =>
+  typeof record[key] === 'string' ? record[key] as string : fallback
+
 const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySettings => {
   if (!isRecord(value)) throw new Error('Réglages société invalides dans la sauvegarde')
 
+  const isLegacy = !('phone' in value) && !('ice' in value) && !('onboardingCompleted' in value)
   const merged: CompanySettings = {
     ...defaultCompany,
     ...value,
+    phone: stringOr(value, 'phone', isLegacy ? '' : defaultCompany.phone),
+    fax: stringOr(value, 'fax', isLegacy ? '' : defaultCompany.fax),
+    email: stringOr(value, 'email', isLegacy ? '' : defaultCompany.email),
+    ice: stringOr(value, 'ice', isLegacy ? '' : defaultCompany.ice),
+    ifNumber: stringOr(value, 'ifNumber', isLegacy ? '' : defaultCompany.ifNumber),
+    rc: stringOr(value, 'rc', isLegacy ? '' : defaultCompany.rc),
+    patente: stringOr(value, 'patente', isLegacy ? '' : defaultCompany.patente),
+    cnss: stringOr(value, 'cnss', isLegacy ? '' : defaultCompany.cnss),
+    bankName: stringOr(value, 'bankName', isLegacy ? '' : defaultCompany.bankName),
+    rib: stringOr(value, 'rib', isLegacy ? '' : defaultCompany.rib),
+    legalLine: stringOr(value, 'legalLine', ''),
     onboardingCompleted:
       typeof value.onboardingCompleted === 'boolean'
         ? value.onboardingCompleted
@@ -112,23 +121,10 @@ const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySett
   } as CompanySettings
 
   const strings = [
-    merged.name,
-    merged.brand,
-    merged.address,
-    merged.cityLabel,
-    merged.phone,
-    merged.fax,
-    merged.email,
-    merged.ice,
-    merged.ifNumber,
-    merged.rc,
-    merged.patente,
-    merged.cnss,
-    merged.bankName,
-    merged.rib,
-    merged.legalLine,
-    merged.logoDataUrl,
-    merged.managerSignatureDataUrl
+    merged.name, merged.brand, merged.address, merged.cityLabel,
+    merged.phone, merged.fax, merged.email, merged.ice, merged.ifNumber,
+    merged.rc, merged.patente, merged.cnss, merged.bankName, merged.rib,
+    merged.legalLine, merged.logoDataUrl, merged.managerSignatureDataUrl
   ]
 
   if (
@@ -139,12 +135,15 @@ const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySett
     || merged.defaultVatRate > 100
     || (merged.pdfTemplate !== 'original' && merged.pdfTemplate !== 'premium')
     || typeof merged.onboardingCompleted !== 'boolean'
-  ) {
-    throw new Error('Réglages société invalides dans la sauvegarde')
-  }
+  ) throw new Error('Réglages société invalides dans la sauvegarde')
 
   return merged
 }
+
+const withFooterLine = (company: CompanySettings): CompanySettings => ({
+  ...company,
+  legalLine: companyLegalLine(company)
+})
 
 export const getDocuments = async (): Promise<CommercialDocument[]> => {
   const docs = await transact<CommercialDocument[]>(DOCS_STORE, 'readonly', store => store.getAll())
@@ -159,46 +158,36 @@ export const removeDocument = (id: string) =>
 
 export const getCompany = async (): Promise<CompanySettings> => {
   const saved = await transact<Partial<CompanySettings> | undefined>(SETTINGS_STORE, 'readonly', store => store.get('company'))
-  // Une installation déjà configurée avant E0 ne doit pas être bloquée par la migration.
   return saved ? normalizeCompany(saved, true) : { ...defaultCompany }
 }
 
 export const saveCompany = (company: CompanySettings) =>
-  transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(company, 'company'))
+  transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
 
 export const createLocalBackup = async (): Promise<LocalBackup> => {
   const [documents, company] = await Promise.all([getDocuments(), getCompany()])
-  return {
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    documents,
-    company
-  }
+  return { version: BACKUP_VERSION, exportedAt: new Date().toISOString(), documents, company }
 }
 
 export const restoreLocalBackup = async (value: unknown): Promise<void> => {
   if (!isRecord(value) || value.version !== BACKUP_VERSION || !Array.isArray(value.documents)) {
     throw new Error('Fichier de sauvegarde non reconnu')
   }
-  if (!value.documents.every(isCommercialDocument)) {
-    throw new Error('Les documents de la sauvegarde sont invalides')
-  }
+  if (!value.documents.every(isCommercialDocument)) throw new Error('Les documents de la sauvegarde sont invalides')
 
-  const company = normalizeCompany(value.company, true)
+  const company = withFooterLine(normalizeCompany(value.company, true))
   const documents = value.documents as CommercialDocument[]
   const db = await openDb()
 
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([DOCS_STORE, SETTINGS_STORE], 'readwrite')
     let settled = false
-
     const fail = (error: unknown) => {
       if (settled) return
       settled = true
       db.close()
       reject(error ?? new Error('Échec de restauration IndexedDB'))
     }
-
     tx.onerror = () => fail(tx.error)
     tx.onabort = () => fail(tx.error)
     tx.oncomplete = () => {
