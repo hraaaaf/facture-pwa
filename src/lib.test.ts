@@ -1,25 +1,85 @@
 import { describe, expect, it } from 'vitest'
-import { amountToFrenchDirhams, documentTotals, numberToFrench } from './lib'
+import {
+  amountToFrenchDirhams,
+  documentTotals,
+  formatDocumentNumber,
+  numberToFrench,
+  validateDocument
+} from './lib'
 import type { CommercialDocument } from './types'
 
-describe('documentTotals', () => {
-  it('calcule HT, TVA et TTC ligne par ligne', () => {
-    const document: CommercialDocument = {
-      id: '1',
-      type: 'FACTURE',
-      number: 'F-2026-001',
-      date: '2026-07-06',
-      client: 'Client',
-      object: 'Test',
-      blShowPrices: false,
-      createdAt: '',
-      updatedAt: '',
-      lines: [
-        { id: 'a', designation: 'Article', unit: 'Pièce', quantity: 10, unitPriceHT: 800, vatRate: 20 }
-      ]
-    }
+const baseDocument = (): CommercialDocument => ({
+  id: '1',
+  type: 'FACTURE',
+  number: '',
+  date: '2026-07-06',
+  client: 'Client',
+  object: 'Test',
+  blShowPrices: false,
+  globalDiscountPercent: 0,
+  status: 'DRAFT',
+  finalizedAt: '',
+  paidAt: '',
+  cancelledAt: '',
+  sourceDocumentId: '',
+  createdAt: '',
+  updatedAt: '',
+  lines: [
+    { id: 'a', designation: 'Article', unit: 'Pièce', quantity: 10, unitPriceHT: 800, vatRate: 20, discountPercent: 0 }
+  ]
+})
 
-    expect(documentTotals(document)).toEqual({ totalHT: 8000, totalVAT: 1600, totalTTC: 9600 })
+describe('documentTotals', () => {
+  it('reproduit le calcul de la facture de référence', () => {
+    expect(documentTotals(baseDocument())).toEqual({
+      linesHT: 8000,
+      globalDiscount: 0,
+      totalHT: 8000,
+      totalVAT: 1600,
+      totalTTC: 9600
+    })
+  })
+
+  it('applique remise ligne puis remise globale avant TVA', () => {
+    const document = baseDocument()
+    document.lines = [
+      { id: 'a', designation: 'A', unit: 'Pièce', quantity: 2, unitPriceHT: 100, vatRate: 20, discountPercent: 10 },
+      { id: 'b', designation: 'B', unit: 'Pièce', quantity: 1, unitPriceHT: 100, vatRate: 10, discountPercent: 0 }
+    ]
+    document.globalDiscountPercent = 10
+    expect(documentTotals(document)).toEqual({
+      linesHT: 280,
+      globalDiscount: 28,
+      totalHT: 252,
+      totalVAT: 42.12,
+      totalTTC: 294.12
+    })
+  })
+})
+
+describe('validation métier', () => {
+  it('refuse quantité nulle, TVA hors plage et client vide', () => {
+    const document = baseDocument()
+    document.client = ''
+    document.lines[0].quantity = 0
+    document.lines[0].vatRate = 120
+    const messages = validateDocument(document).map(issue => issue.message)
+    expect(messages.some(message => message.includes('client'))).toBe(true)
+    expect(messages.some(message => message.includes('quantité'))).toBe(true)
+    expect(messages.some(message => message.includes('TVA'))).toBe(true)
+  })
+})
+
+describe('numérotation', () => {
+  it('formate une séquence indépendante par type', () => {
+    expect(formatDocumentNumber('FACTURE', 2026, 1)).toBe('F-2026-001')
+    expect(formatDocumentNumber('DEVIS', 2026, 12)).toBe('DEV-2026-012')
+    expect(formatDocumentNumber('BL', 2027, 3)).toBe('BL-2027-003')
+  })
+
+  it('supporte des préfixes configurables', () => {
+    expect(formatDocumentNumber('FACTURE', 2026, 7, { DEVIS: 'D', FACTURE: 'FAC', BL: 'LIV', BC: 'CMD' }))
+      .toBe('FAC-2026-007')
   })
 })
 
