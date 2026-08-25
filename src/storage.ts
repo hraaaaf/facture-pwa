@@ -21,24 +21,19 @@ export interface LocalBackup {
   company: CompanySettings
 }
 
-const openDb = (): Promise<IDBDatabase> =>
-  new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(DOCS_STORE)) db.createObjectStore(DOCS_STORE, { keyPath: 'id' })
-      if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE)
-      if (!db.objectStoreNames.contains(COUNTERS_STORE)) db.createObjectStore(COUNTERS_STORE, { keyPath: 'key' })
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
+const openDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
+  const request = indexedDB.open(DB_NAME, DB_VERSION)
+  request.onupgradeneeded = () => {
+    const db = request.result
+    if (!db.objectStoreNames.contains(DOCS_STORE)) db.createObjectStore(DOCS_STORE, { keyPath: 'id' })
+    if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE)
+    if (!db.objectStoreNames.contains(COUNTERS_STORE)) db.createObjectStore(COUNTERS_STORE, { keyPath: 'key' })
+  }
+  request.onsuccess = () => resolve(request.result)
+  request.onerror = () => reject(request.error)
+})
 
-const transact = async <T>(
-  storeName: string,
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
+const transact = async <T>(storeName: string, mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, mode)
@@ -64,14 +59,9 @@ const transact = async <T>(
   })
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
-const isDocumentType = (value: unknown): value is DocumentType =>
-  value === 'DEVIS' || value === 'FACTURE' || value === 'BL' || value === 'BC'
-
-const isStatus = (value: unknown): value is DocumentStatus =>
-  value === 'DRAFT' || value === 'FINALIZED' || value === 'PAID' || value === 'CANCELLED'
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+const isDocumentType = (value: unknown): value is DocumentType => value === 'DEVIS' || value === 'FACTURE' || value === 'BL' || value === 'BC'
+const isStatus = (value: unknown): value is DocumentStatus => value === 'DRAFT' || value === 'FINALIZED' || value === 'PAID' || value === 'CANCELLED'
 
 const normalizeLine = (value: unknown): DocumentLine => {
   if (!isRecord(value)) throw new Error('Ligne de document invalide')
@@ -99,7 +89,6 @@ const normalizeDocument = (value: unknown): CommercialDocument => {
     || typeof value.object !== 'string' || !Array.isArray(value.lines) || value.lines.length === 0
     || typeof value.blShowPrices !== 'boolean' || typeof value.createdAt !== 'string' || typeof value.updatedAt !== 'string'
   ) throw new Error('Document invalide')
-
   const legacyHadNumber = value.number.trim().length > 0
   return {
     id: value.id,
@@ -121,8 +110,7 @@ const normalizeDocument = (value: unknown): CommercialDocument => {
   }
 }
 
-const stringOr = (record: Record<string, unknown>, key: string, fallback = '') =>
-  typeof record[key] === 'string' ? record[key] as string : fallback
+const stringOr = (record: Record<string, unknown>, key: string, fallback = '') => typeof record[key] === 'string' ? record[key] as string : fallback
 
 const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySettings => {
   if (!isRecord(value)) throw new Error('Réglages société invalides dans la sauvegarde')
@@ -175,10 +163,44 @@ export const getDocuments = async (): Promise<CommercialDocument[]> => {
   return raw.map(normalizeDocument).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 }
 
-/** Draft persistence only. Final documents are immutable except for explicit lifecycle transitions. */
-export const saveDocument = (doc: CommercialDocument) => {
-  if (doc.status !== 'DRAFT') return Promise.reject(new Error('Un document finalisé ne peut plus être modifié.'))
-  return transact<IDBValidKey>(DOCS_STORE, 'readwrite', store => store.put(doc))
+/** Draft persistence checks the currently stored record before writing, so a stale draft can never overwrite a finalized document. */
+export const saveDocument = async (doc: CommercialDocument): Promise<IDBValidKey> => {
+  if (doc.status !== 'DRAFT') throw new Error('Un document finalisé ne peut plus être modifié.')
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DOCS_STORE, 'readwrite')
+    const store = tx.objectStore(DOCS_STORE)
+    const request = store.get(doc.id) as IDBRequest<unknown>
+    let key: IDBValidKey = doc.id
+    let settled = false
+    const fail = (error: unknown) => {
+      if (settled) return
+      settled = true
+      try { tx.abort() } catch { /* transaction already finished */ }
+      db.close()
+      reject(error ?? new Error('Sauvegarde impossible'))
+    }
+    request.onerror = () => fail(request.error)
+    request.onsuccess = () => {
+      try {
+        if (request.result !== undefined) {
+          const stored = normalizeDocument(request.result)
+          if (stored.status !== 'DRAFT') throw new Error('Ce document a déjà été finalisé dans une autre vue.')
+        }
+        const put = store.put(doc)
+        put.onsuccess = () => { key = put.result }
+        put.onerror = () => fail(put.error)
+      } catch (error) { fail(error) }
+    }
+    tx.onerror = () => fail(tx.error)
+    tx.onabort = () => fail(tx.error)
+    tx.oncomplete = () => {
+      if (settled) return
+      settled = true
+      db.close()
+      resolve(key)
+    }
+  })
 }
 
 export const removeDocument = async (id: string) => {
@@ -226,20 +248,26 @@ export const finalizeDocument = async (doc: CommercialDocument, company: Company
     const schedule = () => {
       if (scheduled || !counterLoaded || existing === undefined) return
       scheduled = true
-      const maxExisting = existing
-        .filter(item => item.type === doc.type && item.status !== 'DRAFT')
-        .reduce((max, item) => Math.max(max, sequenceFromNumber(item.number, year)), 0)
-      const next = Math.max(counter?.last ?? 0, maxExisting) + 1
-      const now = new Date().toISOString()
-      saved = {
-        ...doc,
-        number: formatDocumentNumber(doc.type, year, next, company.numberingPrefixes),
-        status: 'FINALIZED',
-        finalizedAt: now,
-        updatedAt: now
-      }
-      countersStore.put({ key: counterKey, last: next } satisfies CounterRecord)
-      docsStore.put(saved)
+      try {
+        const storedSameDocument = existing.find(item => item.id === doc.id)
+        if (storedSameDocument && storedSameDocument.status !== 'DRAFT') {
+          throw new Error(`Ce document est déjà finalisé sous le numéro ${storedSameDocument.number}.`)
+        }
+        const maxExisting = existing
+          .filter(item => item.type === doc.type && item.status !== 'DRAFT')
+          .reduce((max, item) => Math.max(max, sequenceFromNumber(item.number, year)), 0)
+        const next = Math.max(counter?.last ?? 0, maxExisting) + 1
+        const now = new Date().toISOString()
+        saved = {
+          ...doc,
+          number: formatDocumentNumber(doc.type, year, next, company.numberingPrefixes),
+          status: 'FINALIZED',
+          finalizedAt: now,
+          updatedAt: now
+        }
+        countersStore.put({ key: counterKey, last: next } satisfies CounterRecord)
+        docsStore.put(saved)
+      } catch (error) { fail(error) }
     }
 
     counterRequest.onsuccess = () => { counter = counterRequest.result; counterLoaded = true; schedule() }
@@ -281,6 +309,7 @@ export const setDocumentStatus = async (id: string, status: 'PAID' | 'CANCELLED'
         const current = normalizeDocument(request.result)
         if (current.status === 'DRAFT') throw new Error('Finalisez le document avant de changer son statut.')
         if (current.status === 'CANCELLED') throw new Error('Un document annulé reste annulé.')
+        if (status === 'PAID' && current.type !== 'FACTURE') throw new Error('Seule une facture peut être marquée payée.')
         const now = new Date().toISOString()
         saved = {
           ...current,
@@ -309,8 +338,7 @@ export const getCompany = async (): Promise<CompanySettings> => {
   return saved ? normalizeCompany(saved, true) : { ...defaultCompany }
 }
 
-export const saveCompany = (company: CompanySettings) =>
-  transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
+export const saveCompany = (company: CompanySettings) => transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
 
 export const createLocalBackup = async (): Promise<LocalBackup> => {
   const [documents, company] = await Promise.all([getDocuments(), getCompany()])
@@ -322,7 +350,6 @@ export const restoreLocalBackup = async (value: unknown): Promise<void> => {
   const documents = value.documents.map(normalizeDocument)
   const company = withFooterLine(normalizeCompany(value.company, true))
   const db = await openDb()
-
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([DOCS_STORE, SETTINGS_STORE, COUNTERS_STORE], 'readwrite')
     let settled = false
