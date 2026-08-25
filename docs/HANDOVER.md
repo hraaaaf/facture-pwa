@@ -12,114 +12,155 @@ Date : 25 août 2026
 
 ## Projet
 
-PWA mobile-first de création de Devis, Factures, BL et BC. Surface très simple, moteur local robuste, PDF Original/Premium.
+PWA mobile-first Devis / Factures / BL / BC, destinée à rester très simple en surface avec moteur local robuste.
 
 - repo : `hraaaaf/facture-pwa`
 - branche : `m0/pwa-foundation`
 - PR : `#1 — M0 — Fondation PWA facturation`
 - base : `main`
-- aucun merge tant que les gates ne sont pas prouvées.
+- aucun merge avant preuves.
 
-## Contraintes verrouillées
+## Contraintes
 
-- pas de Replit ;
 - GitHub Actions manuel uniquement et à économiser ;
 - aucun Vercel sans autorisation explicite ;
 - mobile-first iPhone + Android ;
-- mockup premium glassmorphism verrouillé ;
-- preuves avant fermeture d’un lot.
+- mockup glassmorphism verrouillé ;
+- cibles tactiles >=44 px ;
+- preuves avant fermeture définitive d’un lot.
 
-## UI
+## UI E0 → E6
 
-**E0 → E6 sont candidats fonctionnels, non certifiés visuellement/runtime.**
+Tous sont candidats fonctionnels, non certifiés runtime/visuellement.
 
-### E0
-Premier démarrage obligatoire : identité, adresse, TEL/FAX/email, ICE/IF/RC/Patente/CNSS, banque/RIB, logo, signature, TVA, PDF Original/Premium. `onboardingCompleted` est persistant.
-
-### E1
-Dashboard premium + récents + bottom nav `Accueil | + | Historique`.
-
-### E2
-Création Devis / Facture / BL / BC en un tap.
-
-### E3
-Éditeur mobile premium. LOT1 maintenant branché : brouillon sans numéro, remises, bouton Finaliser, document finalisé en lecture seule.
-
-### E4
-Aperçu PDF dans l’app, Original/Premium, partage, téléchargement, impression, Page X/Y. Visuel non encore certifié >=9,5.
-
-### E5
-Historique + recherche/filtres + duplication/conversion + statuts Brouillon/Finalisé/Payé/Annulé. Un finalisé n’est plus supprimable, il peut seulement être annulé. `Payé` est limité aux factures.
-
-### E6
-Réglages société complets + backup/restore + installation PWA + **préfixes de numérotation réellement branchés au moteur**.
+- **E0** : onboarding société 5 étapes.
+- **E1** : dashboard + bottom nav `Accueil | + | Historique`.
+- **E2** : Devis / Facture / BL / BC en un tap.
+- **E3** : éditeur + moteur LOT1 + mémoire LOT2.
+- **E4** : aperçu PDF Original/Premium, partage, téléchargement, impression.
+- **E5** : historique + lifecycle Brouillon/Finalisé/Payé/Annulé.
+- **E6** : identité société, backup, PWA, préfixes de numérotation.
 
 ## LOT 1 — moteur métier
 
-**État : CANDIDAT TECHNIQUE, runtime non certifié.**
+**CANDIDAT TECHNIQUE, runtime non certifié.**
 
-Implémenté :
+Implémenté : brouillon sans numéro, séquences atomiques par type/année, préfixes, numéro irréversible, lifecycle, validations, remises, arrondis, conversion tracée, migration legacy, stale draft et double-finalisation protégés.
 
-- brouillon sans numéro définitif ;
-- séquence indépendante par `type + année` ;
-- IndexedDB passé en DB v2 avec store `counters` ;
-- finalisation atomique : compteur + document final dans la même transaction ;
-- format par défaut : `DEV/F/BL/BC-AAAA-NNN` ;
-- préfixes configurables dans E6 ;
-- numéro jamais réutilisé après finalisation/annulation ;
-- suppression interdite après finalisation ;
-- statuts `DRAFT / FINALIZED / PAID / CANCELLED` ;
-- `PAID` réservé aux factures ;
-- client, objet, date et désignation obligatoires à la finalisation ;
-- quantité > 0 ; prix >= 0 ; TVA/remises 0..100 ;
-- remise ligne % + remise globale % ;
-- TVA calculée après remises ;
-- arrondis déterministes à 2 décimales ;
-- `sourceDocumentId` pour Devis → Facture / BL ;
-- anciens documents numérotés migrés comme finalisés ;
-- stale draft empêché d’écraser un document finalisé ;
-- double finalisation empêchée avant consommation d’un nouveau numéro ;
-- backup restaure les documents et reconstruit les compteurs depuis les numéros immuables ;
-- tests purs ajoutés : facture référence, remises/multi-TVA, validations, numérotation, préfixes.
+Gates ouvertes : `001→002`, annulation puis `003`, séquences indépendantes, reset annuel, double tap, stale draft, migration legacy, tests/build HEAD exact.
 
-### Gates LOT1 encore ouvertes
+## LOT 2 — Clients & catalogue rapide
 
-- runtime `F-2026-001 → F-2026-002` ;
-- annulation du 001 puis prochaine facture = 003 ;
-- séquences indépendantes par type ;
-- reset année ;
-- double tap Finaliser = un seul numéro ;
-- stale draft rejeté ;
-- migration ancien document ;
-- build TypeScript exact HEAD ;
-- tests exact HEAD.
+**CANDIDAT TECHNIQUE, runtime non certifié.**
 
-Ne pas fermer LOT1 définitivement avant ces preuves.
+### Stockage
 
-## Risques / reste produit
+IndexedDB est maintenant en **DB v3** avec :
 
-- autosave/recovery brouillon à ajouter ou certifier ;
-- clients/catalogue absents ;
-- les remises impactent correctement les totaux mais leur présentation explicite dans PDF Original/Premium reste à harmoniser ;
-- PDF Original et Premium non certifiés visuellement ;
-- audit 390/430/768 non fait ;
-- backup/offline/installation/partage non certifiés sur appareils réels.
+- `documents`
+- `settings`
+- `counters`
+- `clients`
+- `catalog`
+
+### Clients
+
+`ClientProfile` contient :
+
+- nom ;
+- société ;
+- adresse ;
+- ICE ;
+- IF ;
+- téléphone ;
+- email ;
+- usageCount ;
+- timestamps.
+
+Dans E3 :
+
+- saisie client avec suggestions locales ;
+- recherche par nom / société / ICE / téléphone ;
+- fiche client rapide en bottom sheet ;
+- sélection en un tap ;
+- édition d’une fiche existante ;
+- déduplication insensible à casse, accents et espaces.
+
+### Snapshot client historique
+
+Le document conserve :
+
+- `clientId`
+- `clientAddress`
+- `clientIce`
+- `clientIfNumber`
+
+Ces données sont copiées au moment de la sélection et restent dans le document. Une modification future de la fiche client ne doit donc pas modifier l’historique du document finalisé.
+
+### Catalogue
+
+Après **finalisation réussie uniquement**, l’app apprend les lignes utilisées :
+
+- désignation ;
+- unité ;
+- dernier PU HT ;
+- dernière TVA ;
+- fréquence d’utilisation.
+
+Dans E3 :
+
+- bloc « Prestations fréquentes » ;
+- tap pour insérer une prestation ;
+- suggestions pendant la saisie ;
+- sélection d’une suggestion remplit désignation + unité + PU + TVA.
+
+La mémoire LOT2 est un confort non critique : une erreur de mémorisation ne peut jamais annuler une finalisation déjà réussie.
+
+### Backup
+
+Backup JSON passé en **version 2** :
+
+- documents ;
+- société ;
+- clients ;
+- catalogue.
+
+Les backups version 1 restent acceptés. Leur restauration crée simplement clients/catalogue vides.
+
+### Gates LOT2 ouvertes
+
+- créer puis retrouver une fiche client ;
+- vérifier snapshot inchangé après modification de la fiche ;
+- finaliser une prestation puis la retrouver avec PU/TVA/unité ;
+- vérifier fréquence et déduplication ;
+- export/restore backup v2 ;
+- restore backup v1 ;
+- 390/430/768 sans overflow ;
+- tests/build HEAD exact.
+
+## PDF
+
+Original et Premium existent mais restent non certifiés >=9,5.
+
+Prochaine correction : exploiter les snapshots client adresse/ICE/IF et présenter proprement les remises, puis comparer Original aux références fournies.
+
+## CI
+
+Workflow Actions = `workflow_dispatch` uniquement. Ne pas lancer de run intermédiaire. Garder un run final utile quand le candidat complet est prêt.
 
 ## NEXT EXACT
 
-**LOT 2 — Clients & catalogue rapide.**
+**LOT 3 — PDF Original : fidélité source + snapshot client + remises.**
 
-Ordre de construction :
+Puis :
 
-1. clients réutilisables + autocomplétion ;
-2. catalogue articles/prestations + dernier PU/TVA ;
-3. PDF Original, fidélité + remises ;
-4. PDF Premium, polish + remises ;
-5. audit mobile E0→E6 ;
-6. gates runtime LOT1 + PWA/offline/backup/partage ;
-7. un seul run GitHub Actions final si utile ;
-8. human gate puis merge.
+1. LOT4 PDF Premium ;
+2. audit 390/430/768 ;
+3. gates runtime LOT1 + LOT2 ;
+4. backup/offline/installation/partage appareils réels ;
+5. un run Actions final si utile ;
+6. human gate puis merge.
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. LOT1 est candidat technique mais non certifié runtime. NEXT EXACT = LOT2 Clients & catalogue. Respecte les mockups, n’utilise pas d’Action GitHub inutilement et aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. LOT1 et LOT2 sont candidats techniques non certifiés runtime. NEXT EXACT = LOT3 PDF Original, fidélité aux sources + snapshot client + remises. Respecte les mockups. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
