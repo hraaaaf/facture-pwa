@@ -2,8 +2,10 @@ import { StrictMode, useEffect, useState, type MouseEvent as ReactMouseEvent } f
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
+import OnboardingScreen from './OnboardingScreen'
 import PdfPreviewScreen from './Preview'
 import SettingsScreen, { type PwaInstallPrompt } from './SettingsScreen'
+import { getCompany, saveCompany } from './storage'
 import type { CommercialDocument, CompanySettings } from './types'
 import './styles.css'
 import './editor.css'
@@ -23,6 +25,11 @@ function Root() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [installPrompt, setInstallPrompt] = useState<PwaInstallPrompt | null>(null)
   const [appRevision, setAppRevision] = useState(0)
+  const [bootCompany, setBootCompany] = useState<CompanySettings | null>(null)
+
+  useEffect(() => {
+    void getCompany().then(setBootCompany)
+  }, [])
 
   useEffect(() => {
     const openPreview = (event: Event) => {
@@ -53,6 +60,28 @@ function Root() {
     setSettingsOpen(true)
   }
 
+  const refreshAppData = async () => {
+    setBootCompany(await getCompany())
+    setAppRevision(current => current + 1)
+  }
+
+  if (!bootCompany) {
+    return <div className="app-boot-screen" aria-label="Chargement">Facture PWA</div>
+  }
+
+  if (!bootCompany.onboardingCompleted) {
+    return (
+      <OnboardingScreen
+        initialValue={bootCompany}
+        onComplete={async company => {
+          await saveCompany(company)
+          setBootCompany(company)
+          setAppRevision(current => current + 1)
+        }}
+      />
+    )
+  }
+
   return (
     <>
       <div onClickCapture={captureSettings}>
@@ -63,7 +92,7 @@ function Root() {
         <div className="preview-overlay settings-overlay" role="dialog" aria-modal="true" aria-label="Réglages">
           <SettingsScreen
             onBack={() => setSettingsOpen(false)}
-            onDataChanged={() => setAppRevision(current => current + 1)}
+            onDataChanged={() => void refreshAppData()}
             installPrompt={installPrompt}
             onInstallConsumed={() => setInstallPrompt(null)}
           />
