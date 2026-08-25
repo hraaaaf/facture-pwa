@@ -9,7 +9,8 @@ export interface DocumentLine {
   quantity: number
   unitPriceHT: number
   vatRate: number
-  discountPercent: number
+  /** Optional for compatibility with documents created before the discount engine. */
+  discountPercent?: number
 }
 
 export interface CommercialDocument {
@@ -107,6 +108,5 @@ export const companyLegalLine = (company: CompanySettings) => {
     company.email && `EMAIL : ${company.email}`,
     company.rib && `RIB : ${company.rib}`
   ].filter(Boolean)
-
   return structured.length > 0 ? structured.join(' · ') : company.legalLine
 }
