@@ -1,13 +1,28 @@
 import { formatDocumentNumber, validateDocument } from './lib'
-import type { CommercialDocument, CompanySettings, DocumentLine, DocumentStatus, DocumentType } from './types'
-import { companyLegalLine, defaultCompany, defaultNumberingPrefixes } from './types'
+import type {
+  CatalogItem,
+  ClientProfile,
+  CommercialDocument,
+  CompanySettings,
+  DocumentLine,
+  DocumentStatus,
+  DocumentType
+} from './types'
+import {
+  clientDisplayName,
+  companyLegalLine,
+  defaultCompany,
+  defaultNumberingPrefixes
+} from './types'
 
 const DB_NAME = 'facture-pwa'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const DOCS_STORE = 'documents'
 const SETTINGS_STORE = 'settings'
 const COUNTERS_STORE = 'counters'
-const BACKUP_VERSION = 1
+const CLIENTS_STORE = 'clients'
+const CATALOG_STORE = 'catalog'
+const BACKUP_VERSION = 2
 
 interface CounterRecord {
   key: string
@@ -15,10 +30,12 @@ interface CounterRecord {
 }
 
 export interface LocalBackup {
-  version: 1
+  version: 2
   exportedAt: string
   documents: CommercialDocument[]
   company: CompanySettings
+  clients: ClientProfile[]
+  catalog: CatalogItem[]
 }
 
 const openDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
@@ -28,12 +45,18 @@ const openDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
     if (!db.objectStoreNames.contains(DOCS_STORE)) db.createObjectStore(DOCS_STORE, { keyPath: 'id' })
     if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE)
     if (!db.objectStoreNames.contains(COUNTERS_STORE)) db.createObjectStore(COUNTERS_STORE, { keyPath: 'key' })
+    if (!db.objectStoreNames.contains(CLIENTS_STORE)) db.createObjectStore(CLIENTS_STORE, { keyPath: 'id' })
+    if (!db.objectStoreNames.contains(CATALOG_STORE)) db.createObjectStore(CATALOG_STORE, { keyPath: 'id' })
   }
   request.onsuccess = () => resolve(request.result)
   request.onerror = () => reject(request.error)
 })
 
-const transact = async <T>(storeName: string, mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
+const transact = async <T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>
+): Promise<T> => {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, mode)
@@ -59,9 +82,27 @@ const transact = async <T>(storeName: string, mode: IDBTransactionMode, run: (st
   })
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
-const isDocumentType = (value: unknown): value is DocumentType => value === 'DEVIS' || value === 'FACTURE' || value === 'BL' || value === 'BC'
-const isStatus = (value: unknown): value is DocumentStatus => value === 'DRAFT' || value === 'FINALIZED' || value === 'PAID' || value === 'CANCELLED'
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isDocumentType = (value: unknown): value is DocumentType =>
+  value === 'DEVIS' || value === 'FACTURE' || value === 'BL' || value === 'BC'
+
+const isStatus = (value: unknown): value is DocumentStatus =>
+  value === 'DRAFT' || value === 'FINALIZED' || value === 'PAID' || value === 'CANCELLED'
+
+const stringOr = (record: Record<string, unknown>, key: string, fallback = '') =>
+  typeof record[key] === 'string' ? record[key] as string : fallback
+
+const numberOr = (record: Record<string, unknown>, key: string, fallback = 0) =>
+  typeof record[key] === 'number' && Number.isFinite(record[key]) ? record[key] as number : fallback
+
+const canonicalText = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .trim()
+  .replace(/\s+/g, ' ')
+  .toLocaleLowerCase('fr')
 
 const normalizeLine = (value: unknown): DocumentLine => {
   if (!isRecord(value)) throw new Error('Ligne de document invalide')
@@ -78,7 +119,7 @@ const normalizeLine = (value: unknown): DocumentLine => {
     quantity: value.quantity,
     unitPriceHT: value.unitPriceHT,
     vatRate: value.vatRate,
-    discountPercent: typeof value.discountPercent === 'number' && Number.isFinite(value.discountPercent) ? value.discountPercent : 0
+    discountPercent: numberOr(value, 'discountPercent', 0)
   }
 }
 
@@ -96,21 +137,60 @@ const normalizeDocument = (value: unknown): CommercialDocument => {
     number: value.number,
     date: value.date,
     client: value.client,
+    clientId: stringOr(value, 'clientId'),
+    clientAddress: stringOr(value, 'clientAddress'),
+    clientIce: stringOr(value, 'clientIce'),
+    clientIfNumber: stringOr(value, 'clientIfNumber'),
     object: value.object,
     lines: value.lines.map(normalizeLine),
     blShowPrices: value.blShowPrices,
-    globalDiscountPercent: typeof value.globalDiscountPercent === 'number' && Number.isFinite(value.globalDiscountPercent) ? value.globalDiscountPercent : 0,
+    globalDiscountPercent: numberOr(value, 'globalDiscountPercent', 0),
     status: isStatus(value.status) ? value.status : (legacyHadNumber ? 'FINALIZED' : 'DRAFT'),
-    finalizedAt: typeof value.finalizedAt === 'string' ? value.finalizedAt : (legacyHadNumber ? value.updatedAt : ''),
-    paidAt: typeof value.paidAt === 'string' ? value.paidAt : '',
-    cancelledAt: typeof value.cancelledAt === 'string' ? value.cancelledAt : '',
-    sourceDocumentId: typeof value.sourceDocumentId === 'string' ? value.sourceDocumentId : '',
+    finalizedAt: stringOr(value, 'finalizedAt', legacyHadNumber ? value.updatedAt : ''),
+    paidAt: stringOr(value, 'paidAt'),
+    cancelledAt: stringOr(value, 'cancelledAt'),
+    sourceDocumentId: stringOr(value, 'sourceDocumentId'),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt
   }
 }
 
-const stringOr = (record: Record<string, unknown>, key: string, fallback = '') => typeof record[key] === 'string' ? record[key] as string : fallback
+const normalizeClient = (value: unknown): ClientProfile => {
+  if (!isRecord(value) || typeof value.id !== 'string') throw new Error('Client local invalide')
+  const now = new Date().toISOString()
+  const client: ClientProfile = {
+    id: value.id,
+    name: stringOr(value, 'name'),
+    company: stringOr(value, 'company'),
+    address: stringOr(value, 'address'),
+    ice: stringOr(value, 'ice'),
+    ifNumber: stringOr(value, 'ifNumber'),
+    phone: stringOr(value, 'phone'),
+    email: stringOr(value, 'email'),
+    usageCount: Math.max(0, Math.trunc(numberOr(value, 'usageCount', 0))),
+    createdAt: stringOr(value, 'createdAt', now),
+    updatedAt: stringOr(value, 'updatedAt', now)
+  }
+  if (!clientDisplayName(client)) throw new Error('Client local sans nom')
+  return client
+}
+
+const normalizeCatalogItem = (value: unknown): CatalogItem => {
+  if (!isRecord(value) || typeof value.id !== 'string') throw new Error('Article de catalogue invalide')
+  const now = new Date().toISOString()
+  const item: CatalogItem = {
+    id: value.id,
+    designation: stringOr(value, 'designation'),
+    unit: stringOr(value, 'unit', 'Pièce'),
+    lastUnitPriceHT: numberOr(value, 'lastUnitPriceHT', 0),
+    vatRate: numberOr(value, 'vatRate', 0),
+    usageCount: Math.max(0, Math.trunc(numberOr(value, 'usageCount', 0))),
+    createdAt: stringOr(value, 'createdAt', now),
+    updatedAt: stringOr(value, 'updatedAt', now)
+  }
+  if (!item.designation.trim()) throw new Error('Article de catalogue sans désignation')
+  return item
+}
 
 const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySettings => {
   if (!isRecord(value)) throw new Error('Réglages société invalides dans la sauvegarde')
@@ -156,11 +236,156 @@ const normalizeCompany = (value: unknown, assumeConfigured = false): CompanySett
   return merged
 }
 
-const withFooterLine = (company: CompanySettings): CompanySettings => ({ ...company, legalLine: companyLegalLine(company) })
+const withFooterLine = (company: CompanySettings): CompanySettings => ({
+  ...company,
+  legalLine: companyLegalLine(company)
+})
 
 export const getDocuments = async (): Promise<CommercialDocument[]> => {
   const raw = await transact<unknown[]>(DOCS_STORE, 'readonly', store => store.getAll())
   return raw.map(normalizeDocument).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
+export const getClients = async (): Promise<ClientProfile[]> => {
+  const raw = await transact<unknown[]>(CLIENTS_STORE, 'readonly', store => store.getAll())
+  return raw.map(normalizeClient).sort((a, b) => b.usageCount - a.usageCount || b.updatedAt.localeCompare(a.updatedAt))
+}
+
+export const getCatalogItems = async (): Promise<CatalogItem[]> => {
+  const raw = await transact<unknown[]>(CATALOG_STORE, 'readonly', store => store.getAll())
+  return raw.map(normalizeCatalogItem).sort((a, b) => b.usageCount - a.usageCount || b.updatedAt.localeCompare(a.updatedAt))
+}
+
+export const saveClientProfile = async (input: ClientProfile): Promise<ClientProfile> => {
+  const candidate = normalizeClient(input)
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CLIENTS_STORE, 'readwrite')
+    const store = tx.objectStore(CLIENTS_STORE)
+    const request = store.getAll() as IDBRequest<unknown[]>
+    let saved: ClientProfile | undefined
+    let settled = false
+    const fail = (error: unknown) => {
+      if (settled) return
+      settled = true
+      try { tx.abort() } catch { /* already finished */ }
+      db.close()
+      reject(error ?? new Error('Enregistrement du client impossible'))
+    }
+    request.onerror = () => fail(request.error)
+    request.onsuccess = () => {
+      try {
+        const clients = request.result.map(normalizeClient)
+        const key = canonicalText(clientDisplayName(candidate))
+        const existing = clients.find(client => client.id === candidate.id || canonicalText(clientDisplayName(client)) === key)
+        const now = new Date().toISOString()
+        saved = {
+          ...candidate,
+          id: existing?.id ?? candidate.id ?? crypto.randomUUID(),
+          usageCount: Math.max(existing?.usageCount ?? 0, candidate.usageCount),
+          createdAt: existing?.createdAt ?? candidate.createdAt ?? now,
+          updatedAt: now
+        }
+        store.put(saved)
+      } catch (error) { fail(error) }
+    }
+    tx.onerror = () => fail(tx.error)
+    tx.onabort = () => fail(tx.error)
+    tx.oncomplete = () => {
+      if (settled) return
+      settled = true
+      db.close()
+      if (!saved) reject(new Error('Enregistrement du client incomplet'))
+      else resolve(saved)
+    }
+  })
+}
+
+/** Learn reusable client/catalog data only after a successful finalization. */
+export const rememberDocument = async (document: CommercialDocument): Promise<void> => {
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([CLIENTS_STORE, CATALOG_STORE], 'readwrite')
+    const clientsStore = tx.objectStore(CLIENTS_STORE)
+    const catalogStore = tx.objectStore(CATALOG_STORE)
+    const clientsRequest = clientsStore.getAll() as IDBRequest<unknown[]>
+    const catalogRequest = catalogStore.getAll() as IDBRequest<unknown[]>
+    let clients: ClientProfile[] | undefined
+    let catalog: CatalogItem[] | undefined
+    let applied = false
+    let settled = false
+
+    const fail = (error: unknown) => {
+      if (settled) return
+      settled = true
+      try { tx.abort() } catch { /* already finished */ }
+      db.close()
+      reject(error ?? new Error('Mémorisation locale impossible'))
+    }
+
+    const apply = () => {
+      if (applied || !clients || !catalog) return
+      applied = true
+      try {
+        const now = new Date().toISOString()
+        const clientName = document.client.trim()
+        if (clientName) {
+          const key = canonicalText(clientName)
+          const existing = clients.find(client =>
+            client.id === document.clientId || canonicalText(clientDisplayName(client)) === key
+          )
+          const learned: ClientProfile = {
+            id: existing?.id ?? document.clientId || crypto.randomUUID(),
+            name: existing?.name || clientName,
+            company: existing?.company || '',
+            address: document.clientAddress || existing?.address || '',
+            ice: document.clientIce || existing?.ice || '',
+            ifNumber: document.clientIfNumber || existing?.ifNumber || '',
+            phone: existing?.phone || '',
+            email: existing?.email || '',
+            usageCount: (existing?.usageCount ?? 0) + 1,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now
+          }
+          clientsStore.put(learned)
+        }
+
+        for (const line of document.lines) {
+          if (!line.designation.trim()) continue
+          const key = canonicalText(line.designation)
+          const existing = catalog.find(item => canonicalText(item.designation) === key)
+          const learned: CatalogItem = {
+            id: existing?.id ?? crypto.randomUUID(),
+            designation: line.designation.trim(),
+            unit: line.unit.trim() || existing?.unit || 'Pièce',
+            lastUnitPriceHT: line.unitPriceHT,
+            vatRate: line.vatRate,
+            usageCount: (existing?.usageCount ?? 0) + 1,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now
+          }
+          catalogStore.put(learned)
+        }
+      } catch (error) { fail(error) }
+    }
+
+    clientsRequest.onsuccess = () => {
+      try { clients = clientsRequest.result.map(normalizeClient); apply() } catch (error) { fail(error) }
+    }
+    catalogRequest.onsuccess = () => {
+      try { catalog = catalogRequest.result.map(normalizeCatalogItem); apply() } catch (error) { fail(error) }
+    }
+    clientsRequest.onerror = () => fail(clientsRequest.error)
+    catalogRequest.onerror = () => fail(catalogRequest.error)
+    tx.onerror = () => fail(tx.error)
+    tx.onabort = () => fail(tx.error)
+    tx.oncomplete = () => {
+      if (settled) return
+      settled = true
+      db.close()
+      resolve()
+    }
+  })
 }
 
 /** Draft persistence checks the currently stored record before writing, so a stale draft can never overwrite a finalized document. */
@@ -338,20 +563,39 @@ export const getCompany = async (): Promise<CompanySettings> => {
   return saved ? normalizeCompany(saved, true) : { ...defaultCompany }
 }
 
-export const saveCompany = (company: CompanySettings) => transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
+export const saveCompany = (company: CompanySettings) =>
+  transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
 
 export const createLocalBackup = async (): Promise<LocalBackup> => {
-  const [documents, company] = await Promise.all([getDocuments(), getCompany()])
-  return { version: BACKUP_VERSION, exportedAt: new Date().toISOString(), documents, company }
+  const [documents, company, clients, catalog] = await Promise.all([
+    getDocuments(), getCompany(), getClients(), getCatalogItems()
+  ])
+  return {
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    documents,
+    company,
+    clients,
+    catalog
+  }
 }
 
 export const restoreLocalBackup = async (value: unknown): Promise<void> => {
-  if (!isRecord(value) || value.version !== BACKUP_VERSION || !Array.isArray(value.documents)) throw new Error('Fichier de sauvegarde non reconnu')
+  if (!isRecord(value) || (value.version !== 1 && value.version !== BACKUP_VERSION) || !Array.isArray(value.documents)) {
+    throw new Error('Fichier de sauvegarde non reconnu')
+  }
   const documents = value.documents.map(normalizeDocument)
   const company = withFooterLine(normalizeCompany(value.company, true))
+  const clients = value.version === BACKUP_VERSION && Array.isArray(value.clients)
+    ? value.clients.map(normalizeClient)
+    : []
+  const catalog = value.version === BACKUP_VERSION && Array.isArray(value.catalog)
+    ? value.catalog.map(normalizeCatalogItem)
+    : []
   const db = await openDb()
+
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction([DOCS_STORE, SETTINGS_STORE, COUNTERS_STORE], 'readwrite')
+    const tx = db.transaction([DOCS_STORE, SETTINGS_STORE, COUNTERS_STORE, CLIENTS_STORE, CATALOG_STORE], 'readwrite')
     let settled = false
     const fail = (error: unknown) => {
       if (settled) return
@@ -367,10 +611,19 @@ export const restoreLocalBackup = async (value: unknown): Promise<void> => {
       db.close()
       resolve()
     }
+
     const docsStore = tx.objectStore(DOCS_STORE)
     docsStore.clear()
     for (const document of documents) docsStore.put(document)
     tx.objectStore(SETTINGS_STORE).put(company, 'company')
     tx.objectStore(COUNTERS_STORE).clear()
+
+    const clientsStore = tx.objectStore(CLIENTS_STORE)
+    clientsStore.clear()
+    for (const client of clients) clientsStore.put(client)
+
+    const catalogStore = tx.objectStore(CATALOG_STORE)
+    catalogStore.clear()
+    for (const item of catalog) catalogStore.put(item)
   })
 }
