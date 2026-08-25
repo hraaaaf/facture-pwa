@@ -11,6 +11,24 @@ const formattedDate = (iso: string) =>
   new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
     .format(new Date(`${iso}T12:00:00`))
 
+const brandInitials = (brand: string, name: string) => {
+  const source = brand.trim() || name.trim()
+  const parts = source.split(/\s+/).filter(Boolean)
+  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : source.slice(0, 2)).toUpperCase() || 'TS'
+}
+
+const vatLabel = (document: CommercialDocument) => {
+  const rates = [...new Set(document.lines.map(line => line.vatRate))]
+  return rates.length === 1 ? `TVA ${String(rates[0]).replace('.', ',')}%` : 'TVA'
+}
+
+const stoppedAtLabel = (document: CommercialDocument) => {
+  if (document.type === 'FACTURE') return 'ARRÊTÉE LA PRÉSENTE FACTURE À LA SOMME DE'
+  if (document.type === 'DEVIS') return 'ARRÊTÉ LE PRÉSENT DEVIS À LA SOMME DE'
+  if (document.type === 'BL') return 'ARRÊTÉ LE PRÉSENT BON DE LIVRAISON À LA SOMME DE'
+  return 'ARRÊTÉ LE PRÉSENT BON DE COMMANDE À LA SOMME DE'
+}
+
 export default function PdfPreviewScreen({
   document,
   company,
@@ -113,14 +131,14 @@ function OriginalPreview({
       {pricingVisible && (
         <div className="original-totals">
           <span>TOTAL HT : <strong>{money(totals.totalHT)}</strong></span>
-          <span>TVA : <strong>{money(totals.totalVAT)}</strong></span>
+          <span>{vatLabel(document)} : <strong>{money(totals.totalVAT)}</strong></span>
           <span>TOTAL TTC : <strong>{money(totals.totalTTC)}</strong></span>
         </div>
       )}
 
       {pricingVisible && (
         <p className="original-words">
-          ARRÊTÉ LE PRÉSENT DOCUMENT À LA SOMME DE {amountToFrenchDirhams(totals.totalTTC)} TTC
+          {stoppedAtLabel(document)} {amountToFrenchDirhams(totals.totalTTC)} TTC
         </p>
       )}
 
@@ -157,6 +175,9 @@ function PremiumPreview({
         <section>
           <span>FACTURÉ À</span>
           <strong>{document.client || 'Client à renseigner'}</strong>
+          {document.clientAddress && <small>{document.clientAddress}</small>}
+          {document.clientIce && <small>ICE : {document.clientIce}</small>}
+          {document.clientIfNumber && <small>IF : {document.clientIfNumber}</small>}
         </section>
         <section>
           <span>OBJET</span>
@@ -174,7 +195,7 @@ function PremiumPreview({
           </div>
           <div className="premium-summary">
             <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div>
-            <div><span>TVA</span><strong>{money(totals.totalVAT)}</strong></div>
+            <div><span>{vatLabel(document)}</span><strong>{money(totals.totalVAT)}</strong></div>
             <div className="premium-summary-total"><span>Total TTC</span><strong>{money(totals.totalTTC)} MAD</strong></div>
           </div>
         </div>
@@ -220,7 +241,9 @@ function PreviewTable({
 function CompanyMark({ company, compact = false }: { company: CompanySettings; compact?: boolean }) {
   return (
     <div className={`company-mark ${compact ? 'compact' : ''}`}>
-      {company.logoDataUrl ? <img src={company.logoDataUrl} alt="Logo société" /> : <span className="logo-placeholder">F</span>}
+      {company.logoDataUrl
+        ? <img src={company.logoDataUrl} alt="Logo société" />
+        : <span className="logo-placeholder">{brandInitials(company.brand, company.name)}</span>}
       <div>
         <strong>{company.name}</strong>
         <small>{company.brand}</small>
