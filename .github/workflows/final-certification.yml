@@ -9,7 +9,7 @@ permissions:
 jobs:
   certify:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,6 +19,10 @@ jobs:
           node-version: 22
       - name: Install app
         run: npm install --no-audit --no-fund
+      - name: Verify PDF dependency versions
+        run: npm ls jspdf jspdf-autotable
+      - name: Critical production dependency audit
+        run: npm audit --omit=dev --audit-level=critical
       - name: Unit tests
         run: npm test
       - name: Build exact HEAD
@@ -28,7 +32,7 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Runtime certification
-        run: node scripts/final-certification.mjs
+        run: node scripts/final-certification-v2.mjs
       - name: Upload certification artifact
         if: always()
         uses: actions/upload-artifact@v4
