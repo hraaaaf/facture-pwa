@@ -2,319 +2,228 @@
 
 Dernière mise à jour : 26 août 2026
 
-> Source de vérité du projet. En cas de nouvelle fenêtre : `docs/HANDOVER.md` → ce fichier → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/E0_ONBOARDING.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
+> Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
-## Goal
+## Goal global
 
-Créer une PWA mobile-first, installable sur iPhone et Android, extrêmement simple à utiliser, permettant de créer des **Devis, Factures, Bons de livraison (BL) et Bons de commande (BC)**, avec calculs fiables, stockage local et PDF A4 professionnels.
+Créer une PWA mobile-first, installable sur iPhone et Android, très simple à utiliser, permettant de produire **Devis, Factures, Bons de livraison et Bons de commande**, avec calculs fiables, stockage local, mémoire clients/catalogue et PDF A4 professionnels.
 
-## Principes verrouillés
+## Doctrine de preuve
 
-- mobile-first, iPhone + Android ;
-- local-first, sans compte obligatoire ;
-- IndexedDB pour les données métier ;
-- premier lancement = onboarding société E0 obligatoire ;
-- interface française, premium glassmorphism ;
-- bottom navigation `Accueil | + | Historique` ;
-- cibles tactiles critiques >= 44 px ;
-- safe areas iOS ;
-- Devis → Facture / BL sans ressaisie ;
-- BL sans prix ou avec prix ;
-- deux modèles PDF : **Original** et **Premium** ;
-- GitHub Actions **manuel uniquement**, à utiliser avec parcimonie ;
-- aucun déploiement Vercel sans autorisation explicite.
-
-## État Git canonique
-
-- repository : `hraaaaf/facture-pwa`
-- branche : `m0/pwa-foundation`
-- PR : `#1 — M0 — Fondation PWA facturation`
-- base : `main`
-- pas de merge avant les gates de certification.
+- `[x]` = implémentation ou comportement vérifié par code, donnée, source ou inspection visuelle disponible ;
+- `[ ]` = gate de certification encore ouverte ;
+- un lot candidat n'est pas DONE tant que ses gates critiques ne sont pas prouvées ;
+- GitHub Actions reste manuel et rare ;
+- aucun Vercel sans autorisation explicite.
 
 ---
 
-# LOT 0 — Fondation PWA
+# LOT 0 — Fondation / PWA
 
-**État : CANDIDAT, non certifié**
+**État : CANDIDAT, non certifié runtime**
 
-- [x] React + TypeScript + Vite
-- [x] PWA / service worker
-- [x] IndexedDB local
-- [x] 4 types de documents
-- [x] calculs HT / TVA / TTC
-- [x] montant TTC en lettres
-- [x] historique / recherche
-- [x] E0 onboarding premier lancement
-- [x] E1 à E6 candidats fonctionnels
-- [x] identité société structurée : adresse / TEL / FAX / email / ICE / IF / RC / Patente / CNSS / banque / RIB
-- [x] logo + signature locaux
-- [x] export / restauration JSON locale
-- [x] préférence PDF Original / Premium
-- [x] installation PWA : prompt natif + fallback iOS/Android
-- [x] GitHub Actions en `workflow_dispatch` uniquement
+- [x] React + TypeScript + Vite ;
+- [x] PWA / service worker ;
+- [x] IndexedDB local ;
+- [x] 4 types de documents ;
+- [x] calculs HT / TVA / TTC ;
+- [x] montant TTC en lettres ;
+- [x] historique / recherche ;
+- [x] E0 onboarding société ;
+- [x] identité société structurée ;
+- [x] logo + signature locaux ;
+- [x] export / restauration JSON ;
+- [x] choix PDF Original/Premium ;
+- [x] installation PWA : prompt + fallback iOS/Android ;
+- [x] workflow GitHub `workflow_dispatch` uniquement ;
+- [x] safe-area CSS prévue.
 
-### Reste à certifier
+Gates :
 
-- [ ] `npm test` sur HEAD exact
-- [ ] `npm run build` sur HEAD exact
-- [ ] revue réelle 390 / 430 / 768
-- [ ] 0 overflow horizontal
-- [ ] 0 erreur console
-
----
-
-# UI V1 MOBILE
-
-## E0 — Premier démarrage / société
-
-**État : ✅ candidat fonctionnel, non certifié visuellement**
-
-5 étapes : Identité → Coordonnées → Identifiants → Banque → Documents.
-
-- raison sociale + adresse requises ;
-- TEL / FAX / email ;
-- ICE / IF / RC / Patente / CNSS ;
-- banque / RIB ;
-- logo / signature ;
-- TVA ;
-- modèle PDF ;
-- `onboardingCompleted` persisté ;
-- anciennes installations configurées non rebloquées.
-
-**Score cible : UI 9,4 / UX 9,8**
-
-## E1 — Accueil
-
-**État : ✅ candidat**
-
-Dashboard premium, compteurs, recherche, récents, bottom nav glass, bouton +.
-
-**Score cible : UI 9,5 / UX 9,7**
-
-## E2 — Nouveau document
-
-**État : ✅ candidat**
-
-Bottom sheet Devis / Facture / BL / BC en un tap.
-
-**Score cible : UI 9,4 / UX 9,8**
-
-## E3 — Éditeur
-
-**État : ✅ candidat UI + moteur LOT1 branché**
-
-- client / objet / articles ;
-- quantité / PU HT / TVA ;
-- remise ligne % ;
-- remise globale % ;
-- calculs live ;
-- BL avec/sans prix ;
-- montant en lettres ;
-- brouillon sans numéro final ;
-- bouton **Finaliser** ;
-- document finalisé en lecture seule ;
-- conversion Devis → Facture / BL avec `sourceDocumentId` ;
-- bottom action bar glass.
-
-**Reste :** autosave/recovery à ajouter ou certifier avant DONE.
-
-**Score cible : UI 9,4 / UX 9,8 / moteur 9,8**
-
-## E4 — Aperçu / PDF
-
-**État : ✅ candidat fonctionnel, non certifié visuellement**
-
-- aperçu A4 ;
-- Original / Premium ;
-- partage / téléchargement / impression ;
-- Page X/Y ;
-- métadonnées ;
-- préférence de modèle persistée.
-
-**Score cible : Original >= 9,5 / Premium >= 9,5**
-
-## E5 — Historique
-
-**État : ✅ candidat + lifecycle branché**
-
-Recherche/filtres, duplication/conversion, statuts Brouillon/Finalisé/Payé/Annulé, annulation sans réutilisation du numéro.
-
-**Score cible : UI 9,3 / UX 9,6**
-
-## E6 — Réglages
-
-**État : ✅ candidat fonctionnel**
-
-Identité complète, TVA, logo/signature, Original/Premium, backup/restore, installation PWA, préfixes de numérotation reliés au moteur.
-
-**Score cible : UI 9,2 / UX 9,5**
+- [ ] `npm test` HEAD exact ;
+- [ ] `npm run build` HEAD exact ;
+- [ ] installation réelle iPhone/Android ;
+- [ ] offline réel ;
+- [ ] fermeture/réouverture sans perte.
 
 ---
 
-# Visual Polish V1
+# UI V1 — E0 à E6 + Visual Polish
 
-**État : ✅ CANDIDAT VISUEL, runtime non certifié**
+**État : CANDIDAT VISUEL**
 
-- [x] couche `src/polish.css` chargée en dernier ;
-- [x] profondeur glass renforcée ;
-- [x] bottom nav / FAB retravaillés ;
-- [x] cartes, recherche, listes, éditeur, historique, réglages harmonisés ;
-- [x] faux bouton overflow de l’éditeur neutralisé ;
-- [x] cibles tactiles >=44 px conservées.
+- [x] E0 premier démarrage 5 étapes ;
+- [x] E1 dashboard ;
+- [x] E2 nouveau document ;
+- [x] E3 éditeur ;
+- [x] E4 aperçu PDF ;
+- [x] E5 historique/lifecycle ;
+- [x] E6 réglages ;
+- [x] Visual Polish V1 : glass, bottom bar, FAB, cartes et surfaces harmonisées.
 
-Score candidat intermédiaire : **9,2/10**. Score officiel seulement après runtime 390/430/768.
+Score intermédiaire accueil : **9,2/10 candidat**.
+
+Gates :
+
+- [ ] vraie capture runtime 390 px ;
+- [ ] vraie capture runtime 430 px ;
+- [ ] vraie capture runtime 768 px ;
+- [ ] zéro overflow / erreur console ;
+- [ ] score UI global officiel >= 9,3/10.
 
 ---
 
 # LOT 1 — Moteur métier production-grade
 
-**État : ✅ CANDIDAT TECHNIQUE, runtime non certifié**
+**État : CANDIDAT TECHNIQUE, runtime non certifié**
 
-Implémenté : brouillon sans numéro, séquences atomiques type+année, préfixes, numéro irréversible, lifecycle, validations, remises, arrondis, conversions tracées, migration legacy, stale draft et double-finalisation protégés.
+- [x] brouillon sans numéro définitif ;
+- [x] séquence indépendante type + année ;
+- [x] préfixes configurables ;
+- [x] réservation du numéro dans la transaction de finalisation ;
+- [x] numéro finalisé non réutilisable ;
+- [x] statuts DRAFT / FINALIZED / PAID / CANCELLED ;
+- [x] seul FACTURE peut être PAYÉ ;
+- [x] document finalisé non supprimable ;
+- [x] validation client/objet/lignes/TVA/prix/remises ;
+- [x] remise ligne puis remise globale puis TVA ;
+- [x] arrondi monétaire déterministe ;
+- [x] traçabilité conversion via `sourceDocumentId`.
 
-### Gates LOT1
+Gates :
 
-- [ ] `F-2026-001 → F-2026-002` ;
-- [ ] annulation puis prochain = 003 ;
-- [ ] séquences indépendantes ;
+- [ ] `001 → 002` runtime ;
+- [ ] annulation puis `003` ;
+- [ ] séquences Devis/Facture/BL/BC indépendantes ;
 - [ ] reset annuel ;
-- [ ] double tap ;
+- [ ] double tap Finaliser ;
 - [ ] stale draft ;
 - [ ] migration legacy ;
-- [ ] build/tests exact HEAD.
+- [ ] tests/build HEAD exact.
 
 ---
 
 # LOT 2 — Clients & catalogue rapide
 
-**État : ✅ CANDIDAT TECHNIQUE, runtime non certifié**
+**État : CANDIDAT TECHNIQUE, runtime non certifié**
 
-- [x] DB v3 `clients` + `catalog` ;
-- [x] fiches clients et autocomplétion ;
-- [x] snapshot client historique ;
+- [x] IndexedDB DB v3 `clients` + `catalog` ;
+- [x] fiche client locale ;
+- [x] autocomplétion/recherche ;
+- [x] snapshot historique adresse/ICE/IF ;
 - [x] prestations apprises après finalisation ;
 - [x] dernier PU HT / TVA / unité ;
-- [x] prestations fréquentes ;
-- [x] déduplication ;
-- [x] backup v2 + restore v1.
+- [x] déduplication casse/accents/espaces ;
+- [x] backup v2 + restore v1 compatible.
 
-### Gates LOT2
+Gates :
 
-- [ ] créer/retrouver client ;
+- [ ] créer/retrouver client runtime ;
 - [ ] snapshot inchangé après modification ;
 - [ ] prestation retrouvée après finalisation ;
-- [ ] fréquence + déduplication ;
-- [ ] backup v2 + restore v1 ;
-- [ ] 390/430/768 ;
-- [ ] build/tests exact HEAD.
+- [ ] fréquence/déduplication runtime ;
+- [ ] backup v2 réel ;
+- [ ] restore v1 réel ;
+- [ ] revue mobile 390/430/768.
 
 ---
 
 # LOT 3 — PDF Original
 
-**État : ✅ CANDIDAT GÉOMÉTRIQUE, jsPDF exact-head non certifié**
+**État : CANDIDAT GÉOMÉTRIQUE FORT, jsPDF exact-head non certifié**
 
-Sources :
-- `docs/PDF_ORIGINAL_REFERENCE.md` ;
-- `docs/PDF_ORIGINAL_GEOMETRY.md` ;
-- `src/referenceFixture.ts`.
+Sources : `docs/PDF_ORIGINAL_REFERENCE.md`, `docs/PDF_ORIGINAL_GEOMETRY.md`, `src/referenceFixture.ts`.
 
-Données source verrouillées : Benmoussa Rachid / TAPISTOR SABRE, adresse, RC, Patente, CNSS, ICE, IF, RIB, facture/BL détaillé `0107-2026`, BL simple `06-07-2026`, 10 × 800, TVA 20 %, 8000 HT / 1600 TVA / 9600 TTC.
-
-TEL / FAX / email / banque restent vides car absents des références.
-
-### Logo temporaire
-
-- [x] logo fictif TS dans `src/brand.ts` ;
-- [x] utilisé par défaut jusqu’au vrai logo E0/E6 ;
-- [x] jamais présenté comme actif officiel.
-
-### Géométrie Original implémentée
-
-- [x] en-tête source : titre/numéro gauche, société/logo/date droite ;
+- [x] données source verrouillées depuis les PDF fournis ;
+- [x] fixture facture `#0107-2026` ;
+- [x] fixture BL détaillé `#0107-2026` ;
+- [x] fixture BL simple `#06-07-2026` sans client/prix ;
+- [x] géométrie en-tête rapprochée de la source ;
 - [x] objet gras + souligné ;
-- [x] tableau tarifé avec séparations de colonnes calées sur la source ;
-- [x] zone HT/TVA/TTC intégrée dans le grand cadre ;
-- [x] BL simple : tableau 3 colonnes placé vers 118 mm ;
-- [x] BL simple source sans client reflété dans le fixture ;
-- [x] snapshot client rendu seulement s’il existe ;
-- [x] footer rapproché de la source ;
-- [x] signatures non fabriquées ;
-- [x] Page X/Y seulement si Original multi-page ;
-- [x] remises prévues uniquement lorsqu’elles existent ;
-- [x] fallback multi-lignes/multi-page conservé.
+- [x] tableau tarifé + totals dans le même cadre ;
+- [x] BL simple 3 colonnes placé plus bas ;
+- [x] snapshot client conditionnel ;
+- [x] remises conditionnelles ;
+- [x] footer légal reconstruit depuis champs structurés.
 
-### Gates LOT3
+Référence source principale : 10 × 800, HT 8 000, TVA 1 600, TTC 9 600. Les PDF source montrent bien cette structure et ces montants.
 
-- [ ] générer les fixtures avec le **moteur jsPDF exact HEAD** ;
-- [ ] rendre PDF générés en PNG ;
-- [ ] comparaison source → généré ;
-- [ ] corriger micro-écarts typographiques/logo ;
-- [ ] vérifier remises ;
-- [ ] vérifier snapshot client ;
-- [ ] vérifier multi-page ;
-- [ ] build/tests exact HEAD ;
-- [ ] score Original >= 9,5.
+Gates :
+
+- [ ] génération jsPDF exact HEAD ;
+- [ ] rendu PNG du PDF généré ;
+- [ ] comparaison finale source → généré ;
+- [ ] test multi-page réel ;
+- [ ] tests/build HEAD exact ;
+- [ ] score officiel Original >= 9,5/10.
+
+Blocage de preuve actuel : dépendances npm non présentes localement et accès réseau de récupération indisponible. Aucun run GitHub Action n'est consommé pour contourner ce point.
 
 ---
 
 # LOT 4 — PDF Premium
 
-**État : CANDIDAT TECHNIQUE, design à scorer**
+**État : CANDIDAT TECHNIQUE + ORACLE VISUEL, runtime jsPDF non certifié**
 
-- [x] second template ;
-- [x] hiérarchie, tableau, totaux, montant en lettres, signatures/footer ;
-- [x] partage / téléchargement / impression ;
-- [ ] présentation premium des remises ;
-- [ ] revue visuelle réelle ;
-- [ ] corrections ;
-- [ ] score >= 9,5.
+Référence : `docs/PDF_PREMIUM_VALIDATION.md`.
+
+- [x] second template Premium ;
+- [x] hiérarchie document/société/date ;
+- [x] snapshot client adresse/ICE/IF ;
+- [x] remise ligne visible sous désignation ;
+- [x] remise globale séparée ;
+- [x] résumé HT/TVA/TTC dynamique ;
+- [x] footer légal structuré ;
+- [x] aperçu HTML aligné sur les mêmes règles.
+
+Deux oracles indépendants ont été inspectés : cas normal 9 600 TTC et cas stress remises/snapshot 8 208 TTC. Aucun chevauchement observé sur ces deux compositions.
+
+**Score oracle visuel : 9,4/10 candidat.**
+
+Gates :
+
+- [ ] rendu jsPDF exact HEAD ;
+- [ ] multi-page réel ;
+- [ ] partage/téléchargement/impression navigateur réel ;
+- [ ] revue aperçu 390/430/768 ;
+- [ ] tests/build exact HEAD ;
+- [ ] score officiel Premium >= 9,5/10.
 
 ---
 
-# LOT 5 — Mobile / PWA / certification finale
+# LOT 5 — Certification finale mobile / PWA
 
 **État : À CERTIFIER**
 
-- [ ] E0 stockage vierge puis réouverture ;
-- [ ] screenshots 390 / 430 / 768 ;
+- [ ] E0 stockage vierge → onboarding → réouverture ;
+- [ ] parcours document complet ;
+- [ ] finalisation + réouverture ;
+- [ ] historique/lifecycle réel ;
+- [ ] gates LOT1 ;
+- [ ] gates LOT2 ;
+- [ ] PDF Original runtime ;
+- [ ] PDF Premium runtime ;
+- [ ] 390 / 430 / 768 ;
 - [ ] zéro overflow ;
-- [ ] zéro contrôle critique < 44 px ;
-- [ ] clavier mobile ;
-- [ ] installation iPhone / Android ;
-- [ ] offline réel ;
-- [ ] fermeture / réouverture sans perte ;
-- [ ] backup export / restore réel ;
-- [ ] partage PDF iOS / Android ;
-- [ ] création → sauvegarde → finalisation → réouverture → PDF ;
-- [ ] gates runtime LOT1/LOT2 ;
-- [ ] Original vs références ;
-- [ ] Premium >= 9,5 ;
+- [ ] contrôles critiques >=44 px ;
+- [ ] offline ;
+- [ ] backup / restore ;
+- [ ] partage PDF iOS/Android ;
 - [ ] un seul run GitHub Actions final si utile ;
 - [ ] human gate ;
-- [ ] aucun Vercel sans feu vert explicite.
-
----
-
-# Mockup / design lock
-
-- `docs/mockups/UI_V1_MASTER.jpg`
-- `docs/mockups/MOCKUPS_LOCK.md`
-- `docs/UI_V1_MOBILE_SPEC.md`
+- [ ] merge uniquement après preuves.
 
 ---
 
 # NEXT EXACT
 
-1. **LOT 3 — générer réellement le PDF Original avec jsPDF exact HEAD et comparer source → généré.**
-2. Corriger LOT3 jusqu’à >=9,5.
-3. LOT4 PDF Premium.
-4. Audit 390 / 430 / 768.
-5. Gates runtime LOT1/LOT2 + PWA/offline/backup/partage.
-6. Un seul run Actions final si utile.
-7. Human gate → merge.
+1. Continuer tout travail indépendant sans attendre le runtime jsPDF.
+2. Audit/certification mobile 390 / 430 / 768 et parcours E0→E6.
+3. Gates runtime LOT1 / LOT2 / backup / offline.
+4. Dès qu'un runtime avec dépendances est disponible : rendre Original + Premium exact HEAD et fermer leurs gates visuelles.
+5. Un seul run Actions final si nécessaire.
+6. Human gate → merge.
 
 ## Définition de DONE
 
-Onboarding fiable, calculs prouvés, numérotation incorruptible, données sauvegardables/restaurables, mobile 390/430/768 propre, PDF Original/Premium >= 9,5, parcours téléphone complet, gates prouvés et validation humaine avant merge/déploiement.
+Le chantier est DONE uniquement quand : onboarding fiable, moteur métier prouvé, données restaurables, mobile 390/430/768 propre, Original/Premium >=9,5 avec rendu runtime, parcours téléphone complet, un run final si nécessaire et validation humaine avant merge. Aucun Vercel sans autorisation explicite.
