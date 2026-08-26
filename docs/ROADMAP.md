@@ -20,7 +20,7 @@ Créer une PWA mobile-first, installable sur iPhone et Android, très simple à 
 
 # LOT 0 — Fondation / PWA
 
-**État : RUNTIME WEB PROUVÉ, appareil réel non certifié**
+**État : RUNTIME WEB EXACT-HEAD PROUVÉ, appareil réel non certifié**
 
 - [x] React + TypeScript + Vite ;
 - [x] PWA / service worker ;
@@ -38,12 +38,12 @@ Créer une PWA mobile-first, installable sur iPhone et Android, très simple à 
 - [x] workflow GitHub `workflow_dispatch` uniquement ;
 - [x] safe-area CSS prévue.
 
-Preuves runtime cumulées : runs `32956883264`, `32959150633`, `32973432147`, `32977943138`. Le run `32977943138` a confirmé 15/15 tests, build, manifest/SW, 0 vulnérabilité critique, backup/restore et reload offline avant sa seule réserve tactile.
+Preuve finale web : run `33007119765`, artifact `9621115970`, HEAD certifié `c2873b7c6ff6446aae8b797fb7e0233de4ea061d`.
 
 Gates :
 
-- [ ] `npm test` HEAD exact final ;
-- [ ] `npm run build` HEAD exact final ;
+- [x] `npm test` HEAD exact final ;
+- [x] `npm run build` HEAD exact final ;
 - [ ] installation réelle iPhone/Android ;
 - [x] offline réel ;
 - [ ] fermeture/réouverture sans perte sur appareil réel.
@@ -63,7 +63,7 @@ Gates :
 - [x] E6 réglages ;
 - [x] Visual Polish V1 : glass, bottom bar, FAB, cartes et surfaces harmonisées.
 
-Preuve : `docs/MOBILE_RUNTIME_AUDIT.md`, run `32959150633`, artifact `9603634672`.
+Preuves : run `32959150633`, artifact `9603634672`, complété par run final `33007119765`.
 
 Gates :
 
@@ -73,13 +73,13 @@ Gates :
 - [x] zéro overflow / erreur console ;
 - [x] score UI global officiel >= 9,3/10.
 
-**Score visuel runtime : 9,3/10.**
+**Score visuel runtime global : 9,3/10.**
 
 ---
 
 # LOT 1 — Moteur métier production-grade
 
-**État : RUNTIME PROUVÉ, exact-head final encore ouvert**
+**État : EXACT-HEAD FINAL PROUVÉ**
 
 - [x] brouillon sans numéro définitif ;
 - [x] séquence indépendante type + année ;
@@ -105,15 +105,15 @@ Gates :
 - [x] double tap Finaliser ;
 - [x] stale draft ;
 - [x] migration legacy ;
-- [ ] tests/build HEAD exact final.
+- [x] tests/build HEAD exact final.
 
-Preuves cumulées : runs `32963581880`, `32966380813`, `32973432147`, `32977943138`.
+Preuves cumulées : runs `32963581880`, `32966380813`, `32977943138`, final exact-head `33007119765`.
 
 ---
 
 # LOT 2 — Clients & catalogue rapide
 
-**État : RUNTIME PROUVÉ, revue mobile dédiée restante**
+**État : RUNTIME + REVUE MOBILE DÉDIÉE PROUVÉS**
 
 - [x] IndexedDB DB v3 `clients` + `catalog` ;
 - [x] fiche client locale ;
@@ -132,15 +132,15 @@ Gates :
 - [x] fréquence/déduplication runtime ;
 - [x] backup v2 réel ;
 - [x] restore v1 réel ;
-- [ ] revue mobile 390/430/768 des suggestions/sheets.
+- [x] revue mobile 390/430/768 des suggestions/sheets.
 
-Le run `32977943138` a confirmé avant le contrôle tactile : conservation adresse/ICE/IF lors d'une déduplication canonique, dernier PU = 100 après seconde finalisation, backup v2, restore v1/v2 et rejet d'un numéro final dupliqué sans mutation.
+Run final `33007119765` : suggestions + fiche client sur 390/430/768, zéro overflow/erreur, bouton fermer 44×44 px.
 
 ---
 
 # LOT 3 — PDF Original
 
-**État : RUNTIME MULTI-PAGE PROUVÉ, fidélité à polir**
+**État : CERTIFIÉ WEB, appareil réel non requis pour le rendu**
 
 Sources : `docs/PDF_RUNTIME_CERTIFICATION.md`, `docs/PDF_ORIGINAL_REFERENCE.md`, `docs/PDF_ORIGINAL_GEOMETRY.md`, `src/referenceFixture.ts`.
 
@@ -162,17 +162,17 @@ Gates :
 - [x] rendu PNG du PDF généré à 180 dpi ;
 - [x] comparaison source → généré effectuée ;
 - [x] test multi-page réel ;
-- [ ] tests/build HEAD exact final ;
-- [ ] score officiel Original >= 9,5/10.
+- [x] tests/build HEAD exact final ;
+- [x] score officiel Original >= 9,5/10.
 
-**Score runtime actuel Original : 9,3/10.**
-Le stress multi-page réel produit 4 pages propres sans chevauchement visible.
+**Score final Original : 9,5/10.**
+Preuve post-run : rendu 200 dpi, comparaison visuelle source → artifact `9621115970`; multi-page = 4 pages propres sans chevauchement visible.
 
 ---
 
 # LOT 4 — PDF Premium
 
-**État : RUNTIME MULTI-PAGE PROUVÉ, finition à polir**
+**État : CERTIFIÉ WEB, partage navigateur réel restant**
 
 - [x] second template Premium ;
 - [x] hiérarchie document/société/date ;
@@ -189,24 +189,24 @@ Gates :
 - [x] multi-page réel ;
 - [ ] partage/téléchargement/impression navigateur réel ;
 - [x] revue aperçu Premium 390/430/768 ;
-- [ ] tests/build exact HEAD final ;
-- [ ] score officiel Premium >= 9,5/10.
+- [x] tests/build exact HEAD final ;
+- [x] score officiel Premium >= 9,5/10.
 
-**Score runtime actuel Premium : 9,4/10.**
-Le stress multi-page réel produit 3 pages propres sans chevauchement visible.
+**Score final Premium : 9,5/10.**
+Run `33007119765` : Premium explicite sur 390/430/768, zéro overflow/erreur, actions 56 px ; multi-page = 3 pages propres sans chevauchement visible.
 
 ---
 
 # LOT 5 — Certification finale mobile / PWA
 
-**État : RUNTIME WEB FORTEMENT PROUVÉ, appareil réel + run exact HEAD restants**
+**État : WEB CERTIFIÉ, APPAREIL RÉEL + HUMAN GATE RESTANTS**
 
 - [x] E0 stockage vierge → onboarding → données persistées après reload ;
 - [x] parcours document complet avec finalisation ;
 - [x] finalisation + réouverture ;
 - [x] historique/lifecycle complet réel ;
-- [ ] gates LOT1 ;
-- [ ] gates LOT2 ;
+- [x] gates LOT1 ;
+- [x] gates LOT2 ;
 - [x] PDF Original runtime ;
 - [x] PDF Premium runtime ;
 - [x] 390 / 430 / 768 ;
@@ -215,32 +215,25 @@ Le stress multi-page réel produit 3 pages propres sans chevauchement visible.
 - [x] offline ;
 - [x] backup / restore ;
 - [ ] partage PDF iOS/Android ;
-- [ ] un seul run GitHub Actions final si utile ;
+- [x] un seul run GitHub Actions final si utile ;
 - [ ] human gate ;
 - [ ] merge uniquement après preuves.
 
-Autosave : **récupéré après reload sur 390 / 430 / 768** dans l'artifact `9603634672`.
-
-Preuve tactile :
-- BEFORE runtime run `32977943138` : `.sheet-close` = `43,34×43,34` pendant l'animation du sheet ;
-- cause : `44 px × scale(.985) = 43,34 px` ;
-- correctif produit `c4b7618ad0ab454f5d437c64b4495f1d49a6a75f` : 45 px ;
-- contre-preuve Chromium indépendante sur 390/430/768 : `44,325 px` pendant `scale(.985)` et actions Historique = `45 px`.
+Run final `33007119765` / artifact `9621115970` : 15/15 tests, build, audit prod 0 vulnérabilité, v4 10 assertions, Premium/mobile 2 assertions, 0 page/console error, offline=true, cibles tactiles 44,325/45/56 px selon contrôle.
 
 ---
 
 # NEXT EXACT
 
-1. Obtenir un run GitHub exact HEAD du correctif tactile ; le connecteur actuel ne déclenche pas les workflows sur ses propres écritures.
-2. Revue mobile dédiée suggestions/client sheet 390/430/768.
-3. PDF : partage/téléchargement/impression réel + polish Original 9,3→9,5 et Premium 9,4→9,5.
-4. Installation + fermeture/réouverture sur iPhone/Android réel.
-5. Human gate → merge.
+1. Sur appareil réel : installer sur iPhone/Android puis fermer/réouvrir sans perte.
+2. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
+3. Human gate final.
+4. Merge uniquement après validation humaine.
 
 ## Avancement mécanique
 
-**99 critères implémentés/observés sur 116 = 85,3 %.**
+**110 critères implémentés/observés sur 116 = 94,8 %.**
 
 ## Définition de DONE
 
-Le chantier est DONE uniquement quand : onboarding fiable, moteur métier prouvé, données restaurables, mobile 390/430/768 propre avec cibles >=44 px, Original/Premium >=9,5, parcours téléphone complet, un run final exact HEAD et validation humaine avant merge. Aucun Vercel sans autorisation explicite.
+Le chantier est DONE uniquement quand les 6 gates restantes sont prouvées : installation réelle iPhone/Android, fermeture/réouverture sans perte, partage/téléchargement/impression navigateur réel, partage PDF iOS/Android, human gate, puis merge. Aucun Vercel sans autorisation explicite.

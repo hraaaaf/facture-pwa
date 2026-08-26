@@ -2,10 +2,6 @@
 
 Date : 26 août 2026
 
-## Reprise
-
-Lire : `docs/HANDOVER.md` → `docs/ROADMAP.md` → `docs/MOBILE_RUNTIME_AUDIT.md` → `docs/PDF_RUNTIME_CERTIFICATION.md` → références PDF/UI.
-
 ## Goal
 
 PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, avec moteur métier robuste, mémoire clients/catalogue, autosave et PDF Original/Premium.
@@ -16,105 +12,81 @@ PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, ave
 - branche : `m0/pwa-foundation`
 - PR : `#1 — M0 — Fondation PWA facturation`
 - base : `main`
-- produit tactile corrigé : `c4b7618ad0ab454f5d437c64b4495f1d49a6a75f`
+- HEAD produit certifié : `c2873b7c6ff6446aae8b797fb7e0233de4ea061d`
+- run final : `33007119765`
+- artifact : `9621115970`
+- workflow lourd : `workflow_dispatch` uniquement après closeout
+- aucun Vercel
 - aucun merge avant human gate
-- workflow lourd remis en `workflow_dispatch`
-- aucun Vercel sans autorisation explicite
 
 ## Avancement global
 
-**99 critères implémentés/observés sur 116 = 85,3 %.**
+**110 critères implémentés/observés sur 116 = 94,8 %.**
 
-Le pourcentage est mécanique depuis `docs/ROADMAP.md`. Le chantier n'est pas DONE.
+Le chantier n'est pas DONE : 6 gates appareil réel / partage / human gate / merge restent ouvertes.
 
-## Preuves principales
+## Preuve finale exact-head
 
-### Mobile/UI
+Run `33007119765` sur `c2873b7c6ff6446aae8b797fb7e0233de4ea061d` :
 
-Run `32959150633`, artifact `9603634672` :
-- 24 captures E0→E6 en 390 / 430 / 768 ;
-- 0 overflow ;
-- 0 erreur page/console ;
-- autosave récupéré après reload sur les 3 tailles ;
-- aperçu E4 revu aux 3 tailles ;
-- score UI runtime : **9,3/10**.
+- CI : SUCCESS ;
+- jsPDF `4.2.1` + AutoTable `5.0.8` ;
+- `npm audit --omit=dev --audit-level=critical` : 0 vulnérabilité ;
+- tests : 15/15 ;
+- build + PWA SW/manifest : SUCCESS ;
+- runtime v4 : 10 assertions, `offline=true`, 0 erreur page/console ;
+- Premium/mobile : 2 assertions, 0 erreur page/console ;
+- artifact final : `9621115970`, 27 fichiers.
 
-### PDF
+## Runtime métier / stockage
 
-Run `32956883264`, artifact `9602313604` :
-- tests/build/PWA ;
-- 5 PDF runtime ;
-- Original **9,3/10** ;
-- Premium **9,4/10**.
+Le run final confirme notamment : deux factures séquentielles, déduplication client sans perte adresse/ICE/IF, catalogue `usageCount=2` et dernier PU=100/TVA=20, préfixe dupliqué refusé, backup v2 cohérent, restore v1 + migration, restore v2, rejet backup avec numéro final dupliqué sans mutation, reload offline via SW.
 
-Runs ultérieurs avec jsPDF `4.2.1` + AutoTable `5.0.8` :
-- `npm audit --omit=dev` : 0 vulnérabilité ;
-- 15/15 tests sur `d03d38a...` ;
-- build + manifest/SW ;
-- Original multi-page : 4 pages propres ;
-- Premium multi-page : 3 pages propres.
+## Mobile / tactile
 
-### Métier / backup / offline
+Run final :
 
-Les runs `32963581880`, `32966380813`, `32973432147`, `32977943138` ont prouvé cumulativement :
-- `F-2026-001 → 002 → annulation → 003` ;
-- séquences Devis/Facture/BL/BC indépendantes ;
-- reset annuel ;
-- double finalisation sans trou ;
-- réouverture d'un finalisé ;
-- lifecycle PAYÉ/CANCELLED ;
-- stale draft incapable d'écraser un finalisé ;
-- création/recherche client, snapshot historique et catalogue appris ;
-- dernier PU/TVA/unité ;
-- déduplication canonique sans effacer adresse/ICE/IF ;
-- backup v2 ;
-- restore v1 + migration legacy ;
-- restore v2 ;
-- rejet d'un backup à numéro final dupliqué sans mutation ;
-- reload offline via service worker.
+- sheet close pendant animation : **44,325 px** sur 390/430/768 ;
+- actions Historique : **45 px** ;
+- aperçu Premium : 390/430/768, aucune largeur > viewport ;
+- actions Partager/PDF/Imprimer : **56 px** ;
+- fiche client : bouton fermer **44×44 px** ;
+- suggestions + fiche client revues aux 3 viewports ;
+- 0 overflow, 0 erreur page/console.
 
-Artifact ciblé : run `32977943138`, artifact `9610256507`.
+**Score UI global conservé : 9,3/10.**
+**Score visuel lot Premium/mobile : 9,5/10.**
 
-## Correctif tactile final
+## PDF
 
-BEFORE exact runtime, run `32977943138` :
-- `.sheet-close` = `43,34 × 43,34 px` pendant l'animation.
+Artifact final :
 
-Cause exacte :
-- la cible CSS était 44 px ;
-- le sheet entre avec `scale(.985)` ;
-- `44 × .985 = 43,34`.
+- Original : 1 page normale + stress 4 pages ;
+- Premium : 1 page normale + stress 3 pages ;
+- rendu 200 dpi inspecté ;
+- aucun chevauchement, clipping ou glyph cassé observé ;
+- comparaison source → Original effectuée.
 
-Correctif produit :
-- commit `c4b7618ad0ab454f5d437c64b4495f1d49a6a75f`;
-- `.sheet-close` = 45 px ;
-- actions Historique `min-height` = 45 px.
+Scores finaux :
 
-Validation croisée Chromium indépendante :
-- 390 / 430 / 768 : `.sheet-close` = **44,325 px** pendant `scale(.985)` ;
-- actions Historique = **45 px**.
+- **Original : 9,5/10** ;
+- **Premium : 9,5/10**.
 
-Le connecteur GitHub n'a pas déclenché un nouveau workflow sur ses propres écritures. La gate `tests/build HEAD exact final` reste donc ouverte malgré ce correctif CSS trivial.
+La différence résiduelle de l'Original concerne surtout les éléments dépendant des données société (ex. signature réellement chargée) et de légères variations typographiques, sans défaut de structure.
 
-## État par lot
+## Gates restantes
 
-- LOT0 : runtime web prouvé ; installation/reopen appareil réel + exact-head final ouverts.
-- UI V1 : runtime audité, 9,3/10.
-- LOT1 : moteur runtime prouvé ; exact-head final ouvert.
-- LOT2 : runtime prouvé ; revue mobile dédiée suggestions/client sheet ouverte.
-- LOT3 Original : multi-page prouvé, score 9,3 ; polish 9,5 ouvert.
-- LOT4 Premium : multi-page + preview mobile prouvés, score 9,4 ; partage + polish 9,5 ouverts.
-- LOT5 : backup/offline/parcours/tactile prouvés ; appareil réel, partage et run exact HEAD ouverts.
+1. Installation réelle iPhone/Android.
+2. Fermeture/réouverture sans perte sur appareil réel.
+3. Partage/téléchargement/impression navigateur réel.
+4. Partage PDF iOS/Android.
+5. Human gate final.
+6. Merge uniquement après validation humaine.
 
 ## NEXT EXACT
 
-1. Déclencher manuellement **une seule** `Final Runtime Certification` sur le HEAD courant quand le run exact-head devient nécessaire.
-2. Revue mobile dédiée suggestions/client sheet 390/430/768.
-3. Partage/téléchargement/impression PDF réel + polish Original/Premium jusqu'à >=9,5.
-4. Installation et fermeture/réouverture sur iPhone/Android réel.
-5. Human gate.
-6. Merge uniquement après preuves.
+Passer sur appareil réel, exécuter les quatre preuves d'installation/persistance/partage, puis human gate. Si toutes sont vertes : mise à jour canonique finale, merge uniquement après validation explicite. Aucun Vercel.
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md. État vérifié : 99/116 = 85,3 %. Produit tactile corrigé c4b7618a… ; run 32977943138/artifact 9610256507 a prouvé backup v1/v2, déduplication, catalogue, rejet doublon et offline avant d'échouer uniquement sur sheet-close 43,34 px. Cause = animation scale(.985) sur 44 px ; correctif = 45 px, contre-preuve Chromium 44,325 px sur 390/430/768. Restent exact-head final, revue mobile client/suggestions, partage PDF réel, Original 9,3→9,5, Premium 9,4→9,5, appareil réel, human gate. Aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md. État vérifié : 110/116 = 94,8 %. HEAD produit certifié c2873b7c… ; run final 33007119765 SUCCESS ; artifact 9621115970. 15/15 tests, build, audit 0 vulnérabilité, runtime v4 10 assertions, Premium/mobile 2 assertions, offline et tactile >=44 px prouvés. Original 9,5/10, Premium 9,5/10. Restent uniquement installation iPhone/Android, fermeture/réouverture réelle, partage/téléchargement/impression navigateur réel, partage PDF iOS/Android, human gate puis merge. Aucun Vercel.`
