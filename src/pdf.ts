@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { amountToFrenchDirhams, documentLabel, documentTotals, lineTotalHT } from './lib'
+import { amountToFrenchDirhams, documentLabel, documentTotals, lineSubtotalHT, lineTotalHT } from './lib'
+import { companyLegalLine } from './types'
 import type { CommercialDocument, CompanySettings } from './types'
 
 export type PdfTemplate = 'original' | 'premium'
@@ -76,6 +77,7 @@ const addOriginalPageNumbers = (pdf: jsPDF) => {
 }
 
 const originalFooter = (pdf: jsPDF, company: CompanySettings) => {
+  const legalLine = companyLegalLine(company)
   pdf.setDrawColor(82, 82, 82)
   pdf.setLineWidth(0.28)
   pdf.line(63, 270, 147, 270)
@@ -88,28 +90,41 @@ const originalFooter = (pdf: jsPDF, company: CompanySettings) => {
   const address = company.address ? `ADRESSE : ${company.address}` : ''
   if (address) pdf.text(address, 105, 280, { align: 'center', maxWidth: 190 })
   pdf.setFontSize(5.6)
-  if (company.legalLine) {
-    const legal = pdf.splitTextToSize(company.legalLine, 198)
+  if (legalLine) {
+    const legal = pdf.splitTextToSize(legalLine, 198)
     pdf.text(legal, 105, 286.5, { align: 'center' })
   }
 }
 
 const premiumFooter = (pdf: jsPDF, company: CompanySettings) => {
+  const legalLine = companyLegalLine(company)
   pdf.setDrawColor(222, 231, 225)
   pdf.line(15, 268, 195, 268)
   pdf.setFont('helvetica', 'bold')
   pdf.setTextColor(42, 57, 48)
   pdf.setFontSize(7.2)
-  pdf.text(company.address, 15, 276, { maxWidth: 178 })
+  if (company.address) pdf.text(company.address, 15, 276, { maxWidth: 178 })
   pdf.setFont('helvetica', 'normal')
   pdf.setTextColor(102, 114, 106)
   pdf.setFontSize(6)
-  pdf.text(pdf.splitTextToSize(company.legalLine, 170), 15, 282)
+  if (legalLine) pdf.text(pdf.splitTextToSize(legalLine, 170), 15, 282)
 }
 
 const rows = (document: CommercialDocument) =>
   document.lines.map(line => {
     const base = [line.designation || '—', line.unit || '—', String(line.quantity)]
+    return showPricing(document)
+      ? [...base, money(line.unitPriceHT), money(lineTotalHT(line))]
+      : base
+  })
+
+const premiumRows = (document: CommercialDocument) =>
+  document.lines.map(line => {
+    const discount = line.discountPercent ?? 0
+    const designation = discount > 0
+      ? `${line.designation || '—'}\nRemise ${String(discount).replace('.', ',')} %`
+      : line.designation || '—'
+    const base = [designation, line.unit || '—', String(line.quantity)]
     return showPricing(document)
       ? [...base, money(line.unitPriceHT), money(lineTotalHT(line))]
       : base
@@ -228,6 +243,9 @@ const drawCenteredCellText = (
 const hasDiscounts = (document: CommercialDocument) =>
   document.globalDiscountPercent > 0 || document.lines.some(line => (line.discountPercent ?? 0) > 0)
 
+const lineDiscountTotal = (document: CommercialDocument) =>
+  Math.max(0, document.lines.reduce((sum, line) => sum + lineSubtotalHT(line) - lineTotalHT(line), 0))
+
 const drawOriginalSourceTable = (
   pdf: jsPDF,
   document: CommercialDocument,
@@ -284,17 +302,14 @@ const drawOriginalSourceTable = (
     pdf.setFontSize(8.8)
     setBlack(pdf)
     let y = bodyBottom + 22
-    if (hasDiscounts(document)) {
-      const grossLinesHT = document.lines.reduce((sum, line) => sum + line.quantity * line.unitPriceHT, 0)
-      const lineDiscountTotal = Math.max(0, grossLinesHT - totals.linesHT)
-      if (lineDiscountTotal > 0) {
-        pdf.text(`REMISES LIGNES : ${originalMoney(lineDiscountTotal)}`, 92, y)
-        y += 6
-      }
-      if (totals.globalDiscount > 0) {
-        pdf.text(`REMISE GLOBALE : ${originalMoney(totals.globalDiscount)}`, 92, y)
-        y += 6
-      }
+    const lineDiscount = lineDiscountTotal(document)
+    if (lineDiscount > 0) {
+      pdf.text(`REMISES LIGNES : ${originalMoney(lineDiscount)}`, 92, y)
+      y += 6
+    }
+    if (totals.globalDiscount > 0) {
+      pdf.text(`REMISE GLOBALE : ${originalMoney(totals.globalDiscount)}`, 92, y)
+      y += 6
     }
     pdf.text(`TOTAL HT : ${originalMoney(totals.totalHT)}`, 92, y)
     pdf.text(`${vatLabel(document)} : ${originalMoney(totals.totalVAT)}`, 92, y + 8)
@@ -335,13 +350,22 @@ const buildOriginalFallback = (
       end = 25
     }
     const y = Math.max(end + 10, 118)
+    const lineDiscount = lineDiscountTotal(document)
     pdf.setFont('helvetica', 'bold')
     pdf.setFontSize(9)
-    pdf.text(`TOTAL HT : ${originalMoney(totals.totalHT)}`, 103, y)
-    pdf.text(`${vatLabel(document)} : ${originalMoney(totals.totalVAT)}`, 103, y + 8)
-    if (totals.globalDiscount > 0) pdf.text(`REMISE : ${originalMoney(totals.globalDiscount)}`, 103, y + 16)
-    pdf.text(`TOTAL TTC : ${originalMoney(totals.totalTTC)}`, 190, y + (totals.globalDiscount > 0 ? 28 : 20), { align: 'right' })
-    end = y + 34
+    let summaryY = y
+    if (lineDiscount > 0) {
+      pdf.text(`REMISES LIGNES : ${originalMoney(lineDiscount)}`, 103, summaryY)
+      summaryY += 8
+    }
+    if (totals.globalDiscount > 0) {
+      pdf.text(`REMISE GLOBALE : ${originalMoney(totals.globalDiscount)}`, 103, summaryY)
+      summaryY += 8
+    }
+    pdf.text(`TOTAL HT : ${originalMoney(totals.totalHT)}`, 103, summaryY)
+    pdf.text(`${vatLabel(document)} : ${originalMoney(totals.totalVAT)}`, 103, summaryY + 8)
+    pdf.text(`TOTAL TTC : ${originalMoney(totals.totalTTC)}`, 190, summaryY + 20, { align: 'right' })
+    end = summaryY + 34
   }
   return end
 }
@@ -391,17 +415,14 @@ const buildOriginal = (document: CommercialDocument, company: CompanySettings) =
   return pdf
 }
 
-const buildPremium = (document: CommercialDocument, company: CompanySettings) => {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
-  const totals = documentTotals(document)
-  const priced = showPricing(document)
-  setMetadata(pdf, document, company)
-
+const drawPremiumPage = (pdf: jsPDF) => {
   pdf.setFillColor(247, 251, 248)
   pdf.rect(0, 0, 210, 297, 'F')
   pdf.setFillColor(255, 255, 255)
   pdf.roundedRect(10, 10, 190, 247, 4, 4, 'F')
+}
 
+const drawPremiumHeader = (pdf: jsPDF, document: CommercialDocument, company: CompanySettings) => {
   addImageSafe(pdf, company.logoDataUrl, 16, 16, 24, 20)
   pdf.setTextColor(26, 43, 33)
   pdf.setFont('helvetica', 'bold')
@@ -432,24 +453,59 @@ const buildPremium = (document: CommercialDocument, company: CompanySettings) =>
   pdf.setDrawColor(229, 237, 232)
   pdf.setLineWidth(0.3)
   pdf.line(82, 46, 194, 46)
+}
 
+const drawPremiumInfo = (pdf: jsPDF, document: CommercialDocument) => {
   pdf.setFillColor(249, 251, 250)
-  pdf.roundedRect(16, 53, 76, 28, 3, 3, 'F')
-  pdf.roundedRect(98, 53, 96, 28, 3, 3, 'F')
+  pdf.roundedRect(16, 53, 76, 31, 3, 3, 'F')
+  pdf.roundedRect(98, 53, 96, 31, 3, 3, 'F')
   pdf.setFont('helvetica', 'bold')
   pdf.setTextColor(135, 146, 139)
   pdf.setFontSize(6.5)
   pdf.text('FACTURÉ À', 20, 60)
   pdf.text('OBJET', 102, 60)
+
   pdf.setTextColor(26, 43, 33)
-  pdf.setFontSize(8.5)
-  pdf.text(pdf.splitTextToSize(document.client || 'Client à renseigner', 67), 20, 68)
-  pdf.text(pdf.splitTextToSize(document.object || 'Objet du document', 87), 102, 68)
+  pdf.setFontSize(8.2)
+  const clientLines = pdf.splitTextToSize(document.client || 'Client à renseigner', 67)
+  pdf.text(clientLines, 20, 67)
+  let detailY = 67 + clientLines.length * 3.6 + 1
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(6.2)
+  pdf.setTextColor(93, 106, 98)
+  const details = [
+    document.clientAddress,
+    document.clientIce && `ICE : ${document.clientIce}`,
+    document.clientIfNumber && `IF : ${document.clientIfNumber}`
+  ].filter(Boolean)
+  for (const detail of details) {
+    if (detailY > 81) break
+    const detailLines = pdf.splitTextToSize(detail, 67)
+    pdf.text(detailLines, 20, detailY)
+    detailY += detailLines.length * 3.1
+  }
+
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(8.2)
+  pdf.setTextColor(26, 43, 33)
+  pdf.text(pdf.splitTextToSize(document.object || 'Objet du document', 87), 102, 67)
+}
+
+const buildPremium = (document: CommercialDocument, company: CompanySettings) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+  const totals = documentTotals(document)
+  const priced = showPricing(document)
+  const lineDiscount = lineDiscountTotal(document)
+  setMetadata(pdf, document, company)
+
+  drawPremiumPage(pdf)
+  drawPremiumHeader(pdf, document, company)
+  drawPremiumInfo(pdf, document)
 
   autoTable(pdf, {
-    startY: 90,
+    startY: 92,
     head: head(document),
-    body: rows(document),
+    body: premiumRows(document),
     theme: 'plain',
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 4, minCellHeight: 13, valign: 'middle', halign: 'center', overflow: 'linebreak', lineColor: [232,239,234], lineWidth: 0.25, textColor: [32,46,37] },
     headStyles: { fillColor: [22,48,36], textColor: [255,255,255], fontStyle: 'bold', minCellHeight: 12 },
@@ -458,18 +514,28 @@ const buildPremium = (document: CommercialDocument, company: CompanySettings) =>
       ? { 0:{cellWidth:68,halign:'left'}, 1:{cellWidth:25}, 2:{cellWidth:20}, 3:{cellWidth:32}, 4:{cellWidth:35} }
       : { 0:{cellWidth:100,halign:'left'}, 1:{cellWidth:40}, 2:{cellWidth:40} },
     margin: { left: 15, right: 15, top: 18, bottom: 37 },
+    willDrawPage: data => {
+      if (data.pageNumber > 1) drawPremiumPage(pdf)
+    },
     didDrawPage: () => premiumFooter(pdf, company)
   })
 
-  let end = ((pdf as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 112)
+  let end = ((pdf as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 114)
   if (priced) {
-    if (end > 190) {
+    const summaryRows: Array<[string, string]> = []
+    if (lineDiscount > 0) summaryRows.push(['Remises lignes', `- ${money(lineDiscount)} MAD`])
+    if (totals.globalDiscount > 0) summaryRows.push(['Remise globale', `- ${money(totals.globalDiscount)} MAD`])
+    summaryRows.push(['Total HT', `${money(totals.totalHT)} MAD`])
+    summaryRows.push([vatLabel(document), `${money(totals.totalVAT)} MAD`])
+
+    const summaryHeight = 17 + summaryRows.length * 8 + 12
+    if (end + summaryHeight > 246) {
       pdf.addPage()
-      pdf.setFillColor(247, 251, 248)
-      pdf.rect(0, 0, 210, 297, 'F')
+      drawPremiumPage(pdf)
       premiumFooter(pdf, company)
       end = 28
     }
+
     const y = Math.max(end + 10, 136)
     pdf.setFont('helvetica', 'bold')
     pdf.setTextColor(137,147,141)
@@ -481,21 +547,32 @@ const buildPremium = (document: CommercialDocument, company: CompanySettings) =>
 
     pdf.setFillColor(249,252,250)
     pdf.setDrawColor(230,237,232)
-    pdf.roundedRect(111, y - 5, 83, 39, 3, 3, 'FD')
+    pdf.roundedRect(111, y - 5, 83, summaryHeight, 3, 3, 'FD')
+    pdf.setFont('helvetica', 'normal')
+    pdf.setTextColor(91,104,96)
+    pdf.setFontSize(7.2)
+    let rowY = y + 3
+    for (const [label, value] of summaryRows) {
+      pdf.text(label, 117, rowY)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(30,45,36)
+      pdf.text(value, 188, rowY, { align: 'right' })
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(91,104,96)
+      rowY += 8
+    }
+
+    pdf.setDrawColor(224, 233, 227)
+    pdf.line(117, rowY - 3, 188, rowY - 3)
     pdf.setFont('helvetica', 'normal')
     pdf.setTextColor(91,104,96)
     pdf.setFontSize(7.5)
-    pdf.text('Total HT', 117, y + 3)
-    pdf.text('TVA', 117, y + 11)
-    pdf.text('Total TTC', 117, y + 25)
+    pdf.text('Total TTC', 117, rowY + 5)
     pdf.setFont('helvetica', 'bold')
-    pdf.setTextColor(30,45,36)
-    pdf.text(`${money(totals.totalHT)} MAD`, 188, y + 3, { align: 'right' })
-    pdf.text(`${money(totals.totalVAT)} MAD`, 188, y + 11, { align: 'right' })
     pdf.setTextColor(7,154,81)
     pdf.setFontSize(9.5)
-    pdf.text(`${money(totals.totalTTC)} MAD`, 188, y + 25, { align: 'right' })
-    end = y + 39
+    pdf.text(`${money(totals.totalTTC)} MAD`, 188, rowY + 5, { align: 'right' })
+    end = y - 5 + summaryHeight
   }
 
   const signatureY = Math.max(220, Math.min(end + 25, 238))
