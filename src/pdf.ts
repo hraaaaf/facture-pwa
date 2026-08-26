@@ -137,7 +137,7 @@ const drawOriginalHeader = (pdf: jsPDF, document: CommercialDocument, company: C
   pdf.setFontSize(11.7)
   pdf.setTextColor(76, 76, 76)
   pdf.text(company.name, 166, 9.5, { align: 'center' })
-  addImageSafe(pdf, company.logoDataUrl, 145, 14, 42, 32)
+  addImageSafe(pdf, company.logoDataUrl, 149, 14, 34, 30)
   if (company.brand) {
     pdf.setFontSize(6.2)
     pdf.setTextColor(84, 84, 84)
@@ -285,9 +285,10 @@ const drawOriginalSourceTable = (
     setBlack(pdf)
     let y = bodyBottom + 22
     if (hasDiscounts(document)) {
-      const lineDiscountTotal = Math.max(0, totals.linesHT - document.lines.reduce((sum, line) => sum + line.quantity * line.unitPriceHT, 0))
-      if (lineDiscountTotal !== 0) {
-        pdf.text(`REMISES LIGNES : ${originalMoney(Math.abs(lineDiscountTotal))}`, 92, y)
+      const grossLinesHT = document.lines.reduce((sum, line) => sum + line.quantity * line.unitPriceHT, 0)
+      const lineDiscountTotal = Math.max(0, grossLinesHT - totals.linesHT)
+      if (lineDiscountTotal > 0) {
+        pdf.text(`REMISES LIGNES : ${originalMoney(lineDiscountTotal)}`, 92, y)
         y += 6
       }
       if (totals.globalDiscount > 0) {
