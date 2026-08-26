@@ -1,0 +1,32 @@
+from pathlib import Path
+
+lines = [
+    'name: CI',
+    '',
+    '# GitHub Actions est volontairement manuel pour économiser les minutes.',
+    'on:',
+    '  workflow_dispatch:',
+    '',
+    'permissions:',
+    '  contents: read',
+    '',
+    'jobs:',
+    '  test-and-build:',
+    '    runs-on: ubuntu-latest',
+    '    timeout-minutes: 10',
+    '    steps:',
+    '      - name: Checkout',
+    '        uses: actions/checkout@v4',
+    '      - name: Node',
+    '        uses: actions/setup-node@v4',
+    '        with:',
+    '          node-version: 22',
+    '      - name: Install',
+    '        run: npm install --no-audit --no-fund',
+    '      - name: Tests',
+    '        run: npm test',
+    '      - name: Build',
+    '        run: npm run build',
+    ''
+]
+Path('.github/workflows/ci.yml').write_text('\n'.join(lines))
