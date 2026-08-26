@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { autoTable } from 'jspdf-autotable'
 import { amountToFrenchDirhams, documentLabel, documentTotals, lineSubtotalHT, lineTotalHT } from './lib'
 import { companyLegalLine } from './types'
 import type { CommercialDocument, CompanySettings } from './types'
