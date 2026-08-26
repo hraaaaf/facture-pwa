@@ -34,6 +34,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: final-runtime-certification
-          path: artifacts/final-certification
+          path: |
+            artifacts/final-certification
+            artifacts/pdf
           if-no-files-found: error
           retention-days: 5
