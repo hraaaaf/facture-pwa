@@ -1,0 +1,55 @@
+name: PDF Premium Themes V2
+
+on:
+  push:
+    branches:
+      - m0/pwa-foundation
+    paths:
+      - certification/.run-pdf-themes-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: UI audit 6 themes
+        run: timeout --signal=TERM --kill-after=5s 150s node scripts/pdf-themes-audit.mjs
+      - name: Verify reports
+        run: |
+          test -f artifacts/pdf-themes-ui/report.json
+          test -f artifacts/pdf-themes/majestic-facture.pdf
+          test -f artifacts/pdf-themes/lumiere-facture.pdf
+          test -f artifacts/pdf-themes/terracotta-facture.pdf
+          test -f artifacts/pdf-themes/innova-facture.pdf
+          test -f artifacts/pdf-themes/platine-facture.pdf
+          test -f artifacts/pdf-themes/atlas-facture.pdf
+      - name: Upload proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-premium-themes-v2
+          path: |
+            artifacts/pdf-themes
+            artifacts/pdf-themes-ui
+          if-no-files-found: error
+          retention-days: 5
