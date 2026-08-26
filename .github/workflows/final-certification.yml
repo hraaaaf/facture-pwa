@@ -5,7 +5,7 @@ on:
     branches:
       - m0/pwa-foundation
     paths:
-      - certification/.run-final-v3
+      - certification/.run-final-v4
 
 permissions:
   contents: read
@@ -36,14 +36,14 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Runtime certification
-        run: node scripts/final-certification-v3.mjs
+        run: node scripts/final-certification-v4.mjs
       - name: Upload certification artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: final-runtime-certification
+          name: final-runtime-certification-v4
           path: |
-            artifacts/final-certification
+            artifacts/final-certification-v4
             artifacts/pdf
           if-no-files-found: error
           retention-days: 5
