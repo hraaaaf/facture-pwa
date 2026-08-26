@@ -75,5 +75,10 @@ export const sourceReferenceSimpleDeliveryNote = (): CommercialDocument => ({
   id: 'source-july-2026-bl-simple',
   type: 'BL',
   number: '06-07-2026',
+  client: '',
+  clientId: '',
+  clientAddress: '',
+  clientIce: '',
+  clientIfNumber: '',
   blShowPrices: false
 })
