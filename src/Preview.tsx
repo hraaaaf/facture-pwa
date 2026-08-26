@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { amountToFrenchDirhams, documentLabel, documentTotals, lineTotalHT } from './lib'
+import { amountToFrenchDirhams, documentLabel, documentTotals, lineSubtotalHT, lineTotalHT } from './lib'
 import { downloadPdf, printPdf, sharePdf, type PdfTemplate } from './pdf'
+import { companyLegalLine } from './types'
 import type { CommercialDocument, CompanySettings } from './types'
 import './preview.css'
 
@@ -28,6 +29,9 @@ const stoppedAtLabel = (document: CommercialDocument) => {
   if (document.type === 'BL') return 'ARRÊTÉ LE PRÉSENT BON DE LIVRAISON À LA SOMME DE'
   return 'ARRÊTÉ LE PRÉSENT BON DE COMMANDE À LA SOMME DE'
 }
+
+const lineDiscountTotal = (document: CommercialDocument) =>
+  Math.max(0, document.lines.reduce((sum, line) => sum + lineSubtotalHT(line) - lineTotalHT(line), 0))
 
 export default function PdfPreviewScreen({
   document,
@@ -110,6 +114,7 @@ function OriginalPreview({
   pricingVisible: boolean
 }) {
   const totals = documentTotals(document)
+  const lineDiscount = lineDiscountTotal(document)
   return (
     <>
       <div className="original-top">
@@ -120,7 +125,14 @@ function OriginalPreview({
         <CompanyMark company={company} compact />
       </div>
 
-      <div className="original-client"><strong>Client :</strong> {document.client || '—'}</div>
+      {document.client && (
+        <div className="original-client">
+          <strong>Client :</strong> {document.client}
+          {document.clientAddress && <small>{document.clientAddress}</small>}
+          {document.clientIce && <small>ICE : {document.clientIce}</small>}
+          {document.clientIfNumber && <small>IF : {document.clientIfNumber}</small>}
+        </div>
+      )}
       <div className="original-meta">
         <p><strong>OBJET :</strong> {document.object || '—'}</p>
         <p><strong>{company.cityLabel} LE :</strong><br />{formattedDate(document.date)}</p>
@@ -130,6 +142,8 @@ function OriginalPreview({
 
       {pricingVisible && (
         <div className="original-totals">
+          {lineDiscount > 0 && <span>REMISES LIGNES : <strong>{money(lineDiscount)}</strong></span>}
+          {totals.globalDiscount > 0 && <span>REMISE GLOBALE : <strong>{money(totals.globalDiscount)}</strong></span>}
           <span>TOTAL HT : <strong>{money(totals.totalHT)}</strong></span>
           <span>{vatLabel(document)} : <strong>{money(totals.totalVAT)}</strong></span>
           <span>TOTAL TTC : <strong>{money(totals.totalTTC)}</strong></span>
@@ -158,6 +172,7 @@ function PremiumPreview({
   pricingVisible: boolean
 }) {
   const totals = documentTotals(document)
+  const lineDiscount = lineDiscountTotal(document)
   return (
     <>
       <div className="premium-top">
@@ -194,6 +209,8 @@ function PremiumPreview({
             <p>{amountToFrenchDirhams(totals.totalTTC)}</p>
           </div>
           <div className="premium-summary">
+            {lineDiscount > 0 && <div><span>Remises lignes</span><strong>- {money(lineDiscount)}</strong></div>}
+            {totals.globalDiscount > 0 && <div><span>Remise globale</span><strong>- {money(totals.globalDiscount)}</strong></div>}
             <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div>
             <div><span>{vatLabel(document)}</span><strong>{money(totals.totalVAT)}</strong></div>
             <div className="premium-summary-total"><span>Total TTC</span><strong>{money(totals.totalTTC)} MAD</strong></div>
@@ -227,7 +244,10 @@ function PreviewTable({
       </div>
       {document.lines.map(line => (
         <div className="preview-table-row" key={line.id}>
-          <span>{line.designation || '—'}</span>
+          <span>
+            {line.designation || '—'}
+            {(line.discountPercent ?? 0) > 0 && <small>Remise {line.discountPercent}%</small>}
+          </span>
           <span>{line.unit || '—'}</span>
           <span>{line.quantity}</span>
           {pricingVisible && <span>{money(line.unitPriceHT)}</span>}
@@ -266,10 +286,11 @@ function PreviewSignatures({ company, premium = false }: { company: CompanySetti
 }
 
 function PreviewFooter({ company, premium = false }: { company: CompanySettings; premium?: boolean }) {
+  const legalLine = companyLegalLine(company)
   return (
     <footer className={`preview-footer ${premium ? 'premium' : ''}`}>
       <strong>{company.address}</strong>
-      <span>{company.legalLine}</span>
+      <span>{legalLine}</span>
       <small>Page 1 / 1</small>
     </footer>
   )
