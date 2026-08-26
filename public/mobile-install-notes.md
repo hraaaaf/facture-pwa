@@ -14,7 +14,7 @@
 
 - `index.html` référence `apple-touch-icon` ;
 - `vite.config.ts` inclut les PNG dans les assets PWA et le manifest ;
-- `src/pwa.test.ts` vérifie signature PNG, dimensions et références de configuration.
+- `tests/pwa.test.ts` vérifie signature PNG, dimensions et références de configuration.
 
 ## Gates encore ouvertes
 
