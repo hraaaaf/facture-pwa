@@ -1,0 +1,15 @@
+/* Runtime audit 2026-08-26: enforce minimum mobile touch targets.
+   BEFORE: .sheet-close 42x42; history card actions 40px high.
+   Target: >=44px without changing layout semantics. */
+
+.sheet-close {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.history-card-actions button {
+  min-height: 44px;
+  padding-block: 10px;
+}
