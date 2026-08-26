@@ -12,7 +12,7 @@ PWA mobile-first pour créer rapidement :
 La fondation contient :
 
 - React + TypeScript + Vite ;
-- PWA installable et utilisable hors ligne ;
+- configuration PWA avec service worker, manifest et icônes iOS/Android ;
 - stockage local IndexedDB, sans compte ni base externe ;
 - calcul automatique HT / TVA / TTC ;
 - montant TTC en lettres ;
@@ -20,9 +20,9 @@ La fondation contient :
 - conversion Devis → Facture / BL sans ressaisie ;
 - génération PDF A4 basée sur les modèles de référence ;
 - réglages société, logo, mentions légales et signature ;
-- GitHub Actions pour tests et build.
+- GitHub Actions manuel pour tests et build.
 
-Voir `docs/ROADMAP.md` pour les étapes de certification et de fidélité PDF.
+L'installation réelle iPhone/Android, l'offline réel et la fermeture/réouverture sans perte restent des **gates runtime à certifier**. Voir `docs/ROADMAP.md` et `public/mobile-install-notes.md`.
 
 ## Déploiement
 
