@@ -1,11 +1,7 @@
 name: Final Runtime Certification
 
 on:
-  push:
-    branches:
-      - m0/pwa-foundation
-    paths:
-      - scripts/final-certification.mjs
+  workflow_dispatch:
 
 permissions:
   contents: read
