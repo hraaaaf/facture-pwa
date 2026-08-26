@@ -7,14 +7,15 @@ Date : 26 août 2026
 1. `docs/HANDOVER.md`
 2. `docs/ROADMAP.md`
 3. `docs/PDF_ORIGINAL_REFERENCE.md`
-4. `docs/E0_ONBOARDING.md`
-5. `docs/UI_V1_MOBILE_SPEC.md`
-6. `docs/mockups/MOCKUPS_LOCK.md`
-7. `docs/VISUAL_POLISH_V1.md`
+4. `docs/PDF_ORIGINAL_GEOMETRY.md`
+5. `docs/E0_ONBOARDING.md`
+6. `docs/UI_V1_MOBILE_SPEC.md`
+7. `docs/mockups/MOCKUPS_LOCK.md`
+8. `docs/VISUAL_POLISH_V1.md`
 
 ## Projet
 
-PWA mobile-first Devis / Factures / BL / BC, destinée à rester très simple en surface avec moteur local robuste.
+PWA mobile-first Devis / Factures / BL / BC, très simple en surface avec moteur local robuste.
 
 - repo : `hraaaaf/facture-pwa`
 - branche : `m0/pwa-foundation`
@@ -71,57 +72,59 @@ Backup JSON v2 inclut documents + société + clients + catalogue. Restore v1 re
 
 ## LOT 3 — PDF Original
 
-**ACTIF. Référence source verrouillée.**
+**CANDIDAT GÉOMÉTRIQUE, rendu jsPDF exact-head non certifié.**
 
-Lire `docs/PDF_ORIGINAL_REFERENCE.md`.
+Sources :
+- `docs/PDF_ORIGINAL_REFERENCE.md`
+- `docs/PDF_ORIGINAL_GEOMETRY.md`
+- `src/referenceFixture.ts`
 
-### Données réellement supportées par les PDF fournis
+### Données source verrouillées
 
-Société :
-- Benmoussa Rachid ;
-- TAPISTOR SABRE ;
-- adresse `484, Cit Amal 5, 040 163, MASSIRA, CYM, RABAT` ;
-- RC `82972 RABAT` ;
-- Patente `26450045` ;
-- CNSS `7121982` ;
-- ICE `001806241000086` ;
-- IF `35789182` ;
-- RIB `181 810 21211 52654410108 03`.
+Société : Benmoussa Rachid / TAPISTOR SABRE, adresse, RC, Patente, CNSS, ICE, IF, RIB. TEL / FAX / email / banque restent vides car absents des références.
 
-TEL / FAX / email / banque ne sont pas présents dans les références et restent vides dans le fixture.
-
-Cas source principal :
+Cas principal :
 - Facture / BL détaillé `#0107-2026` ;
-- date `06 Juillet 2026` ;
-- client `SECRÉTARIAT D’ETAT CHARGÉ DE L’ARTISANAT ET DE L’ECONOMIE SOCIALE ET SOLIDAIRE` ;
-- objet source conservé tel quel dans la fixture ;
-- `Capitonnage de porte en similicuir` + `70cm/200cm` ;
-- unité Pièce ; quantité 10 ; PU HT 800 ; TVA 20 % ; HT 8000 ; TVA 1600 ; TTC 9600.
+- `06 Juillet 2026` ;
+- client Secrétariat d’État ;
+- objet et désignation conservés depuis la source ;
+- Pièce × 10 ; PU HT 800 ; TVA 20 % ; HT 8000 ; TVA 1600 ; TTC 9600.
 
-BL simple : `#06-07-2026`, mêmes données non financières, sans colonnes prix ni totaux.
+BL simple : `#06-07-2026`, **aucun client visible dans la source**, tableau 3 colonnes, aucun prix/totaux/montant en lettres.
 
-### Fixture
+### Ce qui vient d’être implémenté dans `src/pdf.ts`
 
-`src/referenceFixture.ts` contient ces cas et **n’est jamais injecté automatiquement dans IndexedDB**. Il sert uniquement aux tests et à la comparaison PDF.
-
-Les tests purs utilisent désormais ce fixture pour ancrer le calcul `8000 / 1600 / 9600`.
+- en-tête Original repositionné selon la référence ;
+- titre/numéro à gauche ;
+- société/logo/date à droite ;
+- objet gras + souligné ;
+- snapshot client ajouté seulement quand il existe ;
+- tableau tarifé avec colonnes source verrouillées ;
+- zone `TOTAL HT / TVA / TOTAL TTC` intégrée dans le même grand cadre ;
+- BL simple avec grand espace vertical et tableau démarrant vers 118 mm ;
+- footer rapproché de la source ;
+- `Page X / Y` masqué sur Original une page et conservé en multi-page ;
+- remises prévues uniquement quand utilisées ;
+- aucune signature manuscrite fabriquée : seule une vraie signature chargée dans E0/E6 peut être affichée.
 
 ### Logo temporaire
 
-`src/brand.ts` contient un logo fictif temporaire : fond vert + canapé stylisé + initiales `TS`.
+`src/brand.ts` contient un logo fictif temporaire vert + canapé stylisé + `TS`. `defaultCompany.logoDataUrl` l’utilise tant que le vrai logo n’est pas chargé. Ce n’est pas un actif officiel.
 
-`defaultCompany.logoDataUrl` l’utilise tant que le vrai logo n’est pas chargé via E0/E6.
+### Preuve disponible
 
-Ce logo n’est pas un actif de marque officiel et devra être remplacé dès que le vrai fichier est disponible.
+Une prévisualisation géométrique indépendante a été rendue localement pour comparer les positions A4. Elle sert de contrôle de mise en page, **pas de certification du jsPDF runtime**.
 
-### NEXT LOT3
+### Gates LOT3 encore ouvertes
 
-1. rapprocher géométriquement le PDF Original de la référence ;
-2. présenter correctement les remises quand elles existent ;
-3. intégrer snapshot client quand disponible sans casser la fidélité source ;
-4. générer le fixture source ;
-5. render source et généré en PNG ;
-6. comparer et corriger jusqu’à score >=9,5.
+1. corriger les derniers micro-écarts de rendu ;
+2. générer réellement les fixtures avec le moteur jsPDF exact HEAD ;
+3. rendre les PDF générés en PNG ;
+4. comparer source → généré ;
+5. vérifier remises + snapshot client ;
+6. vérifier multi-page ;
+7. build/tests exact HEAD ;
+8. score Original >= 9,5/10.
 
 ## PDF Premium
 
@@ -133,17 +136,18 @@ Workflow Actions = `workflow_dispatch` uniquement. Ne pas lancer de run intermé
 
 ## NEXT EXACT
 
-**LOT 3 — PDF Original : géométrie/fidélité à la source verrouillée.**
+**LOT 3 — rendre réellement le PDF Original jsPDF exact HEAD et faire la comparaison source → généré.**
 
 Puis :
 
-1. LOT4 PDF Premium ;
-2. audit 390/430/768 ;
-3. gates runtime LOT1 + LOT2 ;
-4. backup/offline/installation/partage appareils réels ;
-5. un run Actions final si utile ;
-6. human gate puis merge.
+1. corrections LOT3 jusqu’à >=9,5 ;
+2. LOT4 PDF Premium ;
+3. audit 390/430/768 ;
+4. gates runtime LOT1 + LOT2 ;
+5. backup/offline/installation/partage appareils réels ;
+6. un run Actions final si utile ;
+7. human gate puis merge.
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/PDF_ORIGINAL_REFERENCE.md sur m0/pwa-foundation. LOT1/LOT2 sont candidats techniques non certifiés runtime. LOT3 est actif : reproduire le PDF Original à partir du fixture source exact dans src/referenceFixture.ts. Logo TS temporaire seulement. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md, docs/ROADMAP.md, docs/PDF_ORIGINAL_REFERENCE.md et docs/PDF_ORIGINAL_GEOMETRY.md sur m0/pwa-foundation. LOT3 est candidat géométrique mais non certifié jsPDF runtime. NEXT EXACT = générer les fixtures Original exact HEAD, rendre en PNG et comparer aux sources. Logo TS temporaire seulement. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
