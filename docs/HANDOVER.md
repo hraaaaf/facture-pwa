@@ -14,6 +14,7 @@ Lire dans cet ordre :
 6. `docs/UI_V1_MOBILE_SPEC.md`
 7. `docs/mockups/MOCKUPS_LOCK.md`
 8. `docs/VISUAL_POLISH_V1.md`
+9. `public/mobile-install-notes.md`
 
 ## Goal
 
@@ -97,16 +98,37 @@ Oracle visuel indépendant inspecté :
 
 Référence : `docs/PDF_PREMIUM_VALIDATION.md`.
 
+## LOT 5 — PWA / mobile
+
+**CANDIDAT INSTALLABILITÉ, appareil réel non certifié.**
+
+Implémenté et vérifié côté repo :
+
+- `public/apple-touch-icon.png` 180×180 ;
+- `public/pwa-192.png` 192×192 ;
+- `public/pwa-512.png` 512×512 ;
+- `index.html` référence `apple-touch-icon` ;
+- manifest Vite PWA référence 192, 512 et 512 maskable ;
+- `tests/pwa.test.ts` verrouille signature PNG, dimensions et références de configuration ;
+- README corrigé pour ne plus prétendre que l'installation/offline runtime est déjà prouvée.
+
+GitHub Actions : au dernier contrôle, **0 run queued et 0 run in_progress** sur ce repo. Aucun run n'a été lancé pour ce lot.
+
+Reste : installation iPhone/Android, standalone, offline, fermeture/réouverture, partage PDF réel, 390/430/768 et autosave/recovery.
+
+### Autosave/recovery
+
+Non implémenté dans ce passage. Une modification sûre exige une réécriture complète de `App.tsx` via le connecteur ; sans build local disponible, ce changement n'est pas poussé à l'aveugle.
+
 ## NEXT EXACT
 
-Le blocage jsPDF ne doit pas immobiliser le chantier.
-
-1. Audit mobile/runtime E0→E6 en 390 / 430 / 768 dès qu'un navigateur app peut être exécuté.
-2. Gates runtime LOT1 / LOT2 / backup / offline indépendantes.
-3. Dès qu'un runtime npm/jsPDF est disponible : Original + Premium exact HEAD → PNG → comparaison → corrections → score >=9,5.
-4. Un seul run GitHub Actions final si réellement nécessaire.
-5. Human gate → merge.
+1. Dès qu'un runtime applicatif est disponible : 390 / 430 / 768 + parcours E0→E6.
+2. Implémenter puis certifier autosave/recovery avec build/test disponible.
+3. Gates runtime LOT1 / LOT2 / backup / offline.
+4. Dès qu'un runtime npm/jsPDF est disponible : Original + Premium exact HEAD → PNG → comparaison → corrections → score >=9,5.
+5. Un seul run GitHub Actions final si réellement nécessaire.
+6. Human gate → merge.
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. Avancement checklist 62/116 = 53,4 %. LOT1/2 candidats techniques non certifiés. LOT3 candidat géométrique fort mais rendu jsPDF exact HEAD bloqué par dépendances/réseau local. LOT4 candidat technique + oracle visuel 9,4. Continue tout travail indépendant avant d'envisager un unique run Actions final. Aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. Avancement checklist 62/116 = 53,4 %. LOT1/2 candidats techniques non certifiés. LOT3 candidat géométrique fort mais rendu jsPDF exact HEAD bloqué par dépendances/réseau local. LOT4 candidat technique + oracle visuel 9,4. LOT5 a maintenant les icônes PWA 180/192/512, manifest/iOS branchés et tests statiques, mais appareils réels/autosave restent ouverts. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
