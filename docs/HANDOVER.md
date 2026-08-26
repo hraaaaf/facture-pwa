@@ -2,152 +2,111 @@
 
 Date : 26 août 2026
 
-## À lire dans une nouvelle fenêtre
+## Reprise
+
+Lire dans cet ordre :
 
 1. `docs/HANDOVER.md`
 2. `docs/ROADMAP.md`
 3. `docs/PDF_ORIGINAL_REFERENCE.md`
 4. `docs/PDF_ORIGINAL_GEOMETRY.md`
-5. `docs/E0_ONBOARDING.md`
+5. `docs/PDF_PREMIUM_VALIDATION.md`
 6. `docs/UI_V1_MOBILE_SPEC.md`
 7. `docs/mockups/MOCKUPS_LOCK.md`
 8. `docs/VISUAL_POLISH_V1.md`
 
-## Projet
+## Goal
 
-PWA mobile-first Devis / Factures / BL / BC, très simple en surface avec moteur local robuste.
+PWA mobile-first Devis / Factures / BL / BC, très simple en surface, local-first, avec numérotation robuste, mémoire clients/catalogue et PDF Original/Premium.
 
-- repo : `hraaaaf/facture-pwa`
+## Repo
+
+- repository : `hraaaaf/facture-pwa`
 - branche : `m0/pwa-foundation`
 - PR : `#1 — M0 — Fondation PWA facturation`
 - base : `main`
-- aucun merge avant preuves.
+- aucun merge avant preuves
+- GitHub Actions manuel uniquement et à économiser
+- aucun Vercel sans autorisation explicite
 
-## Contraintes
+## Avancement global
 
-- GitHub Actions manuel uniquement et à économiser ;
-- aucun Vercel sans autorisation explicite ;
-- mobile-first iPhone + Android ;
-- mockup glassmorphism verrouillé ;
-- cibles tactiles >=44 px ;
-- preuves avant fermeture définitive d’un lot.
+Roadmap canonique actuelle : **62 critères implémentés/observés sur 116 critères et gates = 53,4 %**.
 
-## UI E0 → E6
+Ce pourcentage est mécanique, calculé depuis les checkboxes de `docs/ROADMAP.md`. Il ne transforme pas un lot candidat en lot certifié.
 
-Tous sont candidats fonctionnels, non certifiés runtime/visuellement.
+## UI
 
-- **E0** : onboarding société 5 étapes.
-- **E1** : dashboard + bottom nav `Accueil | + | Historique`.
-- **E2** : Devis / Facture / BL / BC en un tap.
-- **E3** : éditeur + moteur LOT1 + mémoire LOT2.
-- **E4** : aperçu PDF Original/Premium, partage, téléchargement, impression.
-- **E5** : historique + lifecycle Brouillon/Finalisé/Payé/Annulé.
-- **E6** : identité société, backup, PWA, préfixes de numérotation.
-
-## Visual Polish V1
-
-Candidat visuel à **9,2/10**, non certifié runtime.
-
-Couche `src/polish.css` : profondeur glass renforcée, bottom bar / FAB retravaillés, cartes / éditeur / historique / réglages harmonisés. Score officiel uniquement après 390/430/768 réels.
+E0 → E6 candidats fonctionnels. Visual Polish V1 : **9,2/10 candidat**, non certifié runtime 390/430/768.
 
 ## LOT 1 — moteur métier
 
 **CANDIDAT TECHNIQUE, runtime non certifié.**
 
-Implémenté : brouillon sans numéro, séquences atomiques par type/année, préfixes, numéro irréversible, lifecycle, validations, remises, arrondis, conversion tracée, migration legacy, stale draft et double-finalisation protégés.
+Implémenté : brouillon sans numéro, séquences type+année, préfixes, finalisation atomique, numéro irréversible, lifecycle, validations, remises, arrondis, conversions tracées.
 
-Gates ouvertes : `001→002`, annulation puis `003`, séquences indépendantes, reset annuel, double tap, stale draft, migration legacy, tests/build HEAD exact.
+Reste : `001→002→annulation→003`, séquences indépendantes, reset annuel, double tap, stale draft, migration legacy, tests/build exact HEAD.
 
-## LOT 2 — Clients & catalogue rapide
+## LOT 2 — Clients & catalogue
 
 **CANDIDAT TECHNIQUE, runtime non certifié.**
 
-IndexedDB DB v3 avec `clients` + `catalog`.
+DB v3, clients réutilisables, autocomplétion, snapshot adresse/ICE/IF, catalogue appris après finalisation, dernier PU/TVA/unité, backup v2 + restore v1.
 
-Clients : fiche locale, autocomplétion, bottom sheet rapide, snapshot historique `clientAddress/clientIce/clientIfNumber`.
-
-Catalogue : apprentissage après finalisation uniquement, prestations fréquentes, dernier PU HT / TVA / unité, déduplication insensible à casse/accents/espaces.
-
-Backup JSON v2 inclut documents + société + clients + catalogue. Restore v1 reste accepté.
+Reste : preuves runtime client/snapshot/catalogue/déduplication/backup et revue mobile.
 
 ## LOT 3 — PDF Original
 
-**CANDIDAT GÉOMÉTRIQUE, rendu jsPDF exact-head non certifié.**
+**CANDIDAT GÉOMÉTRIQUE FORT, runtime jsPDF exact HEAD non certifié.**
 
-Sources :
-- `docs/PDF_ORIGINAL_REFERENCE.md`
-- `docs/PDF_ORIGINAL_GEOMETRY.md`
-- `src/referenceFixture.ts`
+Sources utilisateur vérifiées :
 
-### Données source verrouillées
+- facture `#0107-2026` : 10 × 800, HT 8 000, TVA 1 600, TTC 9 600 ;
+- BL détaillé `#0107-2026` avec prix/totaux ;
+- BL simple `#06-07-2026` sans client visible et sans prix.
 
-Société : Benmoussa Rachid / TAPISTOR SABRE, adresse, RC, Patente, CNSS, ICE, IF, RIB. TEL / FAX / email / banque restent vides car absents des références.
+Code : géométrie source-like, tableau et totals dans le même cadre, BL simple 3 colonnes placé plus bas, snapshot client conditionnel, remises, footer légal structuré, aucune signature manuscrite fabriquée.
 
-Cas principal :
-- Facture / BL détaillé `#0107-2026` ;
-- `06 Juillet 2026` ;
-- client Secrétariat d’État ;
-- objet et désignation conservés depuis la source ;
-- Pièce × 10 ; PU HT 800 ; TVA 20 % ; HT 8000 ; TVA 1600 ; TTC 9600.
+### Blocage exact
 
-BL simple : `#06-07-2026`, **aucun client visible dans la source**, tableau 3 colonnes, aucun prix/totaux/montant en lettres.
+Le runtime local n'a pas les dépendances npm disponibles. Les tentatives de récupération réseau ont échoué/bloqué. Après deux stratégies réseau similaires, le chantier a changé de voie conformément à la règle d'exécution. **Aucun GitHub Action n'a été consommé pour contourner ce blocage.**
 
-### Ce qui vient d’être implémenté dans `src/pdf.ts`
+La gate restante est donc : exécuter le jsPDF du HEAD réel dès qu'un runtime avec dépendances est disponible, rendre en PNG et comparer définitivement aux sources.
 
-- en-tête Original repositionné selon la référence ;
-- titre/numéro à gauche ;
-- société/logo/date à droite ;
-- objet gras + souligné ;
-- snapshot client ajouté seulement quand il existe ;
-- tableau tarifé avec colonnes source verrouillées ;
-- zone `TOTAL HT / TVA / TOTAL TTC` intégrée dans le même grand cadre ;
-- BL simple avec grand espace vertical et tableau démarrant vers 118 mm ;
-- footer rapproché de la source ;
-- `Page X / Y` masqué sur Original une page et conservé en multi-page ;
-- remises prévues uniquement quand utilisées ;
-- aucune signature manuscrite fabriquée : seule une vraie signature chargée dans E0/E6 peut être affichée.
+## LOT 4 — PDF Premium
 
-### Logo temporaire
+**CANDIDAT TECHNIQUE + ORACLE VISUEL, runtime jsPDF non certifié.**
 
-`src/brand.ts` contient un logo fictif temporaire vert + canapé stylisé + `TS`. `defaultCompany.logoDataUrl` l’utilise tant que le vrai logo n’est pas chargé. Ce n’est pas un actif officiel.
+Derniers changements :
 
-### Preuve disponible
+- footer Original/Premium dérivé directement des champs légaux structurés ;
+- snapshot client adresse/ICE/IF dans Premium ;
+- remise ligne visible sous désignation ;
+- remise globale distincte ;
+- résumé dynamique HT/TVA/TTC ;
+- aperçu HTML aligné sur le PDF ;
+- fond/footer Premium gérés sur pages AutoTable supplémentaires.
 
-Une prévisualisation géométrique indépendante a été rendue localement pour comparer les positions A4. Elle sert de contrôle de mise en page, **pas de certification du jsPDF runtime**.
+Oracle visuel indépendant inspecté :
 
-### Gates LOT3 encore ouvertes
+- cas normal : TTC 9 600 ;
+- cas stress : remise ligne 10 %, remise globale 5 %, HT 6 840, TVA 1 368, TTC 8 208, snapshot client visible ;
+- aucun chevauchement observé sur ces deux cas.
 
-1. corriger les derniers micro-écarts de rendu ;
-2. générer réellement les fixtures avec le moteur jsPDF exact HEAD ;
-3. rendre les PDF générés en PNG ;
-4. comparer source → généré ;
-5. vérifier remises + snapshot client ;
-6. vérifier multi-page ;
-7. build/tests exact HEAD ;
-8. score Original >= 9,5/10.
+**Score oracle Premium : 9,4/10 candidat.** Ce n'est pas le score final runtime.
 
-## PDF Premium
-
-Existe techniquement, non certifié >=9,5. LOT4 après fermeture visuelle de LOT3.
-
-## CI
-
-Workflow Actions = `workflow_dispatch` uniquement. Ne pas lancer de run intermédiaire. Garder un run final utile quand le candidat complet est prêt.
+Référence : `docs/PDF_PREMIUM_VALIDATION.md`.
 
 ## NEXT EXACT
 
-**LOT 3 — rendre réellement le PDF Original jsPDF exact HEAD et faire la comparaison source → généré.**
+Le blocage jsPDF ne doit pas immobiliser le chantier.
 
-Puis :
-
-1. corrections LOT3 jusqu’à >=9,5 ;
-2. LOT4 PDF Premium ;
-3. audit 390/430/768 ;
-4. gates runtime LOT1 + LOT2 ;
-5. backup/offline/installation/partage appareils réels ;
-6. un run Actions final si utile ;
-7. human gate puis merge.
+1. Audit mobile/runtime E0→E6 en 390 / 430 / 768 dès qu'un navigateur app peut être exécuté.
+2. Gates runtime LOT1 / LOT2 / backup / offline indépendantes.
+3. Dès qu'un runtime npm/jsPDF est disponible : Original + Premium exact HEAD → PNG → comparaison → corrections → score >=9,5.
+4. Un seul run GitHub Actions final si réellement nécessaire.
+5. Human gate → merge.
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md, docs/ROADMAP.md, docs/PDF_ORIGINAL_REFERENCE.md et docs/PDF_ORIGINAL_GEOMETRY.md sur m0/pwa-foundation. LOT3 est candidat géométrique mais non certifié jsPDF runtime. NEXT EXACT = générer les fixtures Original exact HEAD, rendre en PNG et comparer aux sources. Logo TS temporaire seulement. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. Avancement checklist 62/116 = 53,4 %. LOT1/2 candidats techniques non certifiés. LOT3 candidat géométrique fort mais rendu jsPDF exact HEAD bloqué par dépendances/réseau local. LOT4 candidat technique + oracle visuel 9,4. Continue tout travail indépendant avant d'envisager un unique run Actions final. Aucun Vercel sans autorisation.`
