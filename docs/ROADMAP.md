@@ -2,7 +2,7 @@
 
 Dernière mise à jour : 26 août 2026
 
-> Source de vérité du projet. En cas de nouvelle fenêtre : `docs/HANDOVER.md` → ce fichier → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/E0_ONBOARDING.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
+> Source de vérité du projet. En cas de nouvelle fenêtre : `docs/HANDOVER.md` → ce fichier → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/E0_ONBOARDING.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
 ## Goal
 
@@ -132,22 +132,13 @@ Bottom sheet Devis / Facture / BL / BC en un tap.
 - métadonnées ;
 - préférence de modèle persistée.
 
-**Important :** les remises sont déjà intégrées aux totaux moteur. Leur présentation PDF détaillée sera harmonisée lors des LOT 3/4.
-
 **Score cible : Original >= 9,5 / Premium >= 9,5**
 
 ## E5 — Historique
 
 **État : ✅ candidat + lifecycle branché**
 
-- recherche / filtres ;
-- ouvrir / dupliquer ;
-- Devis → Facture / BL ;
-- statuts **Brouillon / Finalisé / Payé / Annulé** ;
-- seule une facture peut être marquée payée ;
-- document finalisé non supprimable ;
-- annulation conserve définitivement le numéro ;
-- seul un brouillon peut être supprimé.
+Recherche/filtres, duplication/conversion, statuts Brouillon/Finalisé/Payé/Annulé, annulation sans réutilisation du numéro.
 
 **Score cible : UI 9,3 / UX 9,6**
 
@@ -155,14 +146,7 @@ Bottom sheet Devis / Facture / BL / BC en un tap.
 
 **État : ✅ candidat fonctionnel**
 
-- identité complète ;
-- TVA ;
-- logo / signature ;
-- Original / Premium ;
-- backup / restore ;
-- installation PWA ;
-- **préfixes de numérotation configurables** pour Devis / Facture / BL / BC ;
-- préfixes réellement connectés au moteur LOT1.
+Identité complète, TVA, logo/signature, Original/Premium, backup/restore, installation PWA, préfixes de numérotation reliés au moteur.
 
 **Score cible : UI 9,2 / UX 9,5**
 
@@ -187,44 +171,18 @@ Score candidat intermédiaire : **9,2/10**. Score officiel seulement après runt
 
 **État : ✅ CANDIDAT TECHNIQUE, runtime non certifié**
 
-### Implémenté
+Implémenté : brouillon sans numéro, séquences atomiques type+année, préfixes, numéro irréversible, lifecycle, validations, remises, arrondis, conversions tracées, migration legacy, stale draft et double-finalisation protégés.
 
-- [x] brouillon sans consommation d’un numéro définitif ;
-- [x] séquence indépendante par `type + année` ;
-- [x] préfixes configurables réellement reliés au moteur ;
-- [x] numéro réservé dans la même transaction IndexedDB que la finalisation ;
-- [x] numéro finalisé jamais réutilisé après annulation ;
-- [x] suppression interdite après finalisation ;
-- [x] document finalisé verrouillé en lecture seule ;
-- [x] statuts `DRAFT / FINALIZED / PAID / CANCELLED` ;
-- [x] `PAID` limité aux factures ;
-- [x] validation client / objet / date / désignation ;
-- [x] validation quantité > 0 ;
-- [x] prix >= 0 ;
-- [x] TVA 0..100 ;
-- [x] remise ligne 0..100 % ;
-- [x] remise globale 0..100 % ;
-- [x] arrondi monétaire déterministe à 2 décimales ;
-- [x] TVA calculée après remises ;
-- [x] traçabilité conversion via `sourceDocumentId` ;
-- [x] migration des anciens documents vers le lifecycle ;
-- [x] protection contre un brouillon obsolète qui tenterait d’écraser un document finalisé ;
-- [x] protection contre double finalisation / double consommation de numéro ;
-- [x] compteurs IndexedDB `counters` DB v2 ;
-- [x] restauration backup : compteurs reconstruits depuis les numéros immuables ;
-- [x] tests purs : facture référence, remises/multi-TVA, validation, numérotation, préfixes.
+### Gates LOT1
 
-### Gates LOT1 avant fermeture définitive
-
-- [ ] test runtime `F-2026-001 → F-2026-002` ;
-- [ ] suppression/annulation du 001 puis prochaine facture = 003, jamais 001 ;
-- [ ] Devis / Facture / BL / BC ont des séquences indépendantes ;
-- [ ] reset annuel vérifié ;
-- [ ] double tap Finaliser ne réserve qu’un numéro ;
-- [ ] stale draft ne peut pas écraser un finalisé ;
-- [ ] migration d’un ancien document numéroté ;
-- [ ] build TypeScript exact HEAD ;
-- [ ] tests exact HEAD.
+- [ ] `F-2026-001 → F-2026-002` ;
+- [ ] annulation puis prochain = 003 ;
+- [ ] séquences indépendantes ;
+- [ ] reset annuel ;
+- [ ] double tap ;
+- [ ] stale draft ;
+- [ ] migration legacy ;
+- [ ] build/tests exact HEAD.
 
 ---
 
@@ -232,23 +190,20 @@ Score candidat intermédiaire : **9,2/10**. Score officiel seulement après runt
 
 **État : ✅ CANDIDAT TECHNIQUE, runtime non certifié**
 
-- [x] IndexedDB DB v3 : stores `clients` + `catalog` ;
-- [x] clients réutilisables ;
-- [x] nom / société / adresse / ICE / IF / téléphone / email ;
-- [x] recherche et autocomplétion ;
-- [x] snapshot client conservé sur le document ;
-- [x] articles/prestations mémorisés après finalisation ;
-- [x] dernier PU HT / TVA / unité réutilisables ;
+- [x] DB v3 `clients` + `catalog` ;
+- [x] fiches clients et autocomplétion ;
+- [x] snapshot client historique ;
+- [x] prestations apprises après finalisation ;
+- [x] dernier PU HT / TVA / unité ;
 - [x] prestations fréquentes ;
-- [x] déduplication casse/accents/espaces ;
-- [x] backup v2 clients + catalogue ; restore v1 accepté ;
-- [x] aucune complexité ERP visible à l’utilisateur.
+- [x] déduplication ;
+- [x] backup v2 + restore v1.
 
 ### Gates LOT2
 
-- [ ] créer/retrouver une fiche client ;
-- [ ] modifier fiche sans changer snapshot finalisé ;
-- [ ] finaliser prestation puis la retrouver ;
+- [ ] créer/retrouver client ;
+- [ ] snapshot inchangé après modification ;
+- [ ] prestation retrouvée après finalisation ;
 - [ ] fréquence + déduplication ;
 - [ ] backup v2 + restore v1 ;
 - [ ] 390/430/768 ;
@@ -258,39 +213,49 @@ Score candidat intermédiaire : **9,2/10**. Score officiel seulement après runt
 
 # LOT 3 — PDF Original
 
-**État : 🔄 ACTIF — référence source verrouillée**
+**État : ✅ CANDIDAT GÉOMÉTRIQUE, jsPDF exact-head non certifié**
 
-Référence canonique : `docs/PDF_ORIGINAL_REFERENCE.md` + `src/referenceFixture.ts`.
+Sources :
+- `docs/PDF_ORIGINAL_REFERENCE.md` ;
+- `docs/PDF_ORIGINAL_GEOMETRY.md` ;
+- `src/referenceFixture.ts`.
 
-Données source désormais figées dans la fixture :
-- Benmoussa Rachid / TAPISTOR SABRE ;
-- adresse / RC / Patente / CNSS / ICE / IF / RIB ;
-- client du Secrétariat d’État ;
-- objet et désignation source ;
-- quantité 10 ; PU HT 800 ; TVA 20 % ; HT 8000 ; TTC 9600 ;
-- Facture/BL détaillé `0107-2026` ; BL simple `06-07-2026`.
+Données source verrouillées : Benmoussa Rachid / TAPISTOR SABRE, adresse, RC, Patente, CNSS, ICE, IF, RIB, facture/BL détaillé `0107-2026`, BL simple `06-07-2026`, 10 × 800, TVA 20 %, 8000 HT / 1600 TVA / 9600 TTC.
 
-TEL / FAX / email / banque restent vides car non présents dans les références.
+TEL / FAX / email / banque restent vides car absents des références.
 
 ### Logo temporaire
 
-- [x] logo fictif temporaire dans `src/brand.ts` : fond vert + canapé stylisé + `TS` ;
-- [x] utilisé comme logo par défaut tant que le vrai logo n’est pas chargé dans E0/E6 ;
-- [x] le logo temporaire n’est pas présenté comme actif officiel.
+- [x] logo fictif TS dans `src/brand.ts` ;
+- [x] utilisé par défaut jusqu’au vrai logo E0/E6 ;
+- [x] jamais présenté comme actif officiel.
 
-### PDF Original
+### Géométrie Original implémentée
 
-- [x] A4 / tableau / HT / TVA / TTC / montant en lettres ;
-- [x] BL sans prix ;
-- [x] footer / signatures / multi-page / Page X/Y ;
-- [x] fixture de référence source ;
-- [x] tests calculs ancrés sur 8000 / 1600 / 9600 ;
-- [ ] présentation explicite des remises quand utilisées ;
-- [ ] snapshot client dans la sortie quand disponible ;
-- [ ] reproduction quasi exacte des références ;
-- [ ] typographie / marges / géométrie ;
-- [ ] comparaison render source → render généré ;
-- [ ] score >= 9,5.
+- [x] en-tête source : titre/numéro gauche, société/logo/date droite ;
+- [x] objet gras + souligné ;
+- [x] tableau tarifé avec séparations de colonnes calées sur la source ;
+- [x] zone HT/TVA/TTC intégrée dans le grand cadre ;
+- [x] BL simple : tableau 3 colonnes placé vers 118 mm ;
+- [x] BL simple source sans client reflété dans le fixture ;
+- [x] snapshot client rendu seulement s’il existe ;
+- [x] footer rapproché de la source ;
+- [x] signatures non fabriquées ;
+- [x] Page X/Y seulement si Original multi-page ;
+- [x] remises prévues uniquement lorsqu’elles existent ;
+- [x] fallback multi-lignes/multi-page conservé.
+
+### Gates LOT3
+
+- [ ] générer les fixtures avec le **moteur jsPDF exact HEAD** ;
+- [ ] rendre PDF générés en PNG ;
+- [ ] comparaison source → généré ;
+- [ ] corriger micro-écarts typographiques/logo ;
+- [ ] vérifier remises ;
+- [ ] vérifier snapshot client ;
+- [ ] vérifier multi-page ;
+- [ ] build/tests exact HEAD ;
+- [ ] score Original >= 9,5.
 
 ---
 
@@ -338,21 +303,18 @@ TEL / FAX / email / banque restent vides car non présents dans les références
 - `docs/mockups/MOCKUPS_LOCK.md`
 - `docs/UI_V1_MOBILE_SPEC.md`
 
-Le mockup est une **cible**, pas une décoration.
-
 ---
 
 # NEXT EXACT
 
-1. **LOT 3 — rapprocher géométriquement PDF Original des références verrouillées**.
-2. Intégrer snapshot client + remises dans PDF.
-3. Rendre et comparer source vs généré jusqu’à >=9,5.
-4. LOT 4 — PDF Premium + remises + polish.
-5. Audit 390 / 430 / 768, E0 à E6.
-6. Gates runtime LOT1/LOT2 + backup + offline + installation + partage.
-7. Un seul run Actions final si utile.
-8. Human gate → merge.
+1. **LOT 3 — générer réellement le PDF Original avec jsPDF exact HEAD et comparer source → généré.**
+2. Corriger LOT3 jusqu’à >=9,5.
+3. LOT4 PDF Premium.
+4. Audit 390 / 430 / 768.
+5. Gates runtime LOT1/LOT2 + PWA/offline/backup/partage.
+6. Un seul run Actions final si utile.
+7. Human gate → merge.
 
 ## Définition de DONE
 
-Le projet est DONE quand : onboarding fiable, calculs prouvés, numérotation incorruptible, données sauvegardables/restaurables, mobile 390/430/768 propre, PDF Original/Premium >= 9,5, parcours téléphone complet, gates prouvés et validation humaine avant merge/déploiement.
+Onboarding fiable, calculs prouvés, numérotation incorruptible, données sauvegardables/restaurables, mobile 390/430/768 propre, PDF Original/Premium >= 9,5, parcours téléphone complet, gates prouvés et validation humaine avant merge/déploiement.
