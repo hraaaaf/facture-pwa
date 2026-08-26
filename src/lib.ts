@@ -127,12 +127,24 @@ const localIsoDate = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
+export const validateNumberingPrefixes = (prefixes: NumberingPrefixes): string => {
+  const values = Object.values(prefixes).map(prefix => prefix.trim().toUpperCase())
+  if (values.some(prefix => !prefix)) return 'Chaque type de document doit avoir un préfixe.'
+  if (new Set(values).size !== values.length) return 'Chaque type de document doit avoir un préfixe distinct.'
+  return ''
+}
+
 export const formatDocumentNumber = (
   type: DocumentType,
   year: number,
   sequence: number,
   prefixes: NumberingPrefixes = defaultNumberingPrefixes
-) => `${prefixes[type]}-${year}-${String(sequence).padStart(3, '0')}`
+) => {
+  const issue = validateNumberingPrefixes(prefixes)
+  if (issue) throw new Error(issue)
+  const prefix = prefixes[type].trim().toUpperCase()
+  return `${prefix}-${year}-${String(sequence).padStart(3, '0')}`
+}
 
 export const createBlankDocument = (
   type: DocumentType,

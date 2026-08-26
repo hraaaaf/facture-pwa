@@ -4,7 +4,8 @@ import {
   documentTotals,
   formatDocumentNumber,
   numberToFrench,
-  validateDocument
+  validateDocument,
+  validateNumberingPrefixes
 } from './lib'
 import { sourceReferenceInvoice, sourceReferenceSimpleDeliveryNote } from './referenceFixture'
 import type { CommercialDocument } from './types'
@@ -92,6 +93,13 @@ describe('numérotation', () => {
   it('supporte des préfixes configurables', () => {
     expect(formatDocumentNumber('FACTURE', 2026, 7, { DEVIS: 'D', FACTURE: 'FAC', BL: 'LIV', BC: 'CMD' }))
       .toBe('FAC-2026-007')
+  })
+
+  it('refuse les préfixes vides ou dupliqués', () => {
+    expect(validateNumberingPrefixes({ DEVIS: 'DEV', FACTURE: 'F', BL: 'BL', BC: '' })).toContain('préfixe')
+    expect(validateNumberingPrefixes({ DEVIS: 'F', FACTURE: 'F', BL: 'BL', BC: 'BC' })).toContain('distinct')
+    expect(() => formatDocumentNumber('FACTURE', 2026, 1, { DEVIS: 'F', FACTURE: 'F', BL: 'BL', BC: 'BC' }))
+      .toThrow('distinct')
   })
 })
 

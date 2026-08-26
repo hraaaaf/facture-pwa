@@ -1,4 +1,4 @@
-import { formatDocumentNumber, validateDocument } from './lib'
+import { formatDocumentNumber, validateDocument, validateNumberingPrefixes } from './lib'
 import type {
   CatalogItem,
   ClientProfile,
@@ -277,15 +277,29 @@ export const saveClientProfile = async (input: ClientProfile): Promise<ClientPro
       try {
         const clients = request.result.map(normalizeClient)
         const key = canonicalText(clientDisplayName(candidate))
-        const existing = clients.find(client => client.id === candidate.id || canonicalText(clientDisplayName(client)) === key)
+        const sameId = clients.find(client => client.id === candidate.id)
+        const sameCanonical = clients.find(client => canonicalText(clientDisplayName(client)) === key)
+        const existing = sameId ?? sameCanonical
+        const canonicalOnly = !sameId && Boolean(sameCanonical)
         const now = new Date().toISOString()
-        saved = {
-          ...candidate,
-          id: existing?.id ?? candidate.id ?? crypto.randomUUID(),
-          usageCount: Math.max(existing?.usageCount ?? 0, candidate.usageCount),
-          createdAt: existing?.createdAt ?? candidate.createdAt ?? now,
-          updatedAt: now
-        }
+        saved = canonicalOnly && existing
+          ? {
+              ...existing,
+              address: candidate.address.trim() ? candidate.address : existing.address,
+              ice: candidate.ice.trim() ? candidate.ice : existing.ice,
+              ifNumber: candidate.ifNumber.trim() ? candidate.ifNumber : existing.ifNumber,
+              phone: candidate.phone.trim() ? candidate.phone : existing.phone,
+              email: candidate.email.trim() ? candidate.email : existing.email,
+              usageCount: Math.max(existing.usageCount, candidate.usageCount),
+              updatedAt: now
+            }
+          : {
+              ...candidate,
+              id: existing?.id ?? candidate.id ?? crypto.randomUUID(),
+              usageCount: Math.max(existing?.usageCount ?? 0, candidate.usageCount),
+              createdAt: existing?.createdAt ?? candidate.createdAt ?? now,
+              updatedAt: now
+            }
         store.put(saved)
       } catch (error) { fail(error) }
     }
@@ -591,8 +605,11 @@ export const getCompany = async (): Promise<CompanySettings> => {
   return saved ? normalizeCompany(saved, true) : { ...defaultCompany }
 }
 
-export const saveCompany = (company: CompanySettings) =>
-  transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
+export const saveCompany = (company: CompanySettings) => {
+  const prefixIssue = validateNumberingPrefixes(company.numberingPrefixes)
+  if (prefixIssue) return Promise.reject(new Error(prefixIssue))
+  return transact<IDBValidKey>(SETTINGS_STORE, 'readwrite', store => store.put(withFooterLine(company), 'company'))
+}
 
 export const createLocalBackup = async (): Promise<LocalBackup> => {
   const [documents, company, clients, catalog] = await Promise.all([
@@ -614,6 +631,19 @@ export const restoreLocalBackup = async (value: unknown): Promise<void> => {
   }
   const documents = value.documents.map(normalizeDocument)
   const company = withFooterLine(normalizeCompany(value.company, true))
+  const prefixIssue = validateNumberingPrefixes(company.numberingPrefixes)
+  if (prefixIssue) throw new Error(prefixIssue)
+
+  const finalNumbers = new Set<string>()
+  for (const document of documents) {
+    if (document.status === 'DRAFT' || !document.number.trim()) continue
+    const key = `${document.type}:${document.number.trim().toUpperCase()}`
+    if (finalNumbers.has(key)) {
+      throw new Error(`Sauvegarde invalide : numéro final dupliqué ${document.number}.`)
+    }
+    finalNumbers.add(key)
+  }
+
   const clients = value.version === BACKUP_VERSION && Array.isArray(value.clients)
     ? value.clients.map(normalizeClient)
     : []

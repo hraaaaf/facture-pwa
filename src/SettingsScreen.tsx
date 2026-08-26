@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
+import { validateNumberingPrefixes } from './lib'
 import { createLocalBackup, getCompany, getDocuments, restoreLocalBackup, saveCompany } from './storage'
 import type { CompanySettings, DocumentType } from './types'
 import { defaultCompany } from './types'
@@ -63,13 +64,18 @@ export default function SettingsScreen({ onBack, onDataChanged, installPrompt, o
   }
 
   const save = async () => {
-    if (Object.values(draft.numberingPrefixes).some(prefix => !prefix.trim())) {
-      showFeedback('Chaque type de document doit avoir un préfixe.')
+    const prefixIssue = validateNumberingPrefixes(draft.numberingPrefixes)
+    if (prefixIssue) {
+      showFeedback(prefixIssue)
       return
     }
-    await saveCompany({ ...draft, onboardingCompleted: true })
-    onDataChanged()
-    showFeedback('Réglages enregistrés')
+    try {
+      await saveCompany({ ...draft, onboardingCompleted: true })
+      onDataChanged()
+      showFeedback('Réglages enregistrés')
+    } catch (error) {
+      showFeedback(error instanceof Error ? error.message : 'Réglages invalides')
+    }
   }
 
   const exportBackup = async () => {
