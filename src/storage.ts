@@ -428,11 +428,39 @@ export const saveDocument = async (doc: CommercialDocument): Promise<IDBValidKey
   })
 }
 
-export const removeDocument = async (id: string) => {
-  const documents = await getDocuments()
-  const current = documents.find(document => document.id === id)
-  if (current && current.status !== 'DRAFT') throw new Error('Un document finalisé ne peut pas être supprimé. Utilisez Annuler.')
-  return transact<undefined>(DOCS_STORE, 'readwrite', store => store.delete(id))
+export const removeDocument = async (id: string): Promise<void> => {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DOCS_STORE, 'readwrite')
+    const store = tx.objectStore(DOCS_STORE)
+    const request = store.get(id) as IDBRequest<unknown>
+    let settled = false
+    const fail = (error: unknown) => {
+      if (settled) return
+      settled = true
+      try { tx.abort() } catch { /* transaction already finished */ }
+      db.close()
+      reject(error ?? new Error('Suppression impossible'))
+    }
+    request.onerror = () => fail(request.error)
+    request.onsuccess = () => {
+      try {
+        if (request.result === undefined) return
+        const current = normalizeDocument(request.result)
+        if (current.status !== 'DRAFT') throw new Error('Un document finalisé ne peut pas être supprimé. Utilisez Annuler.')
+        const deletion = store.delete(id)
+        deletion.onerror = () => fail(deletion.error)
+      } catch (error) { fail(error) }
+    }
+    tx.onerror = () => fail(tx.error)
+    tx.onabort = () => fail(tx.error)
+    tx.oncomplete = () => {
+      if (settled) return
+      settled = true
+      db.close()
+      resolve()
+    }
+  })
 }
 
 const sequenceFromNumber = (number: string, year: number) => {

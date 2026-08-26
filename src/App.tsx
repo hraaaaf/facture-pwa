@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   amountToFrenchDirhams,
   createBlankDocument,
@@ -69,6 +69,8 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const [newOpen, setNewOpen] = useState(false)
+  const autosaveTimer = useRef<number | null>(null)
+  const autosaveGeneration = useRef(0)
 
   const refresh = async () => {
     const [savedDocuments, savedCompany, savedClients, savedCatalog] = await Promise.all([
@@ -85,6 +87,41 @@ export default function App() {
   const showNotice = (message: string) => {
     setNotice(message)
     window.setTimeout(() => setNotice(''), 2400)
+  }
+
+  const cancelAutosave = () => {
+    autosaveGeneration.current += 1
+    if (autosaveTimer.current !== null) {
+      window.clearTimeout(autosaveTimer.current)
+      autosaveTimer.current = null
+    }
+  }
+
+  const updateDraft = (next: CommercialDocument) => {
+    setDraft(next)
+    if (next.status !== 'DRAFT') return
+    cancelAutosave()
+    const generation = autosaveGeneration.current
+    autosaveTimer.current = window.setTimeout(() => {
+      const saved = { ...next, updatedAt: new Date().toISOString() }
+      void saveDocument(saved)
+        .then(() => {
+          if (generation !== autosaveGeneration.current) return
+          setDocuments(current => {
+            const without = current.filter(document => document.id !== saved.id)
+            return [saved, ...without].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+          })
+          setDraft(current =>
+            current?.id === saved.id && current.status === 'DRAFT'
+              ? { ...current, updatedAt: saved.updatedAt }
+              : current
+          )
+        })
+        .catch(error => {
+          if (generation !== autosaveGeneration.current) return
+          if (error instanceof Error && error.message.includes('finalisé')) void refresh()
+        })
+    }, 800)
   }
 
   const startDocument = (type: DocumentType) => {
@@ -135,6 +172,7 @@ export default function App() {
   }
 
   const persistDraft = async (document: CommercialDocument) => {
+    cancelAutosave()
     try {
       const saved = { ...document, updatedAt: new Date().toISOString() }
       await saveDocument(saved)
@@ -149,6 +187,7 @@ export default function App() {
   const finalizeDraft = async (document: CommercialDocument) => {
     try {
       if (!window.confirm('Finaliser ce document ? Son numéro deviendra définitif et ne sera jamais réutilisé.')) return
+      cancelAutosave()
       const saved = await finalizeDocument(document, company)
       setDraft(saved)
       try {
@@ -233,7 +272,7 @@ export default function App() {
           company={company}
           clients={clients}
           catalog={catalog}
-          onChange={setDraft}
+          onChange={updateDraft}
           onBack={() => setView('home')}
           onSave={persistDraft}
           onFinalize={finalizeDraft}

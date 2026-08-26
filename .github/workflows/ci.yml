@@ -1,53 +1,26 @@
 name: CI
 
+# GitHub Actions est volontairement manuel pour économiser les minutes.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - m0/pwa-foundation
-    paths:
-      - .github/workflows/ci.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: m0/pwa-foundation
-          fetch-depth: 0
       - name: Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
-      - name: Apply staged hardening
-        run: |
-          python scripts/one-shot-hardening.py
-          git diff --check
-      - name: Tests and PDF artifacts
+      - name: Tests
         run: npm test
       - name: Build
         run: npm run build
-      - name: Upload corrected PDFs
-        uses: actions/upload-artifact@v4
-        with:
-          name: exact-head-pdfs-fixed
-          path: artifacts/pdf/*.pdf
-          if-no-files-found: error
-          retention-days: 3
-      - name: Restore manual CI and push verified patch
-        run: |
-          python scripts/restore-ci.py
-          git rm scripts/one-shot-hardening.py scripts/restore-ci.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/pdf.ts src/referenceFixture.ts src/App.tsx src/storage.ts .github/workflows/ci.yml
-          git commit -m "Harden autosave, atomic delete and PDF fidelity"
-          git push origin HEAD:m0/pwa-foundation

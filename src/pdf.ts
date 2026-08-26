@@ -7,7 +7,9 @@ import type { CommercialDocument, CompanySettings } from './types'
 export type PdfTemplate = 'original' | 'premium'
 
 const money = (value: number) =>
-  new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+  new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .format(value)
+    .replace(/[\u202f\u00a0]/g, ' ')
 
 const originalMoney = (value: number) =>
   Number.isInteger(value)
@@ -153,7 +155,7 @@ const drawOriginalHeader = (pdf: jsPDF, document: CommercialDocument, company: C
   pdf.setTextColor(76, 76, 76)
   pdf.text(company.name, 166, 9.5, { align: 'center' })
   addImageSafe(pdf, company.logoDataUrl, 149, 14, 34, 30)
-  if (company.brand) {
+  if (company.brand && !company.logoDataUrl) {
     pdf.setFontSize(6.2)
     pdf.setTextColor(84, 84, 84)
     pdf.text(company.brand, 166, 48, { align: 'center' })

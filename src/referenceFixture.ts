@@ -1,6 +1,6 @@
 import type { CommercialDocument, CompanySettings } from './types'
 import { defaultNumberingPrefixes } from './types'
-import { temporaryTapistorLogoDataUrl } from './brand'
+import { sourceTapistorLogoDataUrl } from './sourceReferenceLogo'
 
 /**
  * Canonical visual/data fixture transcribed from the supplied July 2026 PDF references.
@@ -23,7 +23,7 @@ export const sourceReferenceCompany: CompanySettings = {
   rib: '181 810 21211 52654410108 03',
   legalLine: 'RC : 82972 RABAT, PATENTE : 26450045, CNSS : 7121982, ICE : 001806241000086, IF : 35789182, RIB : 181 810 21211 52654410108 03',
   defaultVatRate: 20,
-  logoDataUrl: temporaryTapistorLogoDataUrl,
+  logoDataUrl: sourceTapistorLogoDataUrl,
   managerSignatureDataUrl: '',
   pdfTemplate: 'original',
   onboardingCompleted: true,
