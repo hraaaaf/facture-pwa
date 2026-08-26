@@ -1,12 +1,8 @@
 name: Mobile Runtime Audit
 
+# Audit lourd : déclenchement manuel uniquement.
 on:
-  push:
-    branches:
-      - m0/pwa-foundation
-    paths:
-      - .github/workflows/mobile-audit.yml
-      - scripts/mobile-audit.mjs
+  workflow_dispatch:
 
 permissions:
   contents: read
