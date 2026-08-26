@@ -1,15 +1,16 @@
 /* Runtime audit 2026-08-26: enforce minimum mobile touch targets.
    BEFORE: .sheet-close 42x42; history card actions 40px high.
-   Target: >=44px without changing layout semantics. */
+   Runtime animation scales the sheet to .985 during entry, so 44px renders at 43.34px.
+   Target: >=44px even during animation, without changing layout semantics. */
 
 .sheet-close {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: 45px;
+  height: 45px;
+  min-width: 45px;
+  min-height: 45px;
 }
 
 .history-card-actions button {
-  min-height: 44px;
+  min-height: 45px;
   padding-block: 10px;
 }
