@@ -1,7 +1,11 @@
 name: Final Runtime Certification
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - m0/pwa-foundation
+    paths:
+      - certification/.run-final-v2
 
 permissions:
   contents: read
