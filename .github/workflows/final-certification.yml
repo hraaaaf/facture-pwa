@@ -1,6 +1,11 @@
 name: Final Runtime Certification
 
 on:
+  push:
+    branches:
+      - m0/pwa-foundation
+    paths:
+      - certification/.run-final-v5
   workflow_dispatch:
 
 permissions:
@@ -9,7 +14,7 @@ permissions:
 jobs:
   certify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,15 +36,18 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Runtime certification
+      - name: Runtime certification v4
         run: node scripts/final-certification-v4.mjs
+      - name: Premium mobile certification
+        run: node scripts/final-premium-mobile.mjs
       - name: Upload certification artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: final-runtime-certification-v4
+          name: final-runtime-certification-v5
           path: |
             artifacts/final-certification-v4
+            artifacts/final-premium-mobile
             artifacts/pdf
           if-no-files-found: error
           retention-days: 5
