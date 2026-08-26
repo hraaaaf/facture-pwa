@@ -1,0 +1,42 @@
+name: Mobile Runtime Audit
+
+on:
+  push:
+    branches:
+      - m0/pwa-foundation
+    paths:
+      - .github/workflows/mobile-audit.yml
+      - scripts/mobile-audit.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app
+        run: npm install --no-audit --no-fund
+      - name: Build exact HEAD
+        run: npm run build
+      - name: Install Playwright runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit 390 430 768
+        run: node scripts/mobile-audit.mjs
+      - name: Upload runtime screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-runtime-audit
+          path: artifacts/mobile-audit
+          if-no-files-found: error
+          retention-days: 3
