@@ -1,10 +1,15 @@
 name: CI
 
-# GitHub Actions est volontairement manuel pour économiser les minutes.
-# À lancer uniquement pour une certification utile : avant merge important,
-# release, ou lorsqu'un changement touche le build/tests critiques.
+# Workflow manuel par défaut. Le trigger push ci-dessous est volontairement
+# limité à CE fichier pour permettre un unique run de certification à la
+# création de ce commit, sans réactiver les runs sur les changements produit.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - m0/pwa-foundation
+    paths:
+      - .github/workflows/ci.yml
 
 permissions:
   contents: read
@@ -22,7 +27,15 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
-      - name: Tests
+      - name: Tests + exact-head PDF artifacts
         run: npm test
       - name: Build
         run: npm run build
+      - name: Upload exact-head PDF artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exact-head-pdfs
+          path: artifacts/pdf/*.pdf
+          if-no-files-found: ignore
+          retention-days: 3
