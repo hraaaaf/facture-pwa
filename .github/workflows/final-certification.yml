@@ -5,7 +5,7 @@ on:
     branches:
       - m0/pwa-foundation
     paths:
-      - certification/.run-final-v5
+      - certification/.run-final-v6
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ permissions:
 jobs:
   certify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,14 +37,47 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Runtime certification v4
-        run: node scripts/final-certification-v4.mjs
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=5s 90s node scripts/final-certification-v4.mjs
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then exit "$code"; fi
+          node - <<'NODE'
+          const fs = require('fs')
+          const p = 'artifacts/final-certification-v4/report.json'
+          const r = JSON.parse(fs.readFileSync(p, 'utf8'))
+          if (r.failure) throw new Error(r.failure)
+          if (!Array.isArray(r.assertions) || r.assertions.length < 10 || r.assertions.some(a => !a.ok)) throw new Error('v4 assertions incomplete')
+          if ((r.pageErrors || []).length || (r.consoleErrors || []).length) throw new Error('v4 browser errors present')
+          if (r.offline !== true) throw new Error('v4 offline proof missing')
+          console.log(`V4 REPORT VERIFIED: ${r.assertions.length} assertions`)
+          NODE
       - name: Premium mobile certification
-        run: node scripts/final-premium-mobile.mjs
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=5s 90s node scripts/final-premium-mobile.mjs
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then exit "$code"; fi
+          node - <<'NODE'
+          const fs = require('fs')
+          const p = 'artifacts/final-premium-mobile/report.json'
+          const r = JSON.parse(fs.readFileSync(p, 'utf8'))
+          if (r.failure) throw new Error(r.failure)
+          if (!Array.isArray(r.assertions) || r.assertions.length < 2 || r.assertions.some(a => !a.ok)) throw new Error('premium assertions incomplete')
+          if ((r.pageErrors || []).length || (r.consoleErrors || []).length) throw new Error('premium browser errors present')
+          for (const w of ['390', '430', '768']) {
+            if (!r.premium?.[w]) throw new Error(`premium ${w} proof missing`)
+            if (!r.clientFlow?.[w]) throw new Error(`client flow ${w} proof missing`)
+          }
+          console.log(`PREMIUM REPORT VERIFIED: ${r.assertions.length} assertions`)
+          NODE
       - name: Upload certification artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: final-runtime-certification-v5
+          name: final-runtime-certification-v6
           path: |
             artifacts/final-certification-v4
             artifacts/final-premium-mobile
