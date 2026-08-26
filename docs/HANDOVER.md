@@ -70,7 +70,9 @@ Code : géométrie source-like, tableau et totals dans le même cadre, BL simple
 
 ### Blocage exact
 
-Le runtime local n'a pas les dépendances npm disponibles. Les tentatives de récupération réseau ont échoué/bloqué. Après deux stratégies réseau similaires, le chantier a changé de voie conformément à la règle d'exécution. **Aucun GitHub Action n'a été consommé pour contourner ce blocage.**
+Le runtime local n'a pas les dépendances npm disponibles. Les tentatives de récupération réseau ont échoué/bloqué. Une tentative directe de clone du repo a aussi échoué le 26 août 2026 avec `Could not resolve host: github.com`. Le connecteur GitHub reste fonctionnel, mais il ne fournit pas d'action de patch textuel ciblé : les gros fichiers doivent être remplacés en entier.
+
+Après deux stratégies réseau similaires, le chantier a changé de voie conformément à la règle d'exécution. **Aucun GitHub Action n'a été consommé pour contourner ce blocage.**
 
 La gate restante est donc : exécuter le jsPDF du HEAD réel dès qu'un runtime avec dépendances est disponible, rendre en PNG et comparer définitivement aux sources.
 
@@ -120,10 +122,14 @@ Reste : installation iPhone/Android, standalone, offline, fermeture/réouverture
 
 Non implémenté dans ce passage. Une modification sûre exige une réécriture complète de `App.tsx` via le connecteur ; sans build local disponible, ce changement n'est pas poussé à l'aveugle.
 
+### Durcissement suppression brouillon
+
+`removeDocument` vérifie actuellement le statut via une lecture séparée puis exécute le `delete` dans une seconde transaction. La race théorique avec une finalisation concurrente reste ouverte. Le correctif attendu est une seule transaction `readwrite` faisant `get(id)` puis `delete(id)` uniquement si le statut stocké est encore `DRAFT`. Ne pas déclarer cette gate fermée avant implémentation + test.
+
 ## NEXT EXACT
 
-1. Dès qu'un runtime applicatif est disponible : 390 / 430 / 768 + parcours E0→E6.
-2. Implémenter puis certifier autosave/recovery avec build/test disponible.
+1. Dès qu'un runtime applicatif est disponible : implémenter autosave/recovery + suppression brouillon atomique, puis build/test.
+2. 390 / 430 / 768 + parcours E0→E6.
 3. Gates runtime LOT1 / LOT2 / backup / offline.
 4. Dès qu'un runtime npm/jsPDF est disponible : Original + Premium exact HEAD → PNG → comparaison → corrections → score >=9,5.
 5. Un seul run GitHub Actions final si réellement nécessaire.
@@ -131,4 +137,4 @@ Non implémenté dans ce passage. Une modification sûre exige une réécriture 
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. Avancement checklist 62/116 = 53,4 %. LOT1/2 candidats techniques non certifiés. LOT3 candidat géométrique fort mais rendu jsPDF exact HEAD bloqué par dépendances/réseau local. LOT4 candidat technique + oracle visuel 9,4. LOT5 a maintenant les icônes PWA 180/192/512, manifest/iOS branchés et tests statiques, mais appareils réels/autosave restent ouverts. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. Avancement checklist 62/116 = 53,4 %. LOT1/2 candidats techniques non certifiés. LOT3 candidat géométrique fort mais rendu jsPDF exact HEAD bloqué par dépendances/réseau local ; clone local échoue aussi sur DNS github.com. LOT4 candidat technique + oracle visuel 9,4. LOT5 a les icônes PWA 180/192/512, manifest/iOS branchés et tests statiques, mais appareils réels/autosave restent ouverts. removeDocument garde une race théorique à rendre atomique. Aucun run GitHub Actions inutile et aucun Vercel sans autorisation.`
