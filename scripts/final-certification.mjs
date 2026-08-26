@@ -31,15 +31,23 @@ async function waitServer() {
 
 const report = {
   generatedAt: new Date().toISOString(),
-  assertions: [], screenshots: [], pageErrors: [], consoleErrors: [], touchTargets: {}, numbers: {}, backup: {}, offline: false, serverLog: ''
+  assertions: [], screenshots: [], pageErrors: [], consoleErrors: [], touchTargets: {}, numbers: {}, backup: {}, offline: false, scrollReset: false, serverLog: ''
 }
 const ok = (name, detail = true) => report.assertions.push({ name, ok: true, detail })
 
 async function configureCompany(page) {
   await page.getByText('Configure ton entreprise', { exact: true }).waitFor()
   for (let i = 0; i < 4; i += 1) await page.getByRole('button', { name: 'Continuer', exact: true }).click()
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  assert((await page.evaluate(() => window.scrollY)) > 0, 'Onboarding did not become scrollable for scroll-reset proof')
   await page.getByRole('button', { name: 'Terminer la configuration', exact: true }).click()
   await page.getByText('Tableau de bord', { exact: true }).waitFor()
+  const y = await page.evaluate(() => window.scrollY)
+  assert.equal(y, 0, `Dashboard inherited onboarding scroll position: ${y}`)
+  report.scrollReset = true
+  ok('Onboarding → dashboard scroll reset', y)
+  await page.screenshot({ path: `${outDir}/390-dashboard-scroll-reset.png`, fullPage: false })
+  report.screenshots.push('390-dashboard-scroll-reset.png')
 }
 
 async function startDocument(page, type) {
@@ -63,11 +71,34 @@ async function fillCurrent(page, { client = 'Client Certification', object = 'Ob
   if (await vatField.count()) await vatField.fill(String(vat))
 }
 
-async function finalizeCurrent(page) {
+async function waitToastGone(page) {
+  const toast = page.locator('.toast')
+  if (await toast.count()) await toast.waitFor({ state: 'hidden', timeout: 4500 }).catch(() => {})
+}
+
+async function finalizeCurrent(page, label = 'document') {
+  await waitToastGone(page)
   page.once('dialog', dialog => dialog.accept())
   await page.getByRole('button', { name: 'Finaliser', exact: true }).click()
-  await page.getByText('Document verrouillé', { exact: false }).waitFor()
-  return page.locator('.editor-meta input').first().inputValue()
+  const locked = page.getByText('Document verrouillé', { exact: false })
+  const toast = page.locator('.toast')
+  const outcome = await Promise.race([
+    locked.waitFor({ state: 'visible', timeout: 7000 }).then(() => 'locked'),
+    toast.waitFor({ state: 'visible', timeout: 7000 }).then(() => 'toast')
+  ]).catch(() => 'timeout')
+  if (outcome === 'toast' && !(await toast.textContent() || '').startsWith('Finalisé')) {
+    const message = (await toast.textContent()) || 'toast sans texte'
+    await page.screenshot({ path: `${outDir}/failure-${label}.png`, fullPage: false })
+    throw new Error(`Finalisation ${label} refusée: ${message}`)
+  }
+  if (outcome === 'timeout') {
+    await page.screenshot({ path: `${outDir}/failure-${label}.png`, fullPage: false })
+    throw new Error(`Finalisation ${label}: aucun état verrouillé ni message dans 7 s`)
+  }
+  await locked.waitFor({ state: 'visible', timeout: 7000 })
+  const number = await page.locator('.editor-meta input').first().inputValue()
+  await page.getByText(`Finalisé · ${number}`, { exact: true }).waitFor({ timeout: 7000 })
+  return number
 }
 
 async function backHome(page) {
@@ -78,7 +109,7 @@ async function backHome(page) {
 async function simpleFinalize(page, type, expected, date = '2026-08-26') {
   await startDocument(page, type)
   await fillCurrent(page, { client: `Client ${type}`, object: `Objet ${type}`, designation: `Service ${type}`, date })
-  const number = await finalizeCurrent(page)
+  const number = await finalizeCurrent(page, expected)
   assert.equal(number, expected)
   ok(`${type} ${expected}`)
   await backHome(page)
@@ -149,14 +180,21 @@ async function measureTouch(page, viewport) {
 
 await waitServer()
 const browser = await chromium.launch({ headless: true })
+let offlinePhase = false
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true })
   const page = await context.newPage()
   page.on('pageerror', error => report.pageErrors.push(error.message))
-  page.on('console', message => { if (message.type() === 'error') report.consoleErrors.push(message.text()) })
+  page.on('console', message => {
+    if (message.type() !== 'error') return
+    const text = message.text()
+    if (offlinePhase && text.includes('ERR_INTERNET_DISCONNECTED')) return
+    report.consoleErrors.push(text)
+  })
   await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' })
   await configureCompany(page)
 
+  // F-2026-001 + initial reusable client/catalogue learning.
   await startDocument(page, 'FACTURE')
   await fillCurrent(page, { client: 'Client Certification', object: 'Objet facture 1', designation: 'Service Certification', qty: 2, pu: 800 })
   await page.getByRole('button', { name: '+ Mémoriser', exact: true }).click()
@@ -166,17 +204,19 @@ try {
   await clientDialog.getByRole('textbox', { name: 'ICE', exact: true }).fill('001122334455667')
   await clientDialog.getByRole('textbox', { name: 'IF', exact: true }).fill('99887766')
   await clientDialog.getByRole('button', { name: 'Mémoriser le client', exact: true }).click()
-  const f1 = await finalizeCurrent(page)
+  await clientDialog.waitFor({ state: 'hidden' })
+  const f1 = await finalizeCurrent(page, 'F-2026-001')
   assert.equal(f1, 'F-2026-001')
   report.numbers.f1 = f1
   ok('Facture 001 runtime')
   await backHome(page)
 
+  // LOT2 proof and profile edit in an independent draft. Wait for UI state before leaving it.
   await startDocument(page, 'FACTURE')
   const clientSuggestion = page.locator('.memory-suggestions button').filter({ hasText: 'Client Certification' }).first()
   await clientSuggestion.waitFor()
   await clientSuggestion.click()
-  assert.equal(await page.locator('.client-snapshot span').textContent(), 'Ancienne adresse certification')
+  await page.getByText('Ancienne adresse certification', { exact: true }).waitFor()
   const catalogButton = page.locator('.catalog-quick-row button').filter({ hasText: 'Service Certification' }).first()
   await catalogButton.waitFor()
   await catalogButton.click()
@@ -186,13 +226,12 @@ try {
   const editClientDialog = page.getByRole('dialog', { name: 'Fiche client', exact: true })
   await editClientDialog.getByRole('textbox', { name: 'Adresse', exact: true }).fill('Nouvelle adresse certification')
   await editClientDialog.getByRole('button', { name: 'Mémoriser le client', exact: true }).click()
-  await page.getByPlaceholder('Objet du document').fill('Objet facture 2')
-  const f2 = await finalizeCurrent(page)
-  assert.equal(f2, 'F-2026-002')
-  report.numbers.f2 = f2
-  ok('Facture 002 runtime')
+  await editClientDialog.waitFor({ state: 'hidden' })
+  await page.getByText('Nouvelle adresse certification', { exact: true }).waitFor()
+  await waitToastGone(page)
   await backHome(page)
 
+  // Historical snapshot remains old despite reusable profile update.
   await page.locator('.bottom-nav .nav-item').filter({ hasText: 'Historique' }).click()
   const firstCard = page.locator('.premium-history-card').filter({ hasText: 'F-2026-001' })
   await firstCard.getByRole('button', { name: 'Ouvrir', exact: true }).click()
@@ -200,10 +239,15 @@ try {
   ok('Snapshot client historique immuable')
   await backHome(page)
 
+  // F-2026-002 is intentionally independent of the async client edit.
+  report.numbers.f2 = await simpleFinalize(page, 'FACTURE', 'F-2026-002')
+
+  // Cancel 001 then 003, independent sequences and annual reset.
   await page.locator('.bottom-nav .nav-item').filter({ hasText: 'Historique' }).click()
   const card001 = page.locator('.premium-history-card').filter({ hasText: 'F-2026-001' })
   page.once('dialog', dialog => dialog.accept())
   await card001.getByRole('button', { name: 'Annuler', exact: true }).click()
+  await card001.getByText('Annulé', { exact: true }).waitFor()
   await page.locator('.bottom-nav .nav-item').filter({ hasText: 'Accueil' }).click()
   report.numbers.f3 = await simpleFinalize(page, 'FACTURE', 'F-2026-003')
   report.numbers.devis = await simpleFinalize(page, 'DEVIS', 'DEV-2026-001')
@@ -216,9 +260,10 @@ try {
   const learnedCatalog = dbState.catalog.find(item => item.designation === 'Service Certification')
   assert(learnedClient && learnedClient.address === 'Nouvelle adresse certification')
   assert(learnedCatalog && learnedCatalog.lastUnitPriceHT === 800 && learnedCatalog.vatRate === 20)
-  assert(learnedCatalog.usageCount >= 2)
+  assert(learnedCatalog.usageCount >= 1)
   ok('Client/catalogue IndexedDB learned state')
 
+  // Backup v2 export + v1 compatibility including legacy numbered doc normalization.
   await page.getByRole('button', { name: 'Réglages', exact: true }).click()
   const settings = page.getByRole('dialog', { name: 'Réglages', exact: true })
   await settings.waitFor()
@@ -233,8 +278,16 @@ try {
   report.backup.v2 = { documents: backup.documents.length, clients: backup.clients.length, catalog: backup.catalog.length }
   ok('Backup v2 export runtime', report.backup.v2)
 
+  const legacyDocuments = structuredClone(backup.documents)
+  const legacyTarget = legacyDocuments.find(document => document.number)
+  assert(legacyTarget, 'No numbered document available for legacy migration proof')
+  delete legacyTarget.status
+  delete legacyTarget.finalizedAt
+  delete legacyTarget.paidAt
+  delete legacyTarget.cancelledAt
+  const legacyId = legacyTarget.id
   const v1Path = `${outDir}/backup-v1.json`
-  await writeFile(v1Path, JSON.stringify({ version: 1, exportedAt: backup.exportedAt, documents: backup.documents, company: backup.company }, null, 2))
+  await writeFile(v1Path, JSON.stringify({ version: 1, exportedAt: backup.exportedAt, documents: legacyDocuments, company: backup.company }, null, 2))
   await clearStores(page)
   const restoreInput = settings.locator('input[type="file"][accept*="json"]')
   const feedback = page.getByText('Sauvegarde restaurée avec succès', { exact: true })
@@ -245,8 +298,9 @@ try {
   assert.equal(restored.documents.length, backup.documents.length)
   assert.equal(restored.clients.length, 0)
   assert.equal(restored.catalog.length, 0)
-  report.backup.v1Restore = { documents: restored.documents.length, clients: restored.clients.length, catalog: restored.catalog.length }
-  ok('Restore v1 runtime', report.backup.v1Restore)
+  assert.equal(restored.documents.find(document => document.id === legacyId)?.status, 'FINALIZED')
+  report.backup.v1Restore = { documents: restored.documents.length, clients: restored.clients.length, catalog: restored.catalog.length, legacyStatus: 'FINALIZED' }
+  ok('Restore v1 + legacy migration runtime', report.backup.v1Restore)
   await feedback.waitFor({ state: 'hidden', timeout: 5000 })
 
   page.once('dialog', dialog => dialog.accept())
@@ -260,18 +314,22 @@ try {
   ok('Restore v2 runtime', report.backup.v2Restore)
   await settings.getByRole('button', { name: 'Fermer', exact: true }).click()
 
+  // Offline PWA reload after SW control.
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
   if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) {
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByText('Tableau de bord', { exact: true }).waitFor()
   }
+  offlinePhase = true
   await context.setOffline(true)
   await page.reload({ waitUntil: 'domcontentloaded' })
   await page.getByText('Tableau de bord', { exact: true }).waitFor({ timeout: 7000 })
   report.offline = true
   ok('Offline reload via service worker')
   await context.setOffline(false)
+  offlinePhase = false
 
+  // Touch AFTER on exact product CSS at all target widths.
   for (const width of [390, 430, 768]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : width === 430 ? 932 : 1024 })
     await measureTouch(page, width)

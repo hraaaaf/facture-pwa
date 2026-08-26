@@ -77,6 +77,7 @@ function Root() {
         initialValue={bootCompany}
         onComplete={async company => {
           await saveCompany(company)
+          window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
           setBootCompany(company)
           setAppRevision(current => current + 1)
         }}
