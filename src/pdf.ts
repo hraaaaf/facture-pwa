@@ -80,20 +80,21 @@ const addOriginalPageNumbers = (pdf: jsPDF) => {
 
 const originalFooter = (pdf: jsPDF, company: CompanySettings) => {
   const legalLine = companyLegalLine(company)
-  pdf.setDrawColor(82, 82, 82)
-  pdf.setLineWidth(0.28)
+  pdf.setDrawColor(72, 72, 72)
+  pdf.setLineWidth(0.3)
   pdf.line(63, 270, 147, 270)
-  pdf.setLineWidth(0.12)
+  pdf.setLineWidth(0.14)
   pdf.line(63, 271.2, 147, 271.2)
 
-  pdf.setTextColor(62, 62, 62)
-  pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(6.8)
+  pdf.setTextColor(52, 52, 52)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(7.4)
   const address = company.address ? `ADRESSE : ${company.address}` : ''
   if (address) pdf.text(address, 105, 280, { align: 'center', maxWidth: 190 })
-  pdf.setFontSize(5.6)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(6.2)
   if (legalLine) {
-    const legal = pdf.splitTextToSize(legalLine, 198)
+    const legal = pdf.splitTextToSize(legalLine, 194)
     pdf.text(legal, 105, 286.5, { align: 'center' })
   }
 }
@@ -165,10 +166,10 @@ const drawOriginalHeader = (pdf: jsPDF, document: CommercialDocument, company: C
   if (document.client) {
     setBlack(pdf)
     pdf.setFont('helvetica', 'bold')
-    pdf.setFontSize(7.5)
+    pdf.setFontSize(8.3)
     const clientLines = pdf.splitTextToSize(`Client : ${document.client}`, 118)
     pdf.text(clientLines, 13, leftY)
-    leftY += clientLines.length * 4.1 + 2
+    leftY += clientLines.length * 4.35 + 2
 
     const clientDetails = [
       document.clientAddress,
@@ -176,12 +177,12 @@ const drawOriginalHeader = (pdf: jsPDF, document: CommercialDocument, company: C
     ].filter(Boolean)
     if (clientDetails.length) {
       pdf.setFont('helvetica', 'normal')
-      pdf.setFontSize(6.2)
-      pdf.setTextColor(65, 65, 65)
+      pdf.setFontSize(6.5)
+      pdf.setTextColor(58, 58, 58)
       for (const detail of clientDetails) {
         const detailLines = pdf.splitTextToSize(detail, 118)
         pdf.text(detailLines, 13, leftY)
-        leftY += detailLines.length * 3.5
+        leftY += detailLines.length * 3.6
       }
       leftY += 1
     }
@@ -190,13 +191,13 @@ const drawOriginalHeader = (pdf: jsPDF, document: CommercialDocument, company: C
   const objectY = Math.max(59, leftY + 6)
   setBlack(pdf)
   pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(8.4)
+  pdf.setFontSize(9.1)
   const objectLines = pdf.splitTextToSize(`OBJET : ${document.object || '—'}`, 121)
   pdf.text(objectLines, 13, objectY)
   pdf.setDrawColor(37, 37, 37)
-  pdf.setLineWidth(0.18)
+  pdf.setLineWidth(0.2)
   objectLines.forEach((line: string, index: number) => {
-    const y = objectY + index * 4.2 + 0.8
+    const y = objectY + index * 4.45 + 0.8
     pdf.line(13, y, 13 + Math.min(121, pdf.getTextWidth(line)), y)
   })
 
@@ -210,7 +211,7 @@ const drawOriginalHeader = (pdf: jsPDF, document: CommercialDocument, company: C
   pdf.setLineWidth(0.25)
   pdf.line(143, 67, 195, 67)
 
-  return Math.max(72, objectY + objectLines.length * 4.2 + 5)
+  return Math.max(72, objectY + objectLines.length * 4.45 + 5)
 }
 
 const originalColumnXs = (priced: boolean) => priced
@@ -374,8 +375,8 @@ const buildOriginalFallback = (
 
 const drawOriginalSignatures = (pdf: jsPDF, company: CompanySettings, y = 248) => {
   pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(7.1)
-  pdf.setTextColor(82, 82, 82)
+  pdf.setFontSize(7.6)
+  pdf.setTextColor(72, 72, 72)
   pdf.text('Le Client', 18, y)
   pdf.text('Le gérant', 171, y)
   addImageSafe(pdf, company.managerSignatureDataUrl, 153, y - 9, 34, 17)
@@ -405,7 +406,7 @@ const buildOriginal = (document: CommercialDocument, company: CompanySettings) =
     }
     const wordsY = Math.max(211, tableEnd + 26)
     pdf.setFont('helvetica', 'bold')
-    pdf.setFontSize(10.3)
+    pdf.setFontSize(11.1)
     setBlack(pdf)
     const words = `${stoppedAtLabel(document)} ${amountToFrenchDirhams(totals.totalTTC)} TTC`
     pdf.text(pdf.splitTextToSize(words, 174), 18, wordsY)
