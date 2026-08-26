@@ -66,6 +66,7 @@
 .original-title h1 { margin: 0; font-size: clamp(16px, 4.8vw, 30px); font-weight: 500; letter-spacing: -.03em; }
 .original-title strong { display: block; margin-top: 4px; font-size: clamp(11px, 3vw, 18px); font-weight: 500; }
 .original-client { margin-top: 6.5%; font-size: clamp(7px, 2vw, 12px); font-weight: 700; max-width: 60%; }
+.original-client small { display: block; margin-top: 3px; color: #646c66; font-size: .78em; font-weight: 600; }
 .original-meta { margin-top: 3%; display: grid; grid-template-columns: 1fr 32%; gap: 20px; font-size: clamp(7px, 2vw, 12px); }
 .original-meta p { margin: 0; line-height: 1.4; }
 .original-meta p:last-child { text-align: center; }
@@ -94,6 +95,7 @@
 .preview-table-row { min-height: clamp(46px, 12vw, 84px); font-size: clamp(7px, 1.8vw, 11px); }
 .preview-table-row + .preview-table-row { border-top: 1px solid #202520; }
 .preview-table-row span:first-child { text-align: left; }
+.preview-table-row span:first-child small { display: block; margin-top: 4px; color: #0a9b52; font-size: .8em; font-weight: 800; }
 .original-totals { margin: 5% 0 0 auto; width: 48%; display: grid; gap: 7px; font-size: clamp(7px, 2vw, 12px); }
 .original-totals span:last-child { margin-top: 3px; text-align: right; font-size: 1.1em; }
 .original-words { margin-top: 7%; font-size: clamp(7px, 1.9vw, 11px); font-weight: 800; line-height: 1.55; }
@@ -115,6 +117,7 @@
 .premium-info-grid section { min-height: 76px; padding: 4%; background: #f7faf8; border: 1px solid #edf1ee; border-radius: 14px; }
 .premium-info-grid span, .premium-words span { display: block; color: #89918c; font-size: clamp(5.5px, 1.45vw, 8.5px); font-weight: 850; letter-spacing: .1em; }
 .premium-info-grid strong { display: block; margin-top: 7px; font-size: clamp(7px, 2vw, 12px); line-height: 1.4; }
+.premium-info-grid small { display: block; margin-top: 3px; color: #68736c; font-size: clamp(5.4px, 1.4vw, 8px); line-height: 1.35; }
 .preview-table.premium { border: 0; margin-top: 5%; border-radius: 12px; overflow: hidden; background: #fbfcfb; }
 .preview-table.premium .preview-table-head,
 .preview-table.premium .preview-table-row { grid-template-columns: 2.2fr .85fr .75fr 1fr 1.1fr; }
