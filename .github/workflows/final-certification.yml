@@ -1,0 +1,43 @@
+name: Final Runtime Certification
+
+on:
+  push:
+    branches:
+      - m0/pwa-foundation
+    paths:
+      - scripts/final-certification.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build exact HEAD
+        run: npm run build
+      - name: Install Playwright runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Runtime certification
+        run: node scripts/final-certification.mjs
+      - name: Upload certification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-runtime-certification
+          path: artifacts/final-certification
+          if-no-files-found: error
+          retention-days: 5
