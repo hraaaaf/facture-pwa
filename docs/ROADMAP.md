@@ -34,9 +34,11 @@ Créer une PWA mobile-first, installable sur iPhone et Android, très simple à 
 - [x] logo + signature locaux ;
 - [x] export / restauration JSON ;
 - [x] choix PDF Original/Premium ;
-- [x] installation PWA : prompt + fallback iOS/Android ;
+- [x] surface d'installation PWA : prompt + fallback iOS/Android + PNG 180/192/512 + manifest/iOS branchés ;
 - [x] workflow GitHub `workflow_dispatch` uniquement ;
 - [x] safe-area CSS prévue.
+
+Preuve statique PWA supplémentaire : `tests/pwa.test.ts` vérifie signature/dimensions PNG et références `index.html` / `vite.config.ts`. Le test n'est pas déclaré passé tant qu'un runtime npm n'a pas exécuté Vitest.
 
 Gates :
 
@@ -193,7 +195,11 @@ Gates :
 
 # LOT 5 — Certification finale mobile / PWA
 
-**État : À CERTIFIER**
+**État : CANDIDAT INSTALLABILITÉ, runtime appareil à certifier**
+
+Assets installables iOS/Android et branchement manifest présents. `public/mobile-install-notes.md` décrit exactement les preuves disponibles et les gates encore ouvertes.
+
+Autosave/recovery reste ouvert : il ne sera pas poussé par réécriture complète d'`App.tsx` sans possibilité de build/test derrière.
 
 - [ ] E0 stockage vierge → onboarding → réouverture ;
 - [ ] parcours document complet ;
@@ -217,7 +223,7 @@ Gates :
 
 # NEXT EXACT
 
-1. Continuer tout travail indépendant sans attendre le runtime jsPDF.
+1. Dès qu'un runtime app/build est disponible : implémenter + tester autosave/recovery.
 2. Audit/certification mobile 390 / 430 / 768 et parcours E0→E6.
 3. Gates runtime LOT1 / LOT2 / backup / offline.
 4. Dès qu'un runtime avec dépendances est disponible : rendre Original + Premium exact HEAD et fermer leurs gates visuelles.
