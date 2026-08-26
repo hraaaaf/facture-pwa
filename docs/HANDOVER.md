@@ -4,18 +4,7 @@ Date : 26 août 2026
 
 ## Reprise
 
-Lire dans cet ordre :
-
-1. `docs/HANDOVER.md`
-2. `docs/ROADMAP.md`
-3. `docs/MOBILE_RUNTIME_AUDIT.md`
-4. `docs/PDF_RUNTIME_CERTIFICATION.md`
-5. `docs/PDF_ORIGINAL_REFERENCE.md`
-6. `docs/PDF_ORIGINAL_GEOMETRY.md`
-7. `docs/PDF_PREMIUM_VALIDATION.md`
-8. `docs/UI_V1_MOBILE_SPEC.md`
-9. `docs/mockups/MOCKUPS_LOCK.md`
-10. `docs/VISUAL_POLISH_V1.md`
+Lire : `docs/HANDOVER.md` → `docs/ROADMAP.md` → `docs/MOBILE_RUNTIME_AUDIT.md` → `docs/PDF_RUNTIME_CERTIFICATION.md` → références PDF/UI.
 
 ## Goal
 
@@ -27,86 +16,105 @@ PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, ave
 - branche : `m0/pwa-foundation`
 - PR : `#1 — M0 — Fondation PWA facturation`
 - base : `main`
-- aucun merge avant preuves
-- workflows lourds manuels uniquement
+- produit tactile corrigé : `c4b7618ad0ab454f5d437c64b4495f1d49a6a75f`
+- aucun merge avant human gate
+- workflow lourd remis en `workflow_dispatch`
 - aucun Vercel sans autorisation explicite
 
 ## Avancement global
 
-**76 critères implémentés/observés sur 116 = 65,5 %.**
+**99 critères implémentés/observés sur 116 = 85,3 %.**
 
-Pourcentage mécanique depuis `docs/ROADMAP.md`. Pas de DONE implicite.
+Le pourcentage est mécanique depuis `docs/ROADMAP.md`. Le chantier n'est pas DONE.
 
-## Preuve runtime PDF
+## Preuves principales
 
-Run `32956883264`, job `98140389945` : 13/13 tests ✅, `tsc -b && vite build` ✅, PWA manifest/SW ✅, 5 PDF runtime ✅, artifact `9602313604`, commit produit vérifié `b818ee14b35e54749fa8370971aea89945b8044f`.
+### Mobile/UI
 
-Le run global était rouge uniquement sur le push final du bot refusé pour permission workflow ; les étapes produit étaient vertes.
+Run `32959150633`, artifact `9603634672` :
+- 24 captures E0→E6 en 390 / 430 / 768 ;
+- 0 overflow ;
+- 0 erreur page/console ;
+- autosave récupéré après reload sur les 3 tailles ;
+- aperçu E4 revu aux 3 tailles ;
+- score UI runtime : **9,3/10**.
 
-## Preuve runtime mobile
+### PDF
 
-Run `32959150633`, HEAD audité `f69c6f6630afaf5ff9b3cb3de6705b079819712e`, artifact `9603634672 — mobile-runtime-audit`.
+Run `32956883264`, artifact `9602313604` :
+- tests/build/PWA ;
+- 5 PDF runtime ;
+- Original **9,3/10** ;
+- Premium **9,4/10**.
 
-Le statut GitHub du run est resté anormalement `in_progress`, mais l'artifact a bien été créé et contient **24 captures + report.json**.
+Runs ultérieurs avec jsPDF `4.2.1` + AutoTable `5.0.8` :
+- `npm audit --omit=dev` : 0 vulnérabilité ;
+- 15/15 tests sur `d03d38a...` ;
+- build + manifest/SW ;
+- Original multi-page : 4 pages propres ;
+- Premium multi-page : 3 pages propres.
 
-Résultats vérifiés :
+### Métier / backup / offline
 
-- E0 → E6 capturés en 390 / 430 / 768 ;
-- 0 overflow horizontal ;
-- 0 erreur page ;
-- 0 erreur console ;
-- autosave récupéré après reload sur 390 / 430 / 768 ;
-- score visuel runtime : **9,3/10**.
+Les runs `32963581880`, `32966380813`, `32973432147`, `32977943138` ont prouvé cumulativement :
+- `F-2026-001 → 002 → annulation → 003` ;
+- séquences Devis/Facture/BL/BC indépendantes ;
+- reset annuel ;
+- double finalisation sans trou ;
+- réouverture d'un finalisé ;
+- lifecycle PAYÉ/CANCELLED ;
+- stale draft incapable d'écraser un finalisé ;
+- création/recherche client, snapshot historique et catalogue appris ;
+- dernier PU/TVA/unité ;
+- déduplication canonique sans effacer adresse/ICE/IF ;
+- backup v2 ;
+- restore v1 + migration legacy ;
+- restore v2 ;
+- rejet d'un backup à numéro final dupliqué sans mutation ;
+- reload offline via service worker.
 
-Réserve tactile mesurée : `.sheet-close` = 42×42 px ; actions Historique `Ouvrir`, `Dupliquer`, `Supprimer` = 40 px de haut. Gate >=44 non fermée.
+Artifact ciblé : run `32977943138`, artifact `9610256507`.
 
-Référence : `docs/MOBILE_RUNTIME_AUDIT.md`.
+## Correctif tactile final
 
-## LOT 1 — moteur métier
+BEFORE exact runtime, run `32977943138` :
+- `.sheet-close` = `43,34 × 43,34 px` pendant l'animation.
 
-**CANDIDAT TECHNIQUE, parcours runtime restant.**
+Cause exacte :
+- la cible CSS était 44 px ;
+- le sheet entre avec `scale(.985)` ;
+- `44 × .985 = 43,34`.
 
-Brouillon sans numéro, séquences type+année, finalisation atomique, lifecycle, validations, remises/TVA/arrondis, conversions tracées, suppression brouillon atomique.
+Correctif produit :
+- commit `c4b7618ad0ab454f5d437c64b4495f1d49a6a75f`;
+- `.sheet-close` = 45 px ;
+- actions Historique `min-height` = 45 px.
 
-Reste : `001→002→annulation→003`, séquences indépendantes, reset annuel, double tap, stale draft, migration legacy, exact HEAD final.
+Validation croisée Chromium indépendante :
+- 390 / 430 / 768 : `.sheet-close` = **44,325 px** pendant `scale(.985)` ;
+- actions Historique = **45 px**.
 
-## LOT 2 — clients & catalogue
+Le connecteur GitHub n'a pas déclenché un nouveau workflow sur ses propres écritures. La gate `tests/build HEAD exact final` reste donc ouverte malgré ce correctif CSS trivial.
 
-**CANDIDAT TECHNIQUE, runtime ciblé restant.**
+## État par lot
 
-DB v3, clients réutilisables, autocomplete, snapshot adresse/ICE/IF, catalogue appris après finalisation, dernier PU/TVA/unité, backup v2 + restore v1.
-
-Reste : client/snapshot/catalogue/déduplication/backup runtime et suggestions/sheets mobiles.
-
-## LOT 3 — PDF Original
-
-**RUNTIME RENDU — 9,3/10.**
-
-Facture, BL détaillé et BL simple rendus et comparés aux sources. Reste multi-page + micro-polish jusqu'à 9,5.
-
-## LOT 4 — PDF Premium
-
-**RUNTIME RENDU — 9,4/10.**
-
-Cas normal 9 600 TTC + cas stress 8 208 TTC propres. Reste multi-page, partage réel et polish 9,5.
-
-## LOT 5 — PWA / mobile
-
-**RUNTIME WEB AUDITÉ, appareil réel restant.**
-
-Icônes/manifest/SW présents. Autosave 800 ms implémenté et récupéré après reload sur les trois viewports.
-
-Reste : cibles tactiles >=44, finalisation + réouverture, LOT1/2, offline, backup/restore, partage PDF iOS/Android, appareil réel.
+- LOT0 : runtime web prouvé ; installation/reopen appareil réel + exact-head final ouverts.
+- UI V1 : runtime audité, 9,3/10.
+- LOT1 : moteur runtime prouvé ; exact-head final ouvert.
+- LOT2 : runtime prouvé ; revue mobile dédiée suggestions/client sheet ouverte.
+- LOT3 Original : multi-page prouvé, score 9,3 ; polish 9,5 ouvert.
+- LOT4 Premium : multi-page + preview mobile prouvés, score 9,4 ; partage + polish 9,5 ouverts.
+- LOT5 : backup/offline/parcours/tactile prouvés ; appareil réel, partage et run exact HEAD ouverts.
 
 ## NEXT EXACT
 
-1. Corriger `.sheet-close` 42→>=44 et actions Historique 40→>=44 ; recapture AFTER ciblée.
-2. Gates runtime LOT1 / LOT2 / backup / offline.
-3. Finalisation + réouverture et lifecycle complet.
-4. PDF multi-page + partage réel + polish Original/Premium >=9,5.
-5. Un seul run final exact HEAD.
-6. Human gate → merge.
+1. Déclencher manuellement **une seule** `Final Runtime Certification` sur le HEAD courant quand le run exact-head devient nécessaire.
+2. Revue mobile dédiée suggestions/client sheet 390/430/768.
+3. Partage/téléchargement/impression PDF réel + polish Original/Premium jusqu'à >=9,5.
+4. Installation et fermeture/réouverture sur iPhone/Android réel.
+5. Human gate.
+6. Merge uniquement après preuves.
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md sur m0/pwa-foundation. Avancement 76/116 = 65,5 %. PDF runtime prouvé par run 32956883264/artifact 9602313604 : Original 9,3, Premium 9,4. Mobile runtime prouvé par artifact 9603634672 du run 32959150633 : 24 captures E0→E6 en 390/430/768, 0 overflow, 0 erreurs console/page, autosave reload OK aux 3 tailles, score UI 9,3. Réserve : sheet-close 42px et actions Historique 40px, à passer >=44 puis recapture ciblée. Ensuite LOT1/2/backup/offline, finalisation+reopen, multi-page/partage, polish PDF >=9,5, run final, human gate. Aucun Vercel sans autorisation.`
+`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md. État vérifié : 99/116 = 85,3 %. Produit tactile corrigé c4b7618a… ; run 32977943138/artifact 9610256507 a prouvé backup v1/v2, déduplication, catalogue, rejet doublon et offline avant d'échouer uniquement sur sheet-close 43,34 px. Cause = animation scale(.985) sur 44 px ; correctif = 45 px, contre-preuve Chromium 44,325 px sur 390/430/768. Restent exact-head final, revue mobile client/suggestions, partage PDF réel, Original 9,3→9,5, Premium 9,4→9,5, appareil réel, human gate. Aucun Vercel sans autorisation.`
