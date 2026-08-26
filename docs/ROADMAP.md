@@ -2,7 +2,7 @@
 
 Dernière mise à jour : 26 août 2026
 
-> Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
+> Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/PDF_RUNTIME_CERTIFICATION.md` → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
 ## Goal global
 
@@ -20,7 +20,7 @@ Créer une PWA mobile-first, installable sur iPhone et Android, très simple à 
 
 # LOT 0 — Fondation / PWA
 
-**État : CANDIDAT, non certifié runtime**
+**État : CANDIDAT, appareil réel non certifié**
 
 - [x] React + TypeScript + Vite ;
 - [x] PWA / service worker ;
@@ -38,12 +38,12 @@ Créer une PWA mobile-first, installable sur iPhone et Android, très simple à 
 - [x] workflow GitHub `workflow_dispatch` uniquement ;
 - [x] safe-area CSS prévue.
 
-Preuve statique PWA supplémentaire : `tests/pwa.test.ts` vérifie signature/dimensions PNG et références `index.html` / `vite.config.ts`. Le test n'est pas déclaré passé tant qu'un runtime npm n'a pas exécuté Vitest.
+Preuve runtime disponible : le run `32956883264` a passé **13/13 tests**, construit l'app avec `tsc -b && vite build`, généré manifest + service worker et produit les PDF runtime. Le HEAD courant ne relance pas ces gates car les commits suivants sont documentaires ; les cases « exact HEAD » restent volontairement ouvertes pour la certification finale.
 
 Gates :
 
-- [ ] `npm test` HEAD exact ;
-- [ ] `npm run build` HEAD exact ;
+- [ ] `npm test` HEAD exact final ;
+- [ ] `npm run build` HEAD exact final ;
 - [ ] installation réelle iPhone/Android ;
 - [ ] offline réel ;
 - [ ] fermeture/réouverture sans perte.
@@ -77,7 +77,7 @@ Gates :
 
 # LOT 1 — Moteur métier production-grade
 
-**État : CANDIDAT TECHNIQUE, runtime non certifié**
+**État : CANDIDAT TECHNIQUE, parcours runtime non certifié**
 
 - [x] brouillon sans numéro définitif ;
 - [x] séquence indépendante type + année ;
@@ -92,6 +92,8 @@ Gates :
 - [x] arrondi monétaire déterministe ;
 - [x] traçabilité conversion via `sourceDocumentId`.
 
+Durcissement supplémentaire vérifié par le build du run `32956883264` : suppression d'un brouillon atomique dans une seule transaction IndexedDB (`get` → contrôle `DRAFT` → `delete`).
+
 Gates :
 
 - [ ] `001 → 002` runtime ;
@@ -101,7 +103,7 @@ Gates :
 - [ ] double tap Finaliser ;
 - [ ] stale draft ;
 - [ ] migration legacy ;
-- [ ] tests/build HEAD exact.
+- [ ] tests/build HEAD exact final.
 
 ---
 
@@ -132,9 +134,9 @@ Gates :
 
 # LOT 3 — PDF Original
 
-**État : CANDIDAT GÉOMÉTRIQUE FORT, jsPDF exact-head non certifié**
+**État : RUNTIME RENDU, fidélité à polir**
 
-Sources : `docs/PDF_ORIGINAL_REFERENCE.md`, `docs/PDF_ORIGINAL_GEOMETRY.md`, `src/referenceFixture.ts`.
+Sources : `docs/PDF_RUNTIME_CERTIFICATION.md`, `docs/PDF_ORIGINAL_REFERENCE.md`, `docs/PDF_ORIGINAL_GEOMETRY.md`, `src/referenceFixture.ts`.
 
 - [x] données source verrouillées depuis les PDF fournis ;
 - [x] fixture facture `#0107-2026` ;
@@ -148,26 +150,26 @@ Sources : `docs/PDF_ORIGINAL_REFERENCE.md`, `docs/PDF_ORIGINAL_GEOMETRY.md`, `sr
 - [x] remises conditionnelles ;
 - [x] footer légal reconstruit depuis champs structurés.
 
-Référence source principale : 10 × 800, HT 8 000, TVA 1 600, TTC 9 600. Les PDF source montrent bien cette structure et ces montants.
+Référence source principale : 10 × 800, HT 8 000, TVA 1 600, TTC 9 600.
 
 Gates :
 
-- [ ] génération jsPDF exact HEAD ;
-- [ ] rendu PNG du PDF généré ;
-- [ ] comparaison finale source → généré ;
+- [x] génération jsPDF sur les blobs produit désormais au HEAD ;
+- [x] rendu PNG du PDF généré à 180 dpi ;
+- [x] comparaison finale source → généré effectuée ;
 - [ ] test multi-page réel ;
-- [ ] tests/build HEAD exact ;
+- [ ] tests/build HEAD exact final ;
 - [ ] score officiel Original >= 9,5/10.
 
-Blocage de preuve actuel : dépendances npm non présentes localement et accès réseau de récupération indisponible. Aucun run GitHub Action n'est consommé pour contourner ce point.
+**Score runtime actuel Original : 9,3/10.** Logo présent, montants/table/footer propres. Reste à réduire les écarts de taille du logo, typographie/espacements et à conserver l'absence de fausse signature manuscrite.
 
 ---
 
 # LOT 4 — PDF Premium
 
-**État : CANDIDAT TECHNIQUE + ORACLE VISUEL, runtime jsPDF non certifié**
+**État : RUNTIME RENDU, finition à polir**
 
-Référence : `docs/PDF_PREMIUM_VALIDATION.md`.
+Références : `docs/PDF_RUNTIME_CERTIFICATION.md`, `docs/PDF_PREMIUM_VALIDATION.md`.
 
 - [x] second template Premium ;
 - [x] hiérarchie document/société/date ;
@@ -178,28 +180,28 @@ Référence : `docs/PDF_PREMIUM_VALIDATION.md`.
 - [x] footer légal structuré ;
 - [x] aperçu HTML aligné sur les mêmes règles.
 
-Deux oracles indépendants ont été inspectés : cas normal 9 600 TTC et cas stress remises/snapshot 8 208 TTC. Aucun chevauchement observé sur ces deux compositions.
-
-**Score oracle visuel : 9,4/10 candidat.**
+Runtime inspecté : cas normal TTC 9 600 et cas stress remise ligne 10 % + remise globale 5 %, HT 6 840, TVA 1 368, TTC 8 208. Aucun chevauchement observé. Les espaces monétaires sont corrigés dans Helvetica.
 
 Gates :
 
-- [ ] rendu jsPDF exact HEAD ;
+- [x] rendu jsPDF sur les blobs produit désormais au HEAD ;
 - [ ] multi-page réel ;
 - [ ] partage/téléchargement/impression navigateur réel ;
 - [ ] revue aperçu 390/430/768 ;
-- [ ] tests/build exact HEAD ;
+- [ ] tests/build exact HEAD final ;
 - [ ] score officiel Premium >= 9,5/10.
+
+**Score runtime actuel Premium : 9,4/10.** Reste surtout la finition des headers et la densité verticale.
 
 ---
 
 # LOT 5 — Certification finale mobile / PWA
 
-**État : CANDIDAT INSTALLABILITÉ, runtime appareil à certifier**
+**État : CANDIDAT INSTALLABILITÉ + AUTOSAVE, appareil réel à certifier**
 
-Assets installables iOS/Android et branchement manifest présents. `public/mobile-install-notes.md` décrit exactement les preuves disponibles et les gates encore ouvertes.
+Assets installables iOS/Android et branchement manifest présents. `public/mobile-install-notes.md` décrit les preuves d'installabilité statiques.
 
-Autosave/recovery reste ouvert : il ne sera pas poussé par réécriture complète d'`App.tsx` sans possibilité de build/test derrière.
+Autosave brouillon **implémenté** : debounce 800 ms, annulation avant Enregistrer/Finaliser et garde stale-finalized via `saveDocument`. Le code a passé TypeScript/build dans le run `32956883264`, mais le comportement navigateur fermeture/réouverture reste à observer.
 
 - [ ] E0 stockage vierge → onboarding → réouverture ;
 - [ ] parcours document complet ;
@@ -207,8 +209,8 @@ Autosave/recovery reste ouvert : il ne sera pas poussé par réécriture complè
 - [ ] historique/lifecycle réel ;
 - [ ] gates LOT1 ;
 - [ ] gates LOT2 ;
-- [ ] PDF Original runtime ;
-- [ ] PDF Premium runtime ;
+- [x] PDF Original runtime ;
+- [x] PDF Premium runtime ;
 - [ ] 390 / 430 / 768 ;
 - [ ] zéro overflow ;
 - [ ] contrôles critiques >=44 px ;
@@ -223,13 +225,17 @@ Autosave/recovery reste ouvert : il ne sera pas poussé par réécriture complè
 
 # NEXT EXACT
 
-1. Dès qu'un runtime app/build est disponible : implémenter + tester autosave/recovery.
-2. Audit/certification mobile 390 / 430 / 768 et parcours E0→E6.
+1. Audit/certification runtime 390 / 430 / 768 et parcours E0→E6.
+2. Certifier autosave par fermeture/réouverture et vérifier zéro perte.
 3. Gates runtime LOT1 / LOT2 / backup / offline.
-4. Dès qu'un runtime avec dépendances est disponible : rendre Original + Premium exact HEAD et fermer leurs gates visuelles.
-5. Un seul run Actions final si nécessaire.
+4. PDF : test multi-page + partage réel + micro-polish Original 9,3→9,5 et Premium 9,4→9,5.
+5. Un seul run Actions final exact HEAD après ces derniers changements.
 6. Human gate → merge.
+
+## Avancement mécanique
+
+**68 critères implémentés/observés sur 116 = 58,6 %.**
 
 ## Définition de DONE
 
-Le chantier est DONE uniquement quand : onboarding fiable, moteur métier prouvé, données restaurables, mobile 390/430/768 propre, Original/Premium >=9,5 avec rendu runtime, parcours téléphone complet, un run final si nécessaire et validation humaine avant merge. Aucun Vercel sans autorisation explicite.
+Le chantier est DONE uniquement quand : onboarding fiable, moteur métier prouvé, données restaurables, mobile 390/430/768 propre, Original/Premium >=9,5 avec rendu runtime, parcours téléphone complet, un run final exact HEAD et validation humaine avant merge. Aucun Vercel sans autorisation explicite.
