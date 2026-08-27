@@ -173,12 +173,40 @@ type PdfTextItemLike = {
   width?: number
 }
 
+type PdfTextChunkLike = {
+  items?: Array<unknown>
+}
+
+type PdfTextReaderLike = {
+  read: () => Promise<{ done: boolean; value?: PdfTextChunkLike }>
+  releaseLock?: () => void
+}
+
+type PdfTextStreamLike = {
+  getReader: () => PdfTextReaderLike
+}
+
 const isPdfTextItem = (item: unknown): item is PdfTextItemLike => {
   if (!item || typeof item !== 'object') return false
   const candidate = item as Partial<PdfTextItemLike>
   return typeof candidate.str === 'string'
     && Array.isArray(candidate.transform)
     && candidate.transform.length >= 6
+}
+
+export const readPdfTextItems = async (stream: PdfTextStreamLike): Promise<Array<unknown>> => {
+  const reader = stream.getReader()
+  const items: Array<unknown> = []
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (value?.items) items.push(...value.items)
+    }
+  } finally {
+    reader.releaseLock?.()
+  }
+  return items
 }
 
 export const pdfItemsToText = (items: Array<unknown>): string => {
@@ -226,8 +254,8 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber)
-    const content = await page.getTextContent()
-    const pageText = cleanText(pdfItemsToText(content.items))
+    const items = await readPdfTextItems(page.streamTextContent() as unknown as PdfTextStreamLike)
+    const pageText = cleanText(pdfItemsToText(items))
     if (pageText) {
       textPages.push(pageText)
       continue
