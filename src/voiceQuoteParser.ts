@@ -99,6 +99,23 @@ const numberField = (text: string, names: string[]) => {
   return value ? parseNumberValue(value) : null
 }
 
+const emitPreviewDebug = (transcript: string, defaultVatRate: number, raw: RawQuotePayload) => {
+  if (typeof window === 'undefined') return
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('voiceDebug') !== '1') return
+  void fetch('/api/voice-debug', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      marker: 'factea-voice-debug-v1',
+      transcript,
+      normalizedTranscript: transcript.replace(/\s+/g, ' ').trim(),
+      defaultVatRate,
+      raw
+    })
+  }).catch(() => undefined)
+}
+
 export const voiceToRawQuote = (transcript: string, defaultVatRate: number): RawQuotePayload => {
   const normalized = transcript.replace(/\s+/g, ' ').trim()
   const client = field(normalized, ['client'], true) ?? normalized.match(/(?:pour)\s+([^,.;]+?)(?=\s+(?:objet|avec|comprenant|incluant)(?=\s|[,.;:]|$)|[,.;]|$)/i)?.[1]?.trim()
@@ -124,11 +141,13 @@ export const voiceToRawQuote = (transcript: string, defaultVatRate: number): Raw
     }
   }
 
-  return {
+  const raw: RawQuotePayload = {
     source: { kind: 'TEXT', name: 'Message vocal' },
     client: { name: client ?? null },
     object: object ?? 'Devis dicté vocalement',
     currency: 'MAD',
     lines
   }
+  emitPreviewDebug(transcript, defaultVatRate, raw)
+  return raw
 }
