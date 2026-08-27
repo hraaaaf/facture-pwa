@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
 import { prepareImportDictionary } from './importDictionary'
+import { voiceToRawQuote } from './voiceQuoteParser'
 import {
   canonicalQuoteToDocumentFields,
   normalizeQuotePayload,
@@ -77,35 +78,6 @@ const canonicalToRaw = (quote: CanonicalQuoteJSON): RawQuotePayload => ({
 const normalizeImportedRaw = (raw: RawQuotePayload, defaultVatRate: number) => {
   const prepared = prepareImportDictionary(raw)
   return normalizeQuotePayload(prepared.raw, { defaultVatRate, dictionary: prepared.dictionary })
-}
-
-const decimal = (value: string) => Number(value.replace(',', '.'))
-
-const voiceToRawQuote = (transcript: string, defaultVatRate: number): RawQuotePayload => {
-  const normalized = transcript.replace(/\s+/g, ' ').trim()
-  const client = normalized.match(/(?:client|pour)\s+([^,.;]+?)(?=\s+(?:objet|avec|comprenant|incluant)\b|[,.;]|$)/i)?.[1]?.trim()
-  const object = normalized.match(/(?:objet|concernant)\s*[:\-]?\s*([^.;]+?)(?=\s+(?:avec|comprenant|incluant)\b|[.;]|$)/i)?.[1]?.trim()
-  const vat = normalized.match(/(?:tva|taxe)\s*(?:de|à|a)?\s*(\d+(?:[.,]\d+)?)\s*%/i)
-  const vatRate = vat ? decimal(vat[1]) : defaultVatRate
-  const lines: Array<Record<string, unknown>> = []
-  const pattern = /(\d+(?:[.,]\d+)?)\s+([^,;.]+?)\s+(?:à|a)\s+(\d+(?:[.,]\d+)?)\s*(?:mad|dhs?|dirhams?)/gi
-  for (const match of normalized.matchAll(pattern)) {
-    lines.push({
-      designation: match[2].trim(),
-      unit: 'Unité',
-      quantity: decimal(match[1]),
-      unitPriceHT: decimal(match[3]),
-      vatRate,
-      discountPercent: 0
-    })
-  }
-  return {
-    source: { kind: 'TEXT', name: 'Message vocal' },
-    client: { name: client ?? null },
-    object: object ?? 'Devis dicté vocalement',
-    currency: 'MAD',
-    lines
-  }
 }
 
 const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
