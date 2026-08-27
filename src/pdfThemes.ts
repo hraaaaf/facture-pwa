@@ -252,10 +252,11 @@ const addPageNumbers = (pdf: jsPDF, theme: ThemeSpec) => {
   }
 }
 
-const columnStyles = (priced: boolean, width: number) => {
-  if (!priced) return { 0: { cellWidth: width * 0.62, halign: 'left' as const }, 1: { cellWidth: width * 0.22 }, 2: { cellWidth: width * 0.16 } }
+type ColumnStyle = { cellWidth: number; halign?: 'left' }
+const columnStyles = (priced: boolean, width: number): Record<number, ColumnStyle> => {
+  if (!priced) return { 0: { cellWidth: width * 0.62, halign: 'left' }, 1: { cellWidth: width * 0.22 }, 2: { cellWidth: width * 0.16 } }
   return {
-    0: { cellWidth: width * 0.44, halign: 'left' as const },
+    0: { cellWidth: width * 0.44, halign: 'left' },
     1: { cellWidth: width * 0.14 },
     2: { cellWidth: width * 0.10 },
     3: { cellWidth: width * 0.15 },
