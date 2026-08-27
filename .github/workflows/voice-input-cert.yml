@@ -1,0 +1,45 @@
+name: V1 Voice Input Certification
+
+on:
+  push:
+    branches:
+      - v1/voice-input
+    paths:
+      - '.github/workflows/voice-input-cert.yml'
+      - 'scripts/voice-input-certification.mjs'
+      - 'src/QuoteImportSheet.tsx'
+      - 'src/voice-input.css'
+      - 'src/main.tsx'
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Install browser runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Voice input runtime and visual certification
+        run: node scripts/voice-input-certification.mjs
+      - name: Upload voice input captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-input-v1-captures
+          path: artifacts/voice-input-v1
