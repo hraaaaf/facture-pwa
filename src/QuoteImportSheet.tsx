@@ -14,18 +14,43 @@ import './quote-import.css'
 export type ImportedQuoteFields = Pick<CommercialDocument,
   'client' | 'clientAddress' | 'clientIce' | 'clientIfNumber' | 'object' | 'date' | 'lines' | 'globalDiscountPercent'>
 
-type ImportMode = 'PHOTO' | 'PDF' | 'EXCEL' | 'WORD'
-type Step = 'PICKER' | 'PROCESSING' | 'REVIEW' | 'READY' | 'ERROR'
+type FileImportMode = 'PHOTO' | 'PDF' | 'EXCEL' | 'WORD'
+type ImportMode = FileImportMode | 'VOICE'
+type Step = 'PICKER' | 'VOICE' | 'PROCESSING' | 'REVIEW' | 'READY' | 'ERROR'
 
-const acceptByMode: Record<ImportMode, string> = {
+type SpeechRecognitionResultLike = {
+  isFinal: boolean
+  0: { transcript: string }
+}
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number
+  results: ArrayLike<SpeechRecognitionResultLike>
+}
+
+type SpeechRecognitionLike = {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  start: () => void
+  stop: () => void
+  abort: () => void
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: ((event: { error?: string }) => void) | null
+  onend: (() => void) | null
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike
+
+const acceptByMode: Record<FileImportMode, string> = {
   PHOTO: 'image/png,image/jpeg,image/webp,image/bmp,image/gif',
   PDF: 'application/pdf,.pdf',
   EXCEL: '.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv',
   WORD: '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 }
 
-const modeLabel: Record<ImportMode, string> = { PHOTO: 'Photo', PDF: 'PDF', EXCEL: 'Excel', WORD: 'Word' }
-const modeMark: Record<ImportMode, string> = { PHOTO: 'IMG', PDF: 'PDF', EXCEL: 'XLS', WORD: 'DOC' }
+const modeLabel: Record<ImportMode, string> = { PHOTO: 'Photo', PDF: 'PDF', EXCEL: 'Excel', WORD: 'Word', VOICE: 'Vocal' }
+const modeMark: Record<ImportMode, string> = { PHOTO: 'IMG', PDF: 'PDF', EXCEL: 'XLS', WORD: 'DOC', VOICE: 'MIC' }
 
 const canonicalToRaw = (quote: CanonicalQuoteJSON): RawQuotePayload => ({
   source: quote.source,
@@ -52,6 +77,43 @@ const canonicalToRaw = (quote: CanonicalQuoteJSON): RawQuotePayload => ({
 const normalizeImportedRaw = (raw: RawQuotePayload, defaultVatRate: number) => {
   const prepared = prepareImportDictionary(raw)
   return normalizeQuotePayload(prepared.raw, { defaultVatRate, dictionary: prepared.dictionary })
+}
+
+const decimal = (value: string) => Number(value.replace(',', '.'))
+
+const voiceToRawQuote = (transcript: string, defaultVatRate: number): RawQuotePayload => {
+  const normalized = transcript.replace(/\s+/g, ' ').trim()
+  const client = normalized.match(/(?:client|pour)\s+([^,.;]+?)(?=\s+(?:objet|avec|comprenant|incluant)\b|[,.;]|$)/i)?.[1]?.trim()
+  const object = normalized.match(/(?:objet|concernant)\s*[:\-]?\s*([^.;]+?)(?=\s+(?:avec|comprenant|incluant)\b|[.;]|$)/i)?.[1]?.trim()
+  const vat = normalized.match(/(?:tva|taxe)\s*(?:de|à|a)?\s*(\d+(?:[.,]\d+)?)\s*%/i)
+  const vatRate = vat ? decimal(vat[1]) : defaultVatRate
+  const lines: Array<Record<string, unknown>> = []
+  const pattern = /(\d+(?:[.,]\d+)?)\s+([^,;.]+?)\s+(?:à|a)\s+(\d+(?:[.,]\d+)?)\s*(?:mad|dhs?|dirhams?)/gi
+  for (const match of normalized.matchAll(pattern)) {
+    lines.push({
+      designation: match[2].trim(),
+      unit: 'Unité',
+      quantity: decimal(match[1]),
+      unitPriceHT: decimal(match[3]),
+      vatRate,
+      discountPercent: 0
+    })
+  }
+  return {
+    source: { kind: 'TEXT', name: 'Message vocal' },
+    client: { name: client ?? null },
+    object: object ?? 'Devis dicté vocalement',
+    currency: 'MAD',
+    lines
+  }
+}
+
+const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
+  const speechWindow = window as typeof window & {
+    SpeechRecognition?: SpeechRecognitionCtor
+    webkitSpeechRecognition?: SpeechRecognitionCtor
+  }
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
 }
 
 const getFieldValue = (quote: CanonicalQuoteJSON, field: string): string | number => {
@@ -105,27 +167,91 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
   onCreate: (fields: ImportedQuoteFields) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [mode, setMode] = useState<ImportMode>('PDF')
   const [step, setStep] = useState<Step>('PICKER')
   const [quote, setQuote] = useState<CanonicalQuoteJSON | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState('')
   const [sourceName, setSourceName] = useState('')
+  const [voiceText, setVoiceText] = useState('')
+  const [voiceListening, setVoiceListening] = useState(false)
 
   const errors = useMemo(() => quote?.issues.filter(issue => issue.severity === 'ERROR') ?? [], [quote])
   const quoteWarnings = useMemo(() => quote?.issues.filter(issue => issue.severity === 'WARNING') ?? [], [quote])
+  const voiceSupported = typeof window !== 'undefined' && Boolean(getSpeechRecognitionCtor())
 
   const choose = (nextMode: ImportMode) => {
     setMode(nextMode)
+    setError('')
+    if (nextMode === 'VOICE') {
+      setVoiceText('')
+      setStep('VOICE')
+      return
+    }
     window.setTimeout(() => fileRef.current?.click(), 0)
   }
 
+  const stopVoice = () => {
+    recognitionRef.current?.stop()
+    recognitionRef.current = null
+    setVoiceListening(false)
+  }
+
+  const startVoice = () => {
+    const Recognition = getSpeechRecognitionCtor()
+    if (!Recognition) {
+      setError('La dictée vocale native n’est pas disponible ici. Saisissez ou collez la transcription ci-dessous.')
+      return
+    }
+    recognitionRef.current?.abort()
+    const recognition = new Recognition()
+    recognition.lang = 'fr-FR'
+    recognition.interimResults = true
+    recognition.continuous = true
+    recognition.onresult = event => {
+      let text = ''
+      for (let index = 0; index < event.results.length; index += 1) text += event.results[index][0].transcript
+      setVoiceText(text.trim())
+    }
+    recognition.onerror = event => {
+      setVoiceListening(false)
+      setError(event.error === 'not-allowed' ? 'Accès au micro refusé. Autorisez le micro ou saisissez la transcription.' : 'La dictée a été interrompue. Vous pouvez reprendre ou corriger le texte.')
+    }
+    recognition.onend = () => {
+      recognitionRef.current = null
+      setVoiceListening(false)
+    }
+    recognitionRef.current = recognition
+    setError('')
+    setVoiceListening(true)
+    recognition.start()
+  }
+
+  const analyzeVoice = () => {
+    stopVoice()
+    if (!voiceText.trim()) {
+      setError('Dictez ou saisissez au moins une ligne avant l’analyse.')
+      return
+    }
+    setStep('PROCESSING')
+    setSourceName('Message vocal')
+    const canonical = normalizeImportedRaw(voiceToRawQuote(voiceText, defaultVatRate), defaultVatRate)
+    setQuote(canonical)
+    setWarnings([])
+    setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
+  }
+
   const reset = () => {
+    recognitionRef.current?.abort()
+    recognitionRef.current = null
+    setVoiceListening(false)
     setStep('PICKER')
     setQuote(null)
     setWarnings([])
     setError('')
     setSourceName('')
+    setVoiceText('')
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -179,7 +305,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
           ref={fileRef}
           className="quote-file-input"
           type="file"
-          accept={acceptByMode[mode]}
+          accept={mode === 'VOICE' ? undefined : acceptByMode[mode]}
           onChange={event => {
             const file = event.target.files?.[0]
             if (file) void importFile(file)
@@ -193,15 +319,43 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
               <span>Les champs détectés sont normalisés puis contrôlés avant création.</span>
             </div>
             <div className="quote-format-grid">
-              {(Object.keys(modeLabel) as ImportMode[]).map(item => (
+              {(['PHOTO', 'PDF', 'EXCEL', 'WORD'] as FileImportMode[]).map(item => (
                 <button key={item} onClick={() => choose(item)}>
                   <span className="quote-format-mark">{modeMark[item]}</span>
                   <strong>{modeLabel[item]}</strong>
                 </button>
               ))}
+              <button className="quote-voice-choice" onClick={() => choose('VOICE')}>
+                <span className="quote-voice-icon">●</span>
+                <span><small>VOCAL</small><strong>Dicter le devis</strong><em>Parlez naturellement, puis vérifiez.</em></span>
+              </button>
             </div>
-            <p className="quote-privacy-note"><span className="status-dot" /> Le document reste local. Les modèles OCR peuvent être téléchargés au premier usage.</p>
+            <p className="quote-privacy-note"><span className="status-dot" /> Les documents restent locaux. La dictée native dépend du navigateur et peut utiliser son propre service vocal.</p>
           </>
+        )}
+
+        {step === 'VOICE' && (
+          <div className="quote-voice-panel">
+            <div className={`quote-voice-orb ${voiceListening ? 'listening' : ''}`} aria-hidden="true"><span>●</span></div>
+            <span className="section-kicker">MESSAGE VOCAL</span>
+            <h3>{voiceListening ? 'Je vous écoute…' : 'Dictez votre devis'}</h3>
+            <p>Exemple : « Client Hôtel Atlas, 200 draps à 85 dirhams, TVA 20 %. »</p>
+            <textarea
+              value={voiceText}
+              onChange={event => setVoiceText(event.target.value)}
+              placeholder="La transcription apparaîtra ici. Vous pouvez aussi la saisir ou la corriger manuellement."
+              aria-label="Transcription du message vocal"
+            />
+            {error && <p className="quote-voice-error">{error}</p>}
+            {!voiceSupported && !error && <p className="quote-voice-hint">Dictée native indisponible sur ce navigateur : la saisie manuelle reste utilisable.</p>}
+            <div className="quote-voice-actions">
+              <button onClick={reset}>Retour</button>
+              <button className={voiceListening ? 'quote-stop-voice' : ''} onClick={voiceListening ? stopVoice : startVoice}>
+                {voiceListening ? 'Arrêter' : 'Commencer'}
+              </button>
+              <button className="quote-primary" onClick={analyzeVoice} disabled={!voiceText.trim()}>Analyser</button>
+            </div>
+          </div>
         )}
 
         {step === 'PROCESSING' && (
@@ -217,7 +371,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
           <div className="quote-error-card">
             <strong>Import impossible</strong>
             <p>{error}</p>
-            <div><button onClick={reset}>Annuler</button><button className="quote-primary" onClick={() => choose(mode)}>Réessayer</button></div>
+            <div><button onClick={reset}>Annuler</button><button className="quote-primary" onClick={() => mode !== 'VOICE' && choose(mode)}>Réessayer</button></div>
           </div>
         )}
 
@@ -228,7 +382,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
               <div><span>Lignes</span><strong>{quote.lines.length}</strong><small>détectées</small></div>
               <div className="needs-review"><span>À vérifier</span><strong>{errors.length}</strong><small>champ{errors.length > 1 ? 's' : ''}</small></div>
             </div>
-            <div className="quote-review-heading"><div><span className="section-kicker">Revue ciblée</span><h3>Uniquement les incertitudes</h3></div><button onClick={reset}>Changer de fichier</button></div>
+            <div className="quote-review-heading"><div><span className="section-kicker">Revue ciblée</span><h3>Uniquement les incertitudes</h3></div><button onClick={reset}>Changer de source</button></div>
             <div className="quote-review-list">
               {errors.map(issue => {
                 const editable = !['CURRENCY_UNSUPPORTED', 'LINES_REQUIRED'].includes(issue.code)
