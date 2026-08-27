@@ -1,92 +1,80 @@
-# Facture PWA — HANDOVER CANONIQUE
+# Factea — HANDOVER CANONIQUE
 
-Date : 26 août 2026
+Date : 27 août 2026
 
-## Goal
+## Goal global
 
-PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, avec moteur métier robuste, mémoire clients/catalogue, autosave et PDF Original/Premium.
+PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, avec moteur métier robuste, mémoire clients/catalogue, PDF professionnels et Input → Devis multi-source.
 
-## Repo
+## État vérifié
 
-- repository : `hraaaaf/facture-pwa`
-- branche : `m0/pwa-foundation`
-- PR : `#1 — M0 — Fondation PWA facturation`
-- base : `main`
-- HEAD produit certifié : `c2873b7c6ff6446aae8b797fb7e0233de4ea061d`
-- run final : `33007119765`
-- artifact : `9621115970`
-- workflow lourd : `workflow_dispatch` uniquement après closeout
-- aucun Vercel
-- aucun merge avant human gate
+- avancement mécanique historique PWA : **110/116 = 94,8 %** ;
+- core Input → Devis F1–F4 : **37/37 = 100 %** ;
+- extension V1 Vocal : **10/11**, web certifiée ;
+- gate Vocal restant : permission + dictée micro réelle sur iPhone et human gate ;
+- aucun déploiement Vercel autorisé/effectué pour V1.
 
-## Avancement global
+## Repo / Git
 
-**110 critères implémentés/observés sur 116 = 94,8 %.**
+- repository : `hraaaaf/facture-pwa` ;
+- base PR : `vercel/latest` ;
+- base observée pendant V1 : `270acbb2ca60cfc1521e686d8c123d50ad7df371` (`Brand PWA as Factea`) ;
+- branche V1 : `v1/voice-input` ;
+- PR : `#7 — V1 — Input vocal → Devis`, draft ;
+- commit produit/certification V1 : `35c1fc6352ea6a0c3c98134891ae9786889fd424` ;
+- run V1 : `33104675409` SUCCESS ;
+- artifact V1 : `9659978460` (`voice-input-v1-captures`).
 
-Le chantier n'est pas DONE : 6 gates appareil réel / partage / human gate / merge restent ouvertes.
+Les commits de closeout documentaire postérieurs à `35c1fc…` ne modifient pas le code produit certifié ; ne pas les présenter comme HEAD runtime certifié.
 
-## Preuve finale exact-head
+## V1 Vocal — preuve
 
-Run `33007119765` sur `c2873b7c6ff6446aae8b797fb7e0233de4ea061d` :
+Le Vocal ajoute une cinquième source dans `Input → Devis` :
 
-- CI : SUCCESS ;
-- jsPDF `4.2.1` + AutoTable `5.0.8` ;
-- `npm audit --omit=dev --audit-level=critical` : 0 vulnérabilité ;
-- tests : 15/15 ;
-- build + PWA SW/manifest : SUCCESS ;
-- runtime v4 : 10 assertions, `offline=true`, 0 erreur page/console ;
-- Premium/mobile : 2 assertions, 0 erreur page/console ;
-- artifact final : `9621115970`, 27 fichiers.
+`Vocal → transcription modifiable → extraction déterministe → dictionnaire F4 → normalisation/revue canonique → DEVIS DRAFT`.
 
-## Runtime métier / stockage
+Architecture : `SpeechRecognition`/`webkitSpeechRecognition` en progressive enhancement uniquement, fallback texte, aucun fournisseur STT externe ajouté.
 
-Le run final confirme notamment : deux factures séquentielles, déduplication client sans perte adresse/ICE/IF, catalogue `usageCount=2` et dernier PU=100/TVA=20, préfixe dupliqué refusé, backup v2 cohérent, restore v1 + migration, restore v2, rejet backup avec numéro final dupliqué sans mutation, reload offline via SW.
+Run `33104675409` :
 
-## Mobile / tactile
+- tests : **35/35** ;
+- build TypeScript + Vite/PWA : SUCCESS ;
+- runtime Chromium : 390 / 430 / 768 ;
+- `scrollWidth === viewport` aux 3 tailles ;
+- 5 sources visibles ;
+- fermer : 45×45 px ;
+- CTA Vocal : 110 px ;
+- actions Vocal : >=48 px ;
+- orb écoute : 74 px ;
+- 0 erreur page/console ;
+- E2E : `Hôtel Atlas`, 200 draps × 85 MAD + 40 serviettes × 22,5 MAD, TVA 20 % → une revue date → DEVIS brouillon éditable 2 lignes.
 
-Run final :
+Captures artifact : picker + écoute sur 390/430/768, READY 390, éditeur 390.
 
-- sheet close pendant animation : **44,325 px** sur 390/430/768 ;
-- actions Historique : **45 px** ;
-- aperçu Premium : 390/430/768, aucune largeur > viewport ;
-- actions Partager/PDF/Imprimer : **56 px** ;
-- fiche client : bouton fermer **44×44 px** ;
-- suggestions + fiche client revues aux 3 viewports ;
-- 0 overflow, 0 erreur page/console.
+**Score visuel web V1 : 9,6/10.**
 
-**Score UI global conservé : 9,3/10.**
-**Score visuel lot Premium/mobile : 9,5/10.**
+## UI / référence
 
-## PDF
+- design system : `src/polish.css` ;
+- styles V1 : `src/voice-input.css` ;
+- mockup cible : `docs/mockups/VOICE_INPUT_V1.svg` ;
+- spec/certification : `docs/VOICE_INPUT_V1.md`.
 
-Artifact final :
+V1 est aligné sur les surfaces glass, le vert premium, les rayons, ombres, typographie et touch targets existants.
 
-- Original : 1 page normale + stress 4 pages ;
-- Premium : 1 page normale + stress 3 pages ;
-- rendu 200 dpi inspecté ;
-- aucun chevauchement, clipping ou glyph cassé observé ;
-- comparaison source → Original effectuée.
+## Gates globales encore ouvertes
 
-Scores finaux :
-
-- **Original : 9,5/10** ;
-- **Premium : 9,5/10**.
-
-La différence résiduelle de l'Original concerne surtout les éléments dépendant des données société (ex. signature réellement chargée) et de légères variations typographiques, sans défaut de structure.
-
-## Gates restantes
-
-1. Installation réelle iPhone/Android.
-2. Fermeture/réouverture sans perte sur appareil réel.
-3. Partage/téléchargement/impression navigateur réel.
-4. Partage PDF iOS/Android.
+1. Permission + dictée micro réelle iPhone pour V1.
+2. Installation réelle iPhone/Android.
+3. Fermeture/réouverture sans perte sur appareil réel.
+4. Partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
 5. Human gate final.
-6. Merge uniquement après validation humaine.
+6. Merge uniquement après validation humaine et preuves requises.
 
 ## NEXT EXACT
 
-Passer sur appareil réel, exécuter les quatre preuves d'installation/persistance/partage, puis human gate. Si toutes sont vertes : mise à jour canonique finale, merge uniquement après validation explicite. Aucun Vercel.
+Ne pas relancer de benchmark V1 : le web est certifié. Le prochain gate utile nécessite un iPhone réel avec une version accessible sur appareil. **Aucun Vercel sans autorisation explicite.**
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md. État vérifié : 110/116 = 94,8 %. HEAD produit certifié c2873b7c… ; run final 33007119765 SUCCESS ; artifact 9621115970. 15/15 tests, build, audit 0 vulnérabilité, runtime v4 10 assertions, Premium/mobile 2 assertions, offline et tactile >=44 px prouvés. Original 9,5/10, Premium 9,5/10. Restent uniquement installation iPhone/Android, fermeture/réouverture réelle, partage/téléchargement/impression navigateur réel, partage PDF iOS/Android, human gate puis merge. Aucun Vercel.`
+`Reprends Factea depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/VOICE_INPUT_V1.md. V1 Vocal est web-certifiée : produit/cert commit 35c1fc6352ea6a0c3c98134891ae9786889fd424, run 33104675409 SUCCESS, artifact 9659978460, 35/35 tests, build vert, runtime 390/430/768 sans overflow ni erreur, E2E Vocal → revue date → devis 2 lignes, score visuel 9,6/10. PR #7 draft sur v1/voice-input. Reste le gate permission/dictée micro iPhone réelle + human gate. PWA historique 110/116 = 94,8 %, core Input→Devis F1-F4 37/37. Aucun Vercel sans autorisation explicite.`
