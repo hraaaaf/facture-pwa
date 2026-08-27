@@ -225,7 +225,7 @@ Run final `33007119765` / artifact `9621115970` : 15/15 tests, build, audit prod
 
 # FEATURE — Input → Devis
 
-**État : CLOSED — 31/31 critères validés**
+**État : CLOSED — 37/37 critères validés**
 
 ## F1 — JSON canonique + normalisation — 10/10
 
@@ -277,7 +277,22 @@ Runtime final F3 : XLSX réel → exactement 2 champs incertains → READY → D
 
 **Score visuel F3 : 9,4/10.**
 
-**Avancement Input → Devis : 31/31 = 100 %.**
+## F4 — Dictionnaire déterministe import — 6/6
+
+- [x] BEFORE runtime avec BC fictif fautif figé ;
+- [x] corrections lexicales explicites sur désignations ;
+- [x] correction lexicale explicite de l'objet ;
+- [x] unités déjà normalisées conservées ;
+- [x] mots inconnus inchangés, aucun fuzzy/Levenshtein silencieux ;
+- [x] AFTER runtime : même BC → devis corrigé, 34/34 tests, build, 0 erreur console.
+
+Preuves : BEFORE run `33061683923`, artifact `9641980643`; AFTER PR #6, HEAD `4ed30a6803762e3c2a4e60d8b5a817ffd9acc9f6`, run `33064440749` SUCCESS, artifact `9643135193`, merge `9ca67186e1d79822e82bb64e1245ce0b7ffccc60`.
+
+Corrections runtime certifiées : `Renouvelement linge hotellerie` → `Renouvellement linge hôtellerie`, `Drapp` → `Drap`, `bainn` → `bain`, `rectangulair` → `rectangulaire`; unités `pcs/unite/metres` → `Pièce/Unité/m`.
+
+**Score visuel F4 : 9,5/10.** Le flow et les totaux restent identiques ; seules les corrections lexicales ciblées changent visiblement.
+
+**Avancement Input → Devis : 37/37 = 100 %.**
 
 ---
 
@@ -292,7 +307,7 @@ Runtime final F3 : XLSX réel → exactement 2 champs incertains → READY → D
 
 **110 critères implémentés/observés sur 116 = 94,8 %.**
 
-> Ce pourcentage historique ne comprend pas les 31 critères séparés de la feature Input → Devis, désormais fermée à 100 %.
+> Ce pourcentage historique ne comprend pas les 37 critères séparés de la feature Input → Devis, désormais fermée à 100 %.
 
 ## Définition de DONE PWA globale
 
