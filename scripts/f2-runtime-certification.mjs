@@ -7,7 +7,8 @@ const port = 4174
 const origin = `http://127.0.0.1:${port}`
 const server = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(port)], {
   stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env }
+  env: { ...process.env },
+  detached: process.platform !== 'win32'
 })
 let serverLog = ''
 server.stdout.on('data', chunk => { serverLog += chunk.toString() })
@@ -23,6 +24,16 @@ const waitForServer = async () => {
     await new Promise(resolve => setTimeout(resolve, 250))
   }
   throw new Error(`Vite indisponible.\n${serverLog}`)
+}
+
+const stopServer = () => {
+  if (!server.pid) return
+  try {
+    if (process.platform === 'win32') server.kill('SIGTERM')
+    else process.kill(-server.pid, 'SIGTERM')
+  } catch (error) {
+    if (error?.code !== 'ESRCH') throw error
+  }
 }
 
 let browser
@@ -75,5 +86,5 @@ try {
   }, null, 2))
 } finally {
   if (browser) await browser.close()
-  server.kill('SIGTERM')
+  stopServer()
 }
