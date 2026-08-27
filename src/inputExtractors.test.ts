@@ -5,6 +5,7 @@ import {
   matrixToObjects,
   pdfItemsToText,
   pickBestQuoteTable,
+  readPdfTextItems,
   textToCandidateTables
 } from './inputExtractors'
 
@@ -64,6 +65,23 @@ describe('F2 — tableaux vers RawQuotePayload', () => {
       { str: '20', transform: [1, 0, 0, 1, 430, 680] }
     ])
     expect(text).toBe('Article\tQté\tP.U\tTVA\nDrap\t10\t50\t20')
+  })
+
+  it('lit les chunks PDF via getReader sans dépendre de Symbol.asyncIterator', async () => {
+    const chunks = [
+      { done: false, value: { items: [{ str: 'Article', transform: [1, 0, 0, 1, 50, 700] }] } },
+      { done: false, value: { items: [{ str: '10', transform: [1, 0, 0, 1, 250, 680] }] } },
+      { done: true }
+    ]
+    let released = false
+    const items = await readPdfTextItems({
+      getReader: () => ({
+        read: async () => chunks.shift() ?? { done: true },
+        releaseLock: () => { released = true }
+      })
+    })
+    expect(items).toHaveLength(2)
+    expect(released).toBe(true)
   })
 
   it('extrait métadonnées et lignes sans compléter les champs absents', () => {
