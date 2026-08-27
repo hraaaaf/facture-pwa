@@ -9,14 +9,7 @@ const expectedPira = [
   ['Ex. Réparation de canapé de la chambre 309', '1', '400', '400']
 ]
 
-describe('PDF header boundary — PIRA real split header', () => {
-  it('absorbe TOTAL HT dans l’en-tête avant de chercher le corps', () => {
-    const text = `FACTURE
-DESIGNATION
-QUANTITÉ
-PRIX UNITAIRE HT
-TOTAL HT
-Boudin en toile imperméable 90/20 cm
+const body = `Boudin en toile imperméable 90/20 cm
 60
 90
 5400
@@ -35,6 +28,26 @@ Ex. Réparation de canapé de la chambre 309
 TOTAL HT 7625
 TVA 1525
 TOTAL TTC 9150`
+
+describe('PDF header boundary — PIRA real split header', () => {
+  it('absorbe TOTAL HT dans l’en-tête avant de chercher le corps', () => {
+    const text = `FACTURE
+DESIGNATION
+QUANTITÉ
+PRIX UNITAIRE HT
+TOTAL HT
+${body}`
+    expect(pdfTextToCandidateTables(text)[0]).toEqual(expectedPira)
+  })
+
+  it('recolle QUANTITÉ quand PDF.js la fragmente entre items', () => {
+    const text = `FACTURE
+DESIGNATION
+QUANTIT
+É
+PRIX UNITAIRE HT
+TOTAL HT
+${body}`
     expect(pdfTextToCandidateTables(text)[0]).toEqual(expectedPira)
   })
 })

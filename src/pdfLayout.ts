@@ -91,15 +91,18 @@ const itemsToStreamText = (items: unknown[]) => items
   .filter(Boolean)
   .join('\n')
 
+const headerCompact = (value: string) => normalize(value).replace(/[^a-z0-9%]+/g, '')
+
 const trailingHeaderCell = /^(?:total(?:\s+ht)?|tva|vat|remise(?:\s*%)?|discount(?:\s*%)?)$/
 
 const findHeader = (lines: string[]) => {
   for (let start = 0; start < lines.length; start += 1) {
     for (let size = 1; size <= 6 && start + size <= lines.length; size += 1) {
       let value = normalize(lines.slice(start, start + size).join(' '))
-      const isHeader = /\b(designation|article|description|libelle)\b/.test(value)
-        && /\b(quantite|qte|qty)\b/.test(value)
-        && /\b(prix|p\.?u\.?)\b/.test(value)
+      const compact = headerCompact(value)
+      const isHeader = /(designation|article|description|libelle)/.test(compact)
+        && /(quantite|qte|qty)/.test(compact)
+        && /(prix|pu)/.test(compact)
       if (!isHeader) continue
 
       let end = start + size - 1
@@ -142,7 +145,8 @@ export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
   const header = findHeader(lines)
   if (!header) return []
 
-  const extraHeader = /\btotal\b/.test(header.text) ? 'Total HT' : /\b(tva|vat)\b/.test(header.text) ? 'TVA' : null
+  const compactHeader = headerCompact(header.text)
+  const extraHeader = compactHeader.includes('total') ? 'Total HT' : /(tva|vat)/.test(compactHeader) ? 'TVA' : null
   const expectedCount = extraHeader ? 3 : 2
   const stopPattern = /^(?:total\s+ht|tva\b|total\s+ttc|arret|le\s+client|rc\s*:|rib\s*:)/i
   let stopIndex = lines.length
@@ -211,15 +215,16 @@ const geometryTable = (items: unknown[]): PdfLayoutMatrix | null => {
   if (!positioned.length) return null
   const lines = groupByVisualLine(positioned, 3)
   const header = lines.find(line => {
-    const text = normalize(lineText(line))
-    return /\b(designation|article|description|libelle)\b/.test(text)
-      && /\b(quantite|qte|qty)\b/.test(text)
-      && /\b(prix|p\.?u\.?)\b/.test(text)
+    const compact = headerCompact(lineText(line))
+    return /(designation|article|description|libelle)/.test(compact)
+      && /(quantite|qte|qty)/.test(compact)
+      && /(prix|pu)/.test(compact)
   })
   if (!header) return null
 
   const headerText = normalize(lineText(header))
-  const extraHeader = /\btotal\b/.test(headerText) ? 'Total HT' : /\b(tva|vat)\b/.test(headerText) ? 'TVA' : null
+  const compactHeader = headerCompact(headerText)
+  const extraHeader = compactHeader.includes('total') ? 'Total HT' : /(tva|vat)/.test(compactHeader) ? 'TVA' : null
   const headerY = header.reduce((sum, item) => sum + item.y, 0) / header.length
 
   type NumericRow = { y: number; nums: PositionedItem[]; distance: number; direction: 1 | -1 }
