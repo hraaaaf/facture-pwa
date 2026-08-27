@@ -1,6 +1,6 @@
 # Facture PWA — Roadmap canonique
 
-Dernière mise à jour : 26 août 2026
+Dernière mise à jour : 27 août 2026
 
 > Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/MOBILE_RUNTIME_AUDIT.md` → `docs/PDF_RUNTIME_CERTIFICATION.md` → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
@@ -223,17 +223,77 @@ Run final `33007119765` / artifact `9621115970` : 15/15 tests, build, audit prod
 
 ---
 
+# FEATURE — Input → Devis
+
+**État : CLOSED — 31/31 critères validés**
+
+## F1 — JSON canonique + normalisation — 10/10
+
+- [x] schéma canonique versionné ;
+- [x] normalisation champs client/devis/lignes ;
+- [x] nombres FR/EN ;
+- [x] dates ISO et DD/MM/YYYY ;
+- [x] unités normalisées ;
+- [x] dictionnaire exact sans fuzzy dangereux ;
+- [x] devise MAD normalisée, devise non supportée fail-closed ;
+- [x] doublons signalés sans suppression automatique ;
+- [x] unité/TVA absentes fail-closed sauf défaut société explicite ;
+- [x] bridge READY → `CommercialDocument` seulement.
+
+Preuve : PR #2, F1 mergé via `0f6dc787b3dc18b785639caaeee35b92b29f7966`.
+
+## F2 — Extracteurs locaux — 11/11
+
+- [x] Excel ;
+- [x] Word ;
+- [x] PDF texte ;
+- [x] image/screenshot OCR ;
+- [x] PDF scanné OCR ;
+- [x] reconstruction de tableaux structurés ;
+- [x] extraction → RawQuotePayload ;
+- [x] fixtures binaires réelles ;
+- [x] 5 formats → canonical READY ;
+- [x] tests + build exact-head ;
+- [x] Chromium runtime réel, 0 erreur navigateur.
+
+Preuve : PR #4, run exact-head `33051422061`, merge F2 `9132f913…`.
+
+## F3 — UX Import → Devis — 10/10
+
+- [x] BEFORE 390 / 430 / 768 ;
+- [x] Goal visuel écrit ;
+- [x] mockup 390 verrouillé avant code ;
+- [x] Importer → devis + Photo/PDF/Excel/Word ;
+- [x] traitement local explicite ;
+- [x] revue limitée aux champs incertains ;
+- [x] création DEVIS DRAFT via bridge F1 ;
+- [x] erreur / annuler / réessayer fail-closed ;
+- [x] AFTER 390 / 430 / 768, 0 overflow / 0 erreur console ;
+- [x] E2E réel import → revue → devis modifiable + score visuel.
+
+Preuve finale : PR #5, HEAD certifié `cd5b0cf4e61e3ef43ef3bc3bb2cf791bef925d1a`, run `33057697395` SUCCESS, artifact `9640352345`, merge `656c919da7e4dd7f59087bc3839533026cb0ffff`.
+
+Runtime final F3 : XLSX réel → exactement 2 champs incertains → READY → DEVIS brouillon éditable 2 lignes ; 390/430/768 avec `scrollWidth === viewport` ; 0 erreur console.
+
+**Score visuel F3 : 9,4/10.**
+
+**Avancement Input → Devis : 31/31 = 100 %.**
+
+---
+
 # NEXT EXACT
 
 1. Sur appareil réel : installer sur iPhone/Android puis fermer/réouvrir sans perte.
 2. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
-3. Human gate final.
-4. Merge uniquement après validation humaine.
+3. Human gate final de la PWA complète.
+4. Merge global uniquement après validation humaine si encore requis par la branche de release.
 
-## Avancement mécanique
+## Avancement mécanique historique PWA
 
 **110 critères implémentés/observés sur 116 = 94,8 %.**
 
-## Définition de DONE
+> Ce pourcentage historique ne comprend pas les 31 critères séparés de la feature Input → Devis, désormais fermée à 100 %.
 
-Le chantier est DONE uniquement quand les 6 gates restantes sont prouvées : installation réelle iPhone/Android, fermeture/réouverture sans perte, partage/téléchargement/impression navigateur réel, partage PDF iOS/Android, human gate, puis merge. Aucun Vercel sans autorisation explicite.
+## Définition de DONE PWA globale
+
+Le chantier PWA global reste dépendant des gates appareil réel/partage/human gate ci-dessus. La feature Input → Devis, elle, est CLOSED et mergée. Aucun Vercel sans autorisation explicite.
