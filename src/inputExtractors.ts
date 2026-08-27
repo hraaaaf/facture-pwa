@@ -182,7 +182,7 @@ const isPdfTextItem = (item: unknown): item is PdfTextItemLike => {
 }
 
 export const pdfItemsToText = (items: Array<unknown>): string => {
-  const positioned = items.filter(isPdfTextItem).map("item" => ({
+  const positioned = items.filter(isPdfTextItem).map(item => ({
     text: item.str.trim(),
     x: item.transform[4],
     y: item.transform[5]
