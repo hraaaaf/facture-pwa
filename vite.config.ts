@@ -7,10 +7,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png'],
+      includeAssets: ['apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
-        name: 'Facture PWA',
-        short_name: 'Facture',
+        name: 'Factea',
+        short_name: 'Factea',
         description: 'Devis, factures, bons de livraison et bons de commande.',
         theme_color: '#eef3ef',
         background_color: '#eef3ef',
