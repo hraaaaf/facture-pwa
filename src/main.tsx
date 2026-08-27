@@ -14,6 +14,7 @@ import './overlay.css'
 import './preview-fix.css'
 import './polish.css'
 import './touch-target-fix.css'
+import './voice-input.css'
 
 registerSW({ immediate: true })
 
