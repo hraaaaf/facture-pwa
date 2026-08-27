@@ -36,13 +36,17 @@ Référence : `src/polish.css` + `docs/mockups/VOICE_INPUT_V1.svg`.
 
 ## Preuve web
 
-Run avant closeout : `33120907970` — **SUCCESS**.
+Run exact-head de closeout : `33122759036` — **SUCCESS**.
 
-Artifact : `9666431062` (`voice-input-v1-captures`).
+HEAD certifié : `cae12b56ae9e78891962252909c433bd0c6d3a14`.
 
-Ce run confirme notamment :
+Artifact : `9667130704` (`voice-input-v1-captures`).
 
-- tests repo : **53/53** ;
+Ce run confirme :
+
+- suite totale : **82/82 tests PASS** ;
+- parser historique : **34/34** ;
+- régressions Safari : **6/6** ;
 - build TypeScript + Vite/PWA : SUCCESS ;
 - runtime Chromium 390 / 430 / 768 : SUCCESS ;
 - 0 overflow horizontal ;
@@ -78,7 +82,7 @@ Le closeout final conserve :
 
 ## Sécurité / confidentialité
 
-L'endpoint temporaire `api/voice-debug.js` et l'envoi de transcription vers les logs Vercel sont uniquement des instruments de diagnostic Preview. Ils sont supprimés du closeout V1 et ne doivent pas être mergés.
+L'endpoint temporaire `api/voice-debug.js` et l'envoi de transcription vers les logs Vercel ont été supprimés du closeout final et ne sont pas présents dans le candidat au merge.
 
 `SpeechRecognition` reste un progressive enhancement. Aucun fournisseur STT externe n'est ajouté au projet. La transcription peut dépendre du service de reconnaissance du navigateur et ne doit pas être présentée comme strictement locale/offline.
 
@@ -90,6 +94,6 @@ Aucun changement visuel n'est introduit par le correctif Safari ou le closeout. 
 
 ## État
 
-**V1 VOCAL VALIDÉE SUR WEB + IPHONE RÉEL.**
+**V1 VOCAL VALIDÉE SUR WEB + IPHONE RÉEL — CLOSEOUT EXACT-HEAD CERTIFIÉ.**
 
-Le closeout exact-head doit rester vert après suppression du diagnostic et synchronisation de `vercel/latest` (`5bd8755…`). Production ne doit pas être promue sans autorisation explicite.
+Base `vercel/latest` synchronisée sur `5bd8755629b8f40c4b92d0aedd6e9d88ffabe88d`. PR #7 autorisée au merge. Aucune promotion Production n'est autorisée par ce closeout.
