@@ -1,4 +1,4 @@
-// Factea base sync certification trigger.
+// Exact user-phrase runtime certification for Factea voice input.
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
@@ -10,7 +10,7 @@ const origin = `http://127.0.0.1:${port}`
 const outputDir = 'artifacts/voice-input-v1'
 const widths = [390, 430, 768]
 const viewportHeight = width => width <= 430 ? 844 : 1024
-const transcript = 'Client Hôtel Atlas, 200 draps à 85 dirhams, 40 serviettes à 22,5 MAD, TVA 20 %.'
+const transcript = "le client c'est Pierre, l'objet c'est des draps, la désignation c'est des draps de 250 centimètres, le prix unitaire c'est 150 dirhams, la quantité c'est six articles"
 
 const server = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(port)], {
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -188,7 +188,8 @@ try {
     await page.getByRole('button', { name: 'Arrêter' }).click()
 
     if (width === 390) {
-      assert.match(await textarea.inputValue(), /Hôtel Atlas/)
+      assert.match(await textarea.inputValue(), /Pierre/)
+      assert.match(await textarea.inputValue(), /six articles/i)
       await page.getByRole('button', { name: 'Analyser' }).click()
       await page.locator('.quote-review-list').waitFor()
       const reviewCount = await page.locator('.quote-review-field').count()
@@ -197,20 +198,21 @@ try {
       assert.equal(await reviewInput.getAttribute('type'), 'date', 'Vocal: la revue attendue est la date')
       await reviewInput.fill('2026-08-27')
       await page.locator('.quote-ready-hero').waitFor()
-      assert.match(await page.locator('.quote-ready-hero').innerText(), /Hôtel Atlas/)
-      assert.match(await page.locator('.quote-ready-grid').innerText(), /2/)
+      assert.match(await page.locator('.quote-ready-hero').innerText(), /Pierre/)
+      const readyGrid = await page.locator('.quote-ready-grid').innerText()
+      assert.match(readyGrid, /1/)
+      assert.match(readyGrid.replace(/[\s\u202f\u00a0]/g, ''), /900MAD/)
       await page.screenshot({ path: `${outputDir}/after-ready-390.png`, fullPage: false })
       await page.getByRole('button', { name: 'Créer le devis' }).click()
       await page.locator('.editor-screen').waitFor()
-      assert.equal(await page.locator('.client-field input').inputValue(), 'Hôtel Atlas')
-      assert.equal(await page.locator('.article-card').count(), 2)
-      assert.match(await page.locator('.article-designation textarea').nth(0).inputValue(), /draps/i)
-      assert.match(await page.locator('.article-designation textarea').nth(1).inputValue(), /serviettes/i)
-      const quantities = await page.locator('.compact-number-field input').evaluateAll(inputs => inputs.map(input => input.value))
-      assert.ok(quantities.includes('200'), 'Vocal: quantité 200 absente')
-      assert.ok(quantities.includes('40'), 'Vocal: quantité 40 absente')
+      assert.equal(await page.locator('.client-field input').inputValue(), 'Pierre')
+      assert.equal(await page.locator('.article-card').count(), 1)
+      assert.match(await page.locator('.article-designation textarea').first().inputValue(), /draps de 250 centimètres/i)
+      const numericValues = await page.locator('.compact-number-field input').evaluateAll(inputs => inputs.map(input => input.value))
+      assert.ok(numericValues.includes('6'), 'Vocal: quantité 6 absente')
+      assert.ok(numericValues.includes('150'), 'Vocal: prix unitaire 150 absent')
       await page.screenshot({ path: `${outputDir}/after-editor-390.png`, fullPage: false })
-      report.e2e = { transcript, reviewFields: 1, result: 'editable DEVIS draft', lineCount: 2, client: 'Hôtel Atlas' }
+      report.e2e = { transcript, reviewFields: 1, result: 'editable DEVIS draft', lineCount: 1, client: 'Pierre', quantity: 6, unitPriceHT: 150, totalHT: 900 }
     }
 
     report.consoleErrors.push(...errors.map(error => `${width}px: ${error}`))

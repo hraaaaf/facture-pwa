@@ -2,9 +2,14 @@ import type { RawQuotePayload } from './quoteImport'
 
 const decimal = (value: string) => Number(value.replace(',', '.'))
 const esc = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const FIELD_LABELS = ['client', 'objet', 'désignation', 'designation', 'prix unitaire', 'pu', 'quantité', 'quantite', 'qte', 'tva', 'taxe']
+const FIELD_LABELS = [
+  'client', 'objet', 'désignation', 'designation',
+  'prix unitaire', 'prix unité', 'prix unite', 'pu',
+  'quantité', 'quantite', 'qte', 'qté',
+  'tva', 'taxe'
+]
 const boundary = FIELD_LABELS.map(esc).join('|')
-const article = String.raw`(?:l['’]|le\s+|la\s+|les\s+)?`
+const article = String.raw`(?:l['’]\s*|le\s+|la\s+|les\s+)?`
 const connector = String.raw`\s*(?:,|;|\.|:|-)?\s*(?:(?:c['’]?est|est(?:\s+de)?|de|à|a)\s+)?`
 
 const FRENCH_UNITS: Record<string, number> = {
@@ -12,12 +17,17 @@ const FRENCH_UNITS: Record<string, number> = {
   dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16
 }
 const FRENCH_TENS: Record<string, number> = { vingt: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60 }
+const NUMBER_WORD = String.raw`zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt|vingts|trente|quarante|cinquante|soixante|cent|cents|mille|milles|million|millions|et`
+const SPOKEN_NUMBER_PATTERN = String.raw`(?:${NUMBER_WORD})(?:[-\s]+(?:${NUMBER_WORD})){0,8}`
+const NUMBER_VALUE_PATTERN = String.raw`(?:\d+(?:[.,]\d+)?|${SPOKEN_NUMBER_PATTERN})`
 
 const normalizeWordNumber = (value: string) => value
   .toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/\bpour\s+cent\b/g, ' ')
   .replace(/-/g, ' ')
-  .replace(/\b(et|articles?|unites?|unités?|pieces?|pièces?)\b/g, ' ')
+  .replace(/\b(et|articles?|unites?|pieces?|mad|dhs?|dirhams?)\b/g, ' ')
+  .replace(/%/g, ' ')
   .replace(/\s+/g, ' ')
   .trim()
 
@@ -58,7 +68,13 @@ const parseFrenchNumberWords = (value: string): number | null => {
       used = true
       continue
     }
-    return used ? total + current : null
+    if (token === 'million' || token === 'millions') {
+      total += (current || 1) * 1_000_000
+      current = 0
+      used = true
+      continue
+    }
+    return null
   }
 
   return used ? total + current : null
@@ -83,27 +99,26 @@ const numberField = (text: string, names: string[]) => {
   return value ? parseNumberValue(value) : null
 }
 
-const compactQuantityPattern = String.raw`(\d+(?:[.,]\d+)?|zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt)`
-
 export const voiceToRawQuote = (transcript: string, defaultVatRate: number): RawQuotePayload => {
   const normalized = transcript.replace(/\s+/g, ' ').trim()
-  const client = field(normalized, ['client'], true) ?? normalized.match(/(?:pour)\s+([^,.;]+?)(?=\s+(?:objet|avec|comprenant|incluant)\b|[,.;]|$)/i)?.[1]?.trim()
+  const client = field(normalized, ['client'], true) ?? normalized.match(/(?:pour)\s+([^,.;]+?)(?=\s+(?:objet|avec|comprenant|incluant)(?=\s|[,.;:]|$)|[,.;]|$)/i)?.[1]?.trim()
   const object = field(normalized, ['objet'], true) ?? field(normalized, ['concernant'], true)
   const vat = numberField(normalized, ['tva', 'taxe'])
   const vatRate = vat ?? defaultVatRate
   const lines: Array<Record<string, unknown>> = []
 
-  const compactPattern = new RegExp(`${compactQuantityPattern}\\s+([^,;.]+?)\\s+(?:à|a)\\s+(\\d+(?:[.,]\\d+)?)\\s*(?:mad|dhs?|dirhams?)`, 'gi')
+  const compactPattern = new RegExp(String.raw`(${NUMBER_VALUE_PATTERN})\s+([^,;.]+?)\s+(?:à|a)\s+(${NUMBER_VALUE_PATTERN})\s*(?:mad|dhs?|dirhams?)`, 'gi')
   for (const match of normalized.matchAll(compactPattern)) {
     const quantity = parseNumberValue(match[1])
-    if (quantity === null) continue
-    lines.push({ designation: match[2].trim(), unit: 'Unité', quantity, unitPriceHT: decimal(match[3]), vatRate, discountPercent: 0 })
+    const unitPriceHT = parseNumberValue(match[3])
+    if (quantity === null || unitPriceHT === null) continue
+    lines.push({ designation: match[2].trim(), unit: 'Unité', quantity, unitPriceHT, vatRate, discountPercent: 0 })
   }
 
   if (lines.length === 0) {
     const designation = field(normalized, ['désignation', 'designation'])
-    const quantity = numberField(normalized, ['quantité', 'quantite', 'qte'])
-    const unitPriceHT = numberField(normalized, ['prix unitaire', 'pu'])
+    const quantity = numberField(normalized, ['quantité', 'quantite', 'qte', 'qté'])
+    const unitPriceHT = numberField(normalized, ['prix unitaire', 'prix unité', 'prix unite', 'pu'])
     if (designation && quantity !== null && unitPriceHT !== null) {
       lines.push({ designation, unit: 'Unité', quantity, unitPriceHT, vatRate, discountPercent: 0 })
     }
