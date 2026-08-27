@@ -2,7 +2,7 @@
 
 Dernière mise à jour : 27 août 2026
 
-> Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/MOBILE_RUNTIME_AUDIT.md` → `docs/PDF_RUNTIME_CERTIFICATION.md` → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
+> Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/VOICE_INPUT_V1.md` → `docs/MOBILE_RUNTIME_AUDIT.md` → `docs/PDF_RUNTIME_CERTIFICATION.md` → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
 ## Goal global
 
@@ -225,7 +225,7 @@ Run final `33007119765` / artifact `9621115970` : 15/15 tests, build, audit prod
 
 # FEATURE — Input → Devis
 
-**État : CLOSED — 37/37 critères validés**
+**État core F1–F4 : CLOSED — 37/37 critères validés**
 
 ## F1 — JSON canonique + normalisation — 10/10
 
@@ -292,23 +292,46 @@ Corrections runtime certifiées : `Renouvelement linge hotellerie` → `Renouvel
 
 **Score visuel F4 : 9,5/10.** Le flow et les totaux restent identiques ; seules les corrections lexicales ciblées changent visiblement.
 
-**Avancement Input → Devis : 37/37 = 100 %.**
+**Avancement core Input → Devis : 37/37 = 100 %.**
+
+## V1 — Input vocal → Devis — 10/11
+
+**État : WEB CERTIFIÉ, MICRO IPHONE RÉEL RESTANT**
+
+- [x] Goal visuel + baseline BEFORE + mockup cible ;
+- [x] cinquième source `Vocal` alignée Visual Polish V1 ;
+- [x] dictée progressive avec fallback texte ;
+- [x] transcription visible et modifiable ;
+- [x] extraction déterministe client / lignes / PU / TVA sans LLM ;
+- [x] réutilisation F4 + normalisation + revue canonique ;
+- [x] tests 35/35 + build ;
+- [x] runtime 390 / 430 / 768, zéro overflow / erreur console ;
+- [x] touch targets : fermer 45×45, actions Vocal >=48 px ;
+- [x] E2E Vocal → une revue date → DEVIS brouillon 2 lignes ;
+- [ ] permission / dictée micro réelle sur iPhone + human gate.
+
+Preuve web : PR #7, commit certifié `35c1fc6352ea6a0c3c98134891ae9786889fd424`, run `33104675409` SUCCESS, artifact `9659978460`.
+
+**Score visuel web V1 : 9,6/10.**
+
+Le core F1–F4 reste historiquement `37/37`. V1 est une extension séparée et ne modifie pas rétroactivement ce dénominateur.
 
 ---
 
 # NEXT EXACT
 
-1. Sur appareil réel : installer sur iPhone/Android puis fermer/réouvrir sans perte.
-2. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
-3. Human gate final de la PWA complète.
-4. Merge global uniquement après validation humaine si encore requis par la branche de release.
+1. Gate V1 : tester permission + dictée micro réelle sur iPhone quand un build accessible sur appareil sera disponible sans contourner la règle de déploiement.
+2. Sur appareil réel : installation iPhone/Android puis fermeture/réouverture sans perte.
+3. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
+4. Human gate final de la PWA complète.
+5. Merge global uniquement après validation humaine si encore requis par la branche de release.
 
 ## Avancement mécanique historique PWA
 
 **110 critères implémentés/observés sur 116 = 94,8 %.**
 
-> Ce pourcentage historique ne comprend pas les 37 critères séparés de la feature Input → Devis, désormais fermée à 100 %.
+> Ce pourcentage historique ne comprend pas les 37 critères séparés de la feature Input → Devis ni l'extension V1 Vocal. Il reste inchangé tant que le périmètre mécanique historique n'est pas officiellement recalculé.
 
 ## Définition de DONE PWA globale
 
-Le chantier PWA global reste dépendant des gates appareil réel/partage/human gate ci-dessus. La feature Input → Devis, elle, est CLOSED et mergée. Aucun Vercel sans autorisation explicite.
+Le chantier PWA global reste dépendant des gates appareil réel/partage/human gate ci-dessus. Le core Input → Devis F1–F4 est CLOSED et mergé. L'extension V1 Vocal est web-certifiée mais reste ouverte sur le gate micro iPhone réel et le human gate. Aucun Vercel sans autorisation explicite.
