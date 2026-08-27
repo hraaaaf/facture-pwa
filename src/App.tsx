@@ -318,7 +318,7 @@ function Home({ documents, onEdit, onHistory, onSettings, onNew }: {
   return (
     <main className="screen home-screen with-bottom-nav">
       <header className="dashboard-header">
-        <div><p className="eyebrow">FACTURE PWA</p><h1>Tableau de bord</h1><p className="muted">Simple. Rapide. Professionnel.</p></div>
+        <div><p className="eyebrow">FACTEA</p><h1>Tableau de bord</h1><p className="muted">Simple. Rapide. Professionnel.</p></div>
         <button className="profile-button" onClick={onSettings} aria-label="Réglages"><Icon name="settings" /></button>
       </header>
       <button className="search-surface" onClick={onHistory}><Icon name="search" /><span>Rechercher un document…</span></button>
