@@ -12,7 +12,7 @@ const viewports = [[390, 844], [430, 932], [768, 1024]]
 await mkdir(outDir, { recursive: true })
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
-const server = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4176'], { stdio: ['ignore', 'pipe', 'pipe'] })
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '4176'], { stdio: ['ignore', 'pipe', 'pipe'] })
 let serverLog = ''
 server.stdout.on('data', chunk => { serverLog += chunk.toString() })
 server.stderr.on('data', chunk => { serverLog += chunk.toString() })
