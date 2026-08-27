@@ -1,92 +1,86 @@
-# Facture PWA — HANDOVER CANONIQUE
+# Factea — HANDOVER CANONIQUE
 
-Date : 26 août 2026
+Date : 27 août 2026
 
-## Goal
+## Goal global
 
-PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, avec moteur métier robuste, mémoire clients/catalogue, autosave et PDF Original/Premium.
+PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, avec moteur métier robuste, mémoire clients/catalogue, PDF professionnels et Input → Devis multi-source.
 
-## Repo
+## État vérifié
 
-- repository : `hraaaaf/facture-pwa`
-- branche : `m0/pwa-foundation`
-- PR : `#1 — M0 — Fondation PWA facturation`
-- base : `main`
-- HEAD produit certifié : `c2873b7c6ff6446aae8b797fb7e0233de4ea061d`
-- run final : `33007119765`
-- artifact : `9621115970`
-- workflow lourd : `workflow_dispatch` uniquement après closeout
-- aucun Vercel
-- aucun merge avant human gate
+- avancement mécanique historique PWA : **110/116 = 94,8 %** ;
+- core Input → Devis F1–F4 : **37/37 = 100 %** ;
+- extension V1 Vocal : **11/11 = 100 %** ;
+- iPhone réel : micro **PASS**, transcription **PASS**, `Analyser` **PASS**, création d'une ligne canonique **PASS** ;
+- confirmation utilisateur réelle : **« Ça marche maintenant ! »** ;
+- Production Vercel : non modifiée par V1.
 
-## Avancement global
+## Repo / Git
 
-**110 critères implémentés/observés sur 116 = 94,8 %.**
+- repository : `hraaaaf/facture-pwa` ;
+- base PR : `vercel/latest` ;
+- base synchronisée dans le closeout V1 : `5bd8755629b8f40c4b92d0aedd6e9d88ffabe88d` (`Fix PDF table extraction for wrapped rows`) ;
+- branche V1 : `v1/voice-input` ;
+- PR : `#7 — V1 — Input vocal → Devis`, draft tant que le closeout exact-head n'est pas certifié ;
+- dernier HEAD appareil réel avant closeout : `d4e40524460d9a5c31b78ff65c1f9c02356706d2` ;
+- run correspondant : `33120907970` — **SUCCESS** ;
+- artifact : `9666431062` (`voice-input-v1-captures`).
 
-Le chantier n'est pas DONE : 6 gates appareil réel / partage / human gate / merge restent ouvertes.
+## V1 Vocal — preuve appareil réel
 
-## Preuve finale exact-head
+Flow :
 
-Run `33007119765` sur `c2873b7c6ff6446aae8b797fb7e0233de4ea061d` :
+`Vocal → transcription modifiable → extraction déterministe → dictionnaire F4 → normalisation/revue canonique → DEVIS DRAFT`.
 
-- CI : SUCCESS ;
-- jsPDF `4.2.1` + AutoTable `5.0.8` ;
-- `npm audit --omit=dev --audit-level=critical` : 0 vulnérabilité ;
-- tests : 15/15 ;
-- build + PWA SW/manifest : SUCCESS ;
-- runtime v4 : 10 assertions, `offline=true`, 0 erreur page/console ;
-- Premium/mobile : 2 assertions, 0 erreur page/console ;
-- artifact final : `9621115970`, 27 fichiers.
+Transcription Safari capturée sur iPhone :
 
-## Runtime métier / stockage
+`Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams`
 
-Le run final confirme notamment : deux factures séquentielles, déduplication client sans perte adresse/ICE/IF, catalogue `usageCount=2` et dernier PU=100/TVA=20, préfixe dupliqué refusé, backup v2 cohérent, restore v1 + migration, restore v2, rejet backup avec numéro final dupliqué sans mutation, reload offline via SW.
+Résultat parser observé dans le Preview :
 
-## Mobile / tactile
+- client : `Pierra` ;
+- désignation : `draps de 2,30 m sur deux 2,20 m` ;
+- quantité : `5` ;
+- PU HT : `150` ;
+- TVA : `20` ;
+- lignes : `1`.
 
-Run final :
+Le correctif ajoute `article` comme frontière/champ naturel sans corriger arbitrairement `Pierra` en `Pierre`.
 
-- sheet close pendant animation : **44,325 px** sur 390/430/768 ;
-- actions Historique : **45 px** ;
-- aperçu Premium : 390/430/768, aucune largeur > viewport ;
-- actions Partager/PDF/Imprimer : **56 px** ;
-- fiche client : bouton fermer **44×44 px** ;
-- suggestions + fiche client revues aux 3 viewports ;
-- 0 overflow, 0 erreur page/console.
+## Closeout V1
 
-**Score UI global conservé : 9,3/10.**
-**Score visuel lot Premium/mobile : 9,5/10.**
+Le commit final de closeout doit, dans un seul commit :
 
-## PDF
+1. supprimer l'instrumentation temporaire `/api/voice-debug` et tout envoi de transcription vers les logs ;
+2. restaurer la matrice parser historique **34 tests** et ajouter **6 régressions Safari réelles** ;
+3. synchroniser la base `5bd8755…` ;
+4. garder Production inchangée ;
+5. faire passer la certification exact-head de la PR #7.
 
-Artifact final :
+La preuve finale exact-head est la check-suite GitHub attachée au HEAD de closeout de `v1/voice-input` et le Preview associé, sans promotion Production.
 
-- Original : 1 page normale + stress 4 pages ;
-- Premium : 1 page normale + stress 3 pages ;
-- rendu 200 dpi inspecté ;
-- aucun chevauchement, clipping ou glyph cassé observé ;
-- comparaison source → Original effectuée.
+## UI / référence
 
-Scores finaux :
+- design system : `src/polish.css` ;
+- styles V1 : `src/voice-input.css` ;
+- mockup cible : `docs/mockups/VOICE_INPUT_V1.svg` ;
+- spec/certification : `docs/VOICE_INPUT_V1.md` ;
+- score visuel V1 : **9,6/10**.
 
-- **Original : 9,5/10** ;
-- **Premium : 9,5/10**.
-
-La différence résiduelle de l'Original concerne surtout les éléments dépendant des données société (ex. signature réellement chargée) et de légères variations typographiques, sans défaut de structure.
-
-## Gates restantes
+## Gates globales encore ouvertes
 
 1. Installation réelle iPhone/Android.
 2. Fermeture/réouverture sans perte sur appareil réel.
-3. Partage/téléchargement/impression navigateur réel.
-4. Partage PDF iOS/Android.
-5. Human gate final.
-6. Merge uniquement après validation humaine.
+3. Partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
+4. Human gate final de la PWA complète.
+5. Merge/release uniquement après preuves et autorisations requises.
+
+Le gate V1 Vocal appareil réel est fermé. Il ne ferme pas automatiquement les gates PWA globales ci-dessus.
 
 ## NEXT EXACT
 
-Passer sur appareil réel, exécuter les quatre preuves d'installation/persistance/partage, puis human gate. Si toutes sont vertes : mise à jour canonique finale, merge uniquement après validation explicite. Aucun Vercel.
+Certifier le HEAD de closeout de la PR #7, vérifier le Preview sans instrumentation de diagnostic, puis préparer le merge. **Aucune promotion Production sans autorisation explicite.**
 
 ## Prompt de reprise
 
-`Reprends Facture PWA depuis docs/HANDOVER.md et docs/ROADMAP.md. État vérifié : 110/116 = 94,8 %. HEAD produit certifié c2873b7c… ; run final 33007119765 SUCCESS ; artifact 9621115970. 15/15 tests, build, audit 0 vulnérabilité, runtime v4 10 assertions, Premium/mobile 2 assertions, offline et tactile >=44 px prouvés. Original 9,5/10, Premium 9,5/10. Restent uniquement installation iPhone/Android, fermeture/réouverture réelle, partage/téléchargement/impression navigateur réel, partage PDF iOS/Android, human gate puis merge. Aucun Vercel.`
+`Reprends Factea depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/VOICE_INPUT_V1.md. V1 Vocal est validée sur iPhone réel : micro, transcription et Analyser PASS. La transcription Safari réelle "Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams" produit client Pierra, 1 ligne, quantité 5, PU 150. Le closeout final doit être exact-head, sans voice-debug, avec les 34 tests historiques + 6 régressions Safari, base 5bd8755 synchronisée, Preview seulement. PWA historique 110/116 = 94,8 %, core Input→Devis F1-F4 37/37. Aucun déploiement Production sans autorisation explicite.`

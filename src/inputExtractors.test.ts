@@ -102,7 +102,7 @@ describe('F2 — tableaux vers RawQuotePayload', () => {
       source: { kind: 'EXCEL', name: 'hotel.xlsx' },
       client: { name: 'Hôtel Atlas' },
       object: 'Linge',
-      date: '27/08/2026',
+      date: '2026-08-27',
       currency: 'MAD'
     })
     expect(raw.lines?.[1]).toMatchObject({ Article: 'Serviette', 'P.U': null })
