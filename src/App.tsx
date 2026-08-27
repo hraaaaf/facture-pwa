@@ -8,6 +8,7 @@ import {
   lineTotalHT
 } from './lib'
 import { generatePdf } from './pdf'
+import { QuoteImportSheet, type ImportedQuoteFields } from './QuoteImportSheet'
 import {
   finalizeDocument,
   getCatalogItems,
@@ -69,6 +70,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const [newOpen, setNewOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const autosaveTimer = useRef<number | null>(null)
   const autosaveGeneration = useRef(0)
 
@@ -128,6 +130,15 @@ export default function App() {
     setDraft(createBlankDocument(type, company.defaultVatRate))
     setNewOpen(false)
     setView('editor')
+  }
+
+  const startImportedQuote = (fields: ImportedQuoteFields) => {
+    const blank = createBlankDocument('DEVIS', company.defaultVatRate)
+    setDraft({ ...blank, ...fields })
+    setImportOpen(false)
+    setNewOpen(false)
+    setView('editor')
+    showNotice('Devis importé en brouillon')
   }
 
   const editDocument = (document: CommercialDocument) => {
@@ -282,7 +293,8 @@ export default function App() {
         />
       )}
 
-      {newOpen && <NewDocumentSheet onClose={() => setNewOpen(false)} onNew={startDocument} />}
+      {newOpen && <NewDocumentSheet onClose={() => setNewOpen(false)} onNew={startDocument} onImport={() => { setNewOpen(false); setImportOpen(true) }} />}
+      {importOpen && <QuoteImportSheet defaultVatRate={company.defaultVatRate} onClose={() => setImportOpen(false)} onCreate={startImportedQuote} />}
     </div>
   )
 }
@@ -349,7 +361,7 @@ function Home({ documents, onEdit, onHistory, onSettings, onNew }: {
   )
 }
 
-function NewDocumentSheet({ onClose, onNew }: { onClose: () => void; onNew: (type: DocumentType) => void }) {
+function NewDocumentSheet({ onClose, onNew, onImport }: { onClose: () => void; onNew: (type: DocumentType) => void; onImport: () => void }) {
   const options: Array<{ type: DocumentType; subtitle: string }> = [
     { type: 'DEVIS', subtitle: 'Créer un nouveau devis' }, { type: 'FACTURE', subtitle: 'Créer une nouvelle facture' },
     { type: 'BL', subtitle: 'Créer un bon de livraison' }, { type: 'BC', subtitle: 'Créer un bon de commande' }
@@ -358,7 +370,13 @@ function NewDocumentSheet({ onClose, onNew }: { onClose: () => void; onNew: (typ
     <div className="sheet-layer" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}>
       <section className="new-sheet" role="dialog" aria-modal="true" aria-label="Nouveau document">
         <div className="sheet-handle" />
-        <div className="sheet-header"><button className="sheet-close" onClick={onClose} aria-label="Fermer">×</button><div><h2>Nouveau document</h2><p>Choisissez le type de document</p></div><span className="sheet-header-spacer" /></div>
+        <div className="sheet-header"><button className="sheet-close" onClick={onClose} aria-label="Fermer">×</button><div><h2>Nouveau document</h2><p>Créez ou importez un devis</p></div><span className="sheet-header-spacer" /></div>
+        <button className="import-quote-card" onClick={onImport}>
+          <span className="import-quote-icon"><Icon name="file" /></span>
+          <span className="import-quote-copy"><strong>Importer → devis</strong><small>Photo, PDF, Excel ou Word · traitement local</small><span className="import-format-pills"><i>Photo</i><i>PDF</i><i>Excel</i><i>Word</i></span></span>
+          <span className="import-local-chip"><span className="status-dot" /> Local</span>
+        </button>
+        <div className="manual-separator"><span>Ou créer manuellement</span></div>
         <div className="new-options">
           {options.map(option => (
             <button className="new-option" key={option.type} onClick={() => onNew(option.type)}>

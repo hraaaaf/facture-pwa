@@ -1,0 +1,39 @@
+name: F3 Input to Quote UX Certification
+
+on:
+  push:
+    branches:
+      - f3/input-to-quote-ux-clean
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Install browser runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: F3 import UX and visual E2E
+        run: node scripts/f3-ux-certification.mjs
+      - name: Upload F3 captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f3-ui-captures
+          path: artifacts/f3-ui
