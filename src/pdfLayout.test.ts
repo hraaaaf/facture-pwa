@@ -18,7 +18,7 @@ const expectedPira = [[
 const piraBody = () => [
   item('Boudin en toile imperméable', 72, 640), item('90/20 cm', 117, 625),
   item('60', 264, 633), item('90', 371, 633), item('5400', 478, 633),
-  item('Têtière de chirurgie en simili cuir', 63, 572), item('noir (30cm de diaiètre )', 82, 557),
+  item('Têtière de chirurgie en simili cuir', 63, 572), item('noir (30cm de diamètre )', 82, 557),
   item('8', 267, 565), item('150', 368, 565), item('1200', 478, 565),
   item('Têtière de chirurgie en simili cuir', 63, 505), item('noir (25cm de diamètre)', 83, 490),
   item('5', 267, 498), item('125', 368, 498), item('625', 481, 498),

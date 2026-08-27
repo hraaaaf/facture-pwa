@@ -140,6 +140,15 @@ const parseNumericRow = (line: string, expectedCount: number, extraHeader: strin
   }
 }
 
+const isTrailingDesignationContinuation = (value: string, expectedCount: number, extraHeader: string | null) => {
+  const candidate = cleanDesignation(value)
+  if (!candidate || isNumeric(candidate) || parseNumericRow(candidate, expectedCount, extraHeader)) return false
+  const first = candidate.match(/[0-9A-Za-zÀ-ÿ]/u)?.[0]
+  if (!first) return false
+  if (/\d/.test(first)) return true
+  return first === first.toLocaleLowerCase('fr-FR') && first !== first.toLocaleUpperCase('fr-FR')
+}
+
 export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
   const lines = text.replace(/\r\n?/g, '\n').split('\n').map(value => value.trim()).filter(Boolean)
   const header = findHeader(lines)
@@ -186,6 +195,18 @@ export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
     rows.push(candidate)
   }
 
+  const trailingCounts = rows.map((row, rowIndex) => {
+    const nextNumericIndex = rowIndex + 1 < rows.length ? rows[rowIndex + 1].index : stopIndex
+    let count = 0
+    for (let index = row.endIndex + 1; index < nextNumericIndex; index += 1) {
+      const candidate = cleanDesignation(lines[index])
+      if (!candidate || stopPattern.test(normalize(candidate))) break
+      if (!isTrailingDesignationContinuation(candidate, expectedCount, extraHeader)) break
+      count += 1
+    }
+    return count
+  })
+
   const matrix: PdfLayoutMatrix = [[
     'Désignation',
     'Quantité',
@@ -194,7 +215,10 @@ export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
   ]]
 
   rows.forEach((row, rowIndex) => {
-    const start = rowIndex === 0 ? header.end + 1 : rows[rowIndex - 1].endIndex + 1
+    const previous = rowIndex > 0 ? rows[rowIndex - 1] : null
+    const start = previous
+      ? previous.endIndex + 1 + trailingCounts[rowIndex - 1]
+      : header.end + 1
     const end = row.index - 1
     const designationParts: string[] = []
     for (let index = start; index <= end; index += 1) {
@@ -204,6 +228,10 @@ export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
       designationParts.push(candidate)
     }
     if (row.inlineDesignation) designationParts.push(row.inlineDesignation)
+    for (let offset = 0; offset < trailingCounts[rowIndex]; offset += 1) {
+      const candidate = cleanDesignation(lines[row.endIndex + 1 + offset])
+      if (candidate) designationParts.push(candidate)
+    }
     matrix.push([cleanDesignation(designationParts.join(' ')), ...row.nums])
   })
 
