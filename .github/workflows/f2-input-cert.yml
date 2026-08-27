@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test-and-build:
+  certify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -25,3 +25,9 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Install browser runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Real binary fixtures in Chromium
+        run: node scripts/f2-runtime-certification.mjs
