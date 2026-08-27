@@ -73,7 +73,7 @@ const lineText = (line: PositionedItem[]) => [...line]
   .map(item => item.text)
   .join(' ')
 
-const itemsToText = (items: unknown[]) => {
+const itemsToPositionedText = (items: unknown[]) => {
   const positioned = items.filter(isItem).map(item => ({
     text: item.str.trim(),
     x: item.transform[4],
@@ -85,9 +85,15 @@ const itemsToText = (items: unknown[]) => {
     .join('\n')
 }
 
+const itemsToStreamText = (items: unknown[]) => items
+  .filter(isItem)
+  .map(item => item.str.trim())
+  .filter(Boolean)
+  .join('\n')
+
 const findHeader = (lines: string[]) => {
   for (let start = 0; start < lines.length; start += 1) {
-    for (let size = 1; size <= 4 && start + size <= lines.length; size += 1) {
+    for (let size = 1; size <= 6 && start + size <= lines.length; size += 1) {
       const value = normalize(lines.slice(start, start + size).join(' '))
       const isHeader = /\b(designation|article|description|libelle)\b/.test(value)
         && /\b(quantite|qte|qty)\b/.test(value)
@@ -163,7 +169,7 @@ export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
 
   const rows: typeof candidates = []
   for (const candidate of candidates) {
-    if (rows.length && candidate.index - rows[rows.length - 1].index > 8) break
+    if (rows.length && candidate.index - rows[rows.length - 1].index > 12) break
     rows.push(candidate)
   }
 
@@ -175,23 +181,16 @@ export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
   ]]
 
   rows.forEach((row, rowIndex) => {
-    const start = rowIndex === 0
-      ? header.end + 1
-      : Math.floor((rows[rowIndex - 1].endIndex + row.index) / 2) + 1
-    const end = rowIndex + 1 < rows.length
-      ? Math.floor((row.endIndex + rows[rowIndex + 1].index) / 2)
-      : stopIndex - 1
-
+    const start = rowIndex === 0 ? header.end + 1 : rows[rowIndex - 1].endIndex + 1
+    const end = row.index - 1
     const designationParts: string[] = []
-    if (row.inlineDesignation) designationParts.push(row.inlineDesignation)
     for (let index = start; index <= end; index += 1) {
-      if (index >= row.index && index <= row.endIndex) continue
       const candidate = cleanDesignation(lines[index])
       if (!candidate || stopPattern.test(normalize(candidate)) || isNumeric(candidate)) continue
       if (parseNumericRow(candidate, expectedCount, extraHeader)) continue
       designationParts.push(candidate)
     }
-
+    if (row.inlineDesignation) designationParts.push(row.inlineDesignation)
     matrix.push([cleanDesignation(designationParts.join(' ')), ...row.nums])
   })
 
@@ -255,16 +254,12 @@ const geometryTable = (items: unknown[]): PdfLayoutMatrix | null => {
   const leftQuantityBoundary = quantityX - (priceX - quantityX) / 2
   const direction = contiguous[0].direction
   const body = positioned.map(item => ({ ...item, t: (item.y - headerY) * direction }))
-  const matrix: PdfLayoutMatrix = [[
-    'Désignation', 'Quantité', 'Prix unitaire HT', ...(extraHeader ? [extraHeader] : [])
-  ]]
+  const matrix: PdfLayoutMatrix = [['Désignation', 'Quantité', 'Prix unitaire HT', ...(extraHeader ? [extraHeader] : [])]]
 
   contiguous.forEach((row, index) => {
     const distance = Math.abs(row.y - headerY)
     const previous = index === 0 ? 0 : Math.abs(contiguous[index - 1].y - headerY)
-    const next = index + 1 < contiguous.length
-      ? Math.abs(contiguous[index + 1].y - headerY)
-      : distance + Math.max(distance - previous, 24)
+    const next = index + 1 < contiguous.length ? Math.abs(contiguous[index + 1].y - headerY) : distance + Math.max(distance - previous, 24)
     const top = (previous + distance) / 2
     const bottom = (distance + next) / 2
     const designation = cleanDesignation(body
@@ -278,10 +273,20 @@ const geometryTable = (items: unknown[]): PdfLayoutMatrix | null => {
   return matrix.length > 1 ? matrix : null
 }
 
+const tableScore = (matrix: PdfLayoutMatrix | null) => {
+  if (!matrix) return -1
+  const body = matrix.slice(1)
+  const completeDesignations = body.filter(row => String(row[0] ?? '').trim().length >= 3).length
+  return body.length * 100 + completeDesignations
+}
+
 export const pdfItemsToCandidateTables = (items: unknown[]): PdfLayoutMatrix[] => {
-  const geometry = geometryTable(items)
-  const text = pdfTextToCandidateTables(itemsToText(items))[0] ?? null
-  const best = !geometry ? text : !text ? geometry : text.length > geometry.length ? text : geometry
+  const candidates = [
+    geometryTable(items),
+    pdfTextToCandidateTables(itemsToPositionedText(items))[0] ?? null,
+    pdfTextToCandidateTables(itemsToStreamText(items))[0] ?? null
+  ]
+  const best = candidates.sort((a, b) => tableScore(b) - tableScore(a))[0] ?? null
   return best ? [best] : []
 }
 
