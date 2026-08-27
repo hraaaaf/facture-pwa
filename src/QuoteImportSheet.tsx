@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
+import { prepareImportDictionary } from './importDictionary'
 import {
   canonicalQuoteToDocumentFields,
   normalizeQuotePayload,
@@ -47,6 +48,11 @@ const canonicalToRaw = (quote: CanonicalQuoteJSON): RawQuotePayload => ({
     discountPercent: line.discountPercent
   }))
 })
+
+const normalizeImportedRaw = (raw: RawQuotePayload, defaultVatRate: number) => {
+  const prepared = prepareImportDictionary(raw)
+  return normalizeQuotePayload(prepared.raw, { defaultVatRate, dictionary: prepared.dictionary })
+}
 
 const getFieldValue = (quote: CanonicalQuoteJSON, field: string): string | number => {
   if (field === 'client.name') return quote.client.name ?? ''
@@ -130,7 +136,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     try {
       const extracted = await extractInputFile(file)
       const raw = extractedInputToRawQuote(extracted)
-      const canonical = normalizeQuotePayload(raw, { defaultVatRate })
+      const canonical = normalizeImportedRaw(raw, defaultVatRate)
       setWarnings(extracted.warnings)
       setQuote(canonical)
       setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
@@ -143,7 +149,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
   const changeIssue = (issue: QuoteIssue, value: string) => {
     if (!quote) return
     const raw = patchRawField(canonicalToRaw(quote), issue.field, value)
-    const next = normalizeQuotePayload(raw, { defaultVatRate })
+    const next = normalizeImportedRaw(raw, defaultVatRate)
     setQuote(next)
     if (next.status === 'READY') setStep('READY')
   }
