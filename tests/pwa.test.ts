@@ -13,21 +13,25 @@ const pngDimensions = (relativePath: string) => {
   }
 }
 
-describe('PWA install assets', () => {
-  it('ships valid square PNG icons at the required sizes', () => {
+describe('Factea PWA install assets', () => {
+  it('ships generated square PNG icons at the required sizes', () => {
     expect(pngDimensions('public/apple-touch-icon.png')).toEqual({ width: 180, height: 180 })
     expect(pngDimensions('public/pwa-192.png')).toEqual({ width: 192, height: 192 })
     expect(pngDimensions('public/pwa-512.png')).toEqual({ width: 512, height: 512 })
   })
 
-  it('wires the Apple touch icon in index.html', () => {
+  it('wires the Factea identity and Apple touch icon in index.html', () => {
     const html = readFileSync(resolve(root, 'index.html'), 'utf8')
+    expect(html).toContain('apple-mobile-web-app-title" content="Factea"')
+    expect(html).toContain('<title>Factea</title>')
     expect(html).toContain('rel="apple-touch-icon"')
     expect(html).toContain('/apple-touch-icon.png')
   })
 
-  it('wires Android install icons in the Vite PWA manifest', () => {
+  it('wires Factea and Android install icons in the Vite PWA manifest', () => {
     const config = readFileSync(resolve(root, 'vite.config.ts'), 'utf8')
+    expect(config).toContain("name: 'Factea'")
+    expect(config).toContain("short_name: 'Factea'")
     expect(config).toContain("src: '/pwa-192.png'")
     expect(config).toContain("sizes: '192x192'")
     expect(config).toContain("src: '/pwa-512.png'")

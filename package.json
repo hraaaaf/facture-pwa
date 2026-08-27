@@ -1,12 +1,15 @@
 {
-  "name": "facture-pwa",
+  "name": "factea",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/generate-brand-icons.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/generate-brand-icons.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
+    "pretest": "node scripts/generate-brand-icons.mjs",
     "test": "vitest run"
   },
   "dependencies": {
