@@ -6,6 +6,7 @@ import OnboardingScreen from './OnboardingScreen'
 import PdfPreviewScreen from './PreviewV2'
 import SettingsScreen, { type PwaInstallPrompt } from './SettingsScreen'
 import { getCompany, saveCompany } from './storage'
+import { installSpeechRecognitionGuard } from './speechRecognitionGuard'
 import type { CommercialDocument, CompanySettings } from './types'
 import './styles.css'
 import './editor.css'
@@ -16,6 +17,7 @@ import './polish.css'
 import './touch-target-fix.css'
 import './voice-input.css'
 
+installSpeechRecognitionGuard(window)
 registerSW({ immediate: true })
 
 type PreviewPayload = {
