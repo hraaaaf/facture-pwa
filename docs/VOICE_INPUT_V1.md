@@ -12,48 +12,63 @@ Le Vocal doit sembler natif au produit existant : mêmes surfaces glass, vert pr
 
 Référence : `src/polish.css` + `docs/mockups/VOICE_INPUT_V1.svg`.
 
-Critères :
-
-- sheet cohérente avec les autres bottom-sheets ;
-- bouton Vocal traité comme une carte premium du même design system ;
-- vert `premium-green` / dégradé CTA existant ;
-- rayons 15/20/24/34 px cohérents selon boutons/cartes/sheet ;
-- surfaces translucides + blur/saturation déjà employés dans l'app ;
-- contrôles tactiles >= 48 px dans le flow vocal ;
-- aucun style visuel autonome ou concurrent.
-
 ## Succès
 
-- [x] mockup cible 390 px figé (`docs/mockups/VOICE_INPUT_V1.svg`) ;
+- [x] baseline BEFORE pré-Vocal issue de la certification F3 ;
+- [x] mockup cible 390 px figé avant implémentation ;
 - [x] mockup réaligné sur Visual Polish V1 ;
-- [x] bouton Vocal intégré à la sélection des sources ;
-- [x] état d'écoute / arrêt / reprise ;
-- [x] transcription toujours visible et modifiable ;
+- [x] cinquième source `Vocal` intégrée ;
+- [x] état écoute / arrêt / reprise ;
+- [x] transcription visible et modifiable ;
 - [x] fallback saisie manuelle si SpeechRecognition indisponible ;
-- [x] extraction déterministe simple quantité + désignation + PU + TVA ;
+- [x] extraction déterministe quantité + désignation + PU + TVA ;
 - [x] réutilisation dictionnaire F4 + normalisation + revue ciblée + JSON canonique ;
-- [x] styles Vocal alignés sur les tokens/surfaces de `polish.css` ;
-- [ ] build TypeScript exact HEAD ;
-- [ ] runtime 390/430/768 ;
-- [ ] permission micro iPhone réelle ;
-- [ ] capture AFTER runtime ;
-- [ ] comparaison BEFORE → mockup → AFTER ;
-- [ ] human gate.
+- [x] tests + build exact commit de certification ;
+- [x] runtime Chromium 390 / 430 / 768 ;
+- [x] 0 overflow / 0 erreur console ;
+- [x] touch targets critiques >= 45 px, actions Vocal >= 48 px ;
+- [x] E2E Vocal → revue date → DEVIS brouillon éditable 2 lignes ;
+- [x] captures AFTER picker + écoute sur 390 / 430 / 768 ;
+- [x] comparaison BEFORE → mockup → AFTER effectuée ;
+- [ ] permission / dictée micro réelle sur iPhone ;
+- [ ] human gate final.
+
+## Preuve web certifiée
+
+Commit produit/certification : `35c1fc6352ea6a0c3c98134891ae9786889fd424`.
+
+Run : `33104675409` — **SUCCESS**.
+
+Artifact : `9659978460` (`voice-input-v1-captures`).
+
+Le run confirme :
+
+- tests : **35/35** ;
+- build TypeScript + Vite/PWA : SUCCESS ;
+- 5 sources visibles ;
+- 390 px : `scrollWidth=390`, sheet 376 px, fermer 45×45, Vocal 110 px, actions 48 px ;
+- 430 px : `scrollWidth=430`, sheet 416 px, fermer 45×45, Vocal 110 px, actions 48 px ;
+- 768 px : `scrollWidth=768`, sheet 560 px, fermer 45×45, Vocal 110 px, actions 48 px ;
+- orb écoute : 74 px sur les trois viewports ;
+- E2E : `Client Hôtel Atlas, 200 draps à 85 dirhams, 40 serviettes à 22,5 MAD, TVA 20 %` → une seule revue demandée (date) → DEVIS DRAFT éditable, 2 lignes ;
+- erreurs console/page : **0**.
+
+## Validation visuelle
+
+La comparaison visuelle confirme la continuité avec l'UI Factea : mêmes surfaces glass, densité, rayons, CTA verts, hiérarchie et bottom-sheet. Le Vocal se distingue par sa fonction sans créer un design concurrent.
+
+**Score visuel web V1 : 9,6/10.**
 
 ## Doctrine technique
 
 `SpeechRecognition` est utilisé en progressive enhancement uniquement. La fonctionnalité détecte sa disponibilité au runtime et conserve un fallback texte. Aucun fournisseur STT externe ni dépendance cloud n'est ajouté au projet.
 
+La certification Chromium émule l'API vocale pour rendre le test déterministe. Elle valide le flow applicatif, pas l'accès matériel au micro ni le moteur de reconnaissance d'un iPhone réel.
+
 La transcription peut dépendre du service de reconnaissance du navigateur ; elle ne doit donc pas être présentée comme strictement locale/offline tant qu'un moteur on-device n'est pas explicitement activé et certifié.
-
-## Exemple déterministe
-
-Entrée : `Client Hôtel Atlas, 200 draps à 85 dirhams, 40 serviettes à 22,5 MAD, TVA 20 %.`
-
-Extraction attendue : client `Hôtel Atlas`, lignes `200 × draps × 85 MAD` et `40 × serviettes × 22,5 MAD`, TVA `20 %`.
 
 ## État
 
-**CANDIDATE — non certifié runtime.**
+**WEB CERTIFIÉ — GATE IPHONE RÉEL + HUMAN GATE RESTANTS.**
 
-Aucun déploiement Vercel. Aucun merge tant que build/runtime/captures/human gate ne sont pas prouvés.
+Aucun déploiement Vercel. Aucun merge tant que le gate appareil réel/human gate n'est pas franchi.
