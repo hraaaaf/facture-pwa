@@ -51,7 +51,7 @@ const canonicalToRaw = (quote: CanonicalQuoteJSON): RawQuotePayload => ({
 
 const normalizeImportedRaw = (raw: RawQuotePayload, defaultVatRate: number) => {
   const prepared = prepareImportDictionary(raw)
-  return normalizeQuotePayload(prepared.raw, { defaultVatRate, dictionary: prepared.dictionary })
+  return normalizeQuotePayload(prepared.raw, { defaultVatRate, defaultUnit: 'Unité', dictionary: prepared.dictionary })
 }
 
 const getFieldValue = (quote: CanonicalQuoteJSON, field: string): string | number => {
