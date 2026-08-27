@@ -205,7 +205,7 @@ try {
       assert.equal(await page.locator('.article-card').count(), 2)
       assert.match(await page.locator('.article-designation textarea').nth(0).inputValue(), /draps/i)
       assert.match(await page.locator('.article-designation textarea').nth(1).inputValue(), /serviettes/i)
-      const quantities = await page.locator('.compact-number-field input').allInputValues()
+      const quantities = await page.locator('.compact-number-field input').evaluateAll(inputs => inputs.map(input => input.value))
       assert.ok(quantities.includes('200'), 'Vocal: quantité 200 absente')
       assert.ok(quantities.includes('40'), 'Vocal: quantité 40 absente')
       await page.screenshot({ path: `${outputDir}/after-editor-390.png`, fullPage: false })
