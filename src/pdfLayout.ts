@@ -91,14 +91,23 @@ const itemsToStreamText = (items: unknown[]) => items
   .filter(Boolean)
   .join('\n')
 
+const trailingHeaderCell = /^(?:total(?:\s+ht)?|tva|vat|remise(?:\s*%)?|discount(?:\s*%)?)$/
+
 const findHeader = (lines: string[]) => {
   for (let start = 0; start < lines.length; start += 1) {
     for (let size = 1; size <= 6 && start + size <= lines.length; size += 1) {
-      const value = normalize(lines.slice(start, start + size).join(' '))
+      let value = normalize(lines.slice(start, start + size).join(' '))
       const isHeader = /\b(designation|article|description|libelle)\b/.test(value)
         && /\b(quantite|qte|qty)\b/.test(value)
         && /\b(prix|p\.?u\.?)\b/.test(value)
-      if (isHeader) return { start, end: start + size - 1, text: value }
+      if (!isHeader) continue
+
+      let end = start + size - 1
+      while (end + 1 < lines.length && trailingHeaderCell.test(normalize(lines[end + 1]))) {
+        end += 1
+        value = normalize(`${value} ${lines[end]}`)
+      }
+      return { start, end, text: value }
     }
   }
   return null
