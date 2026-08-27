@@ -10,71 +10,77 @@ PWA mobile-first Devis / Factures / BL / BC, local-first, simple en surface, ave
 
 - avancement mécanique historique PWA : **110/116 = 94,8 %** ;
 - core Input → Devis F1–F4 : **37/37 = 100 %** ;
-- extension V1 Vocal : **10/11**, web certifiée ;
-- gate Vocal restant : permission + dictée micro réelle sur iPhone et human gate ;
-- aucun déploiement Vercel autorisé/effectué pour V1.
+- extension V1 Vocal : **11/11 = 100 %** ;
+- iPhone réel : micro **PASS**, transcription **PASS**, `Analyser` **PASS**, création d'une ligne canonique **PASS** ;
+- confirmation utilisateur réelle : **« Ça marche maintenant ! »** ;
+- Production Vercel : non modifiée par V1.
 
 ## Repo / Git
 
 - repository : `hraaaaf/facture-pwa` ;
 - base PR : `vercel/latest` ;
-- base observée pendant V1 : `270acbb2ca60cfc1521e686d8c123d50ad7df371` (`Brand PWA as Factea`) ;
+- base synchronisée dans le closeout V1 : `5bd8755629b8f40c4b92d0aedd6e9d88ffabe88d` (`Fix PDF table extraction for wrapped rows`) ;
 - branche V1 : `v1/voice-input` ;
-- PR : `#7 — V1 — Input vocal → Devis`, draft ;
-- commit produit/certification V1 : `35c1fc6352ea6a0c3c98134891ae9786889fd424` ;
-- run V1 : `33104675409` SUCCESS ;
-- artifact V1 : `9659978460` (`voice-input-v1-captures`).
+- PR : `#7 — V1 — Input vocal → Devis`, draft tant que le closeout exact-head n'est pas certifié ;
+- dernier HEAD appareil réel avant closeout : `d4e40524460d9a5c31b78ff65c1f9c02356706d2` ;
+- run correspondant : `33120907970` — **SUCCESS** ;
+- artifact : `9666431062` (`voice-input-v1-captures`).
 
-Les commits de closeout documentaire postérieurs à `35c1fc…` ne modifient pas le code produit certifié ; ne pas les présenter comme HEAD runtime certifié.
+## V1 Vocal — preuve appareil réel
 
-## V1 Vocal — preuve
-
-Le Vocal ajoute une cinquième source dans `Input → Devis` :
+Flow :
 
 `Vocal → transcription modifiable → extraction déterministe → dictionnaire F4 → normalisation/revue canonique → DEVIS DRAFT`.
 
-Architecture : `SpeechRecognition`/`webkitSpeechRecognition` en progressive enhancement uniquement, fallback texte, aucun fournisseur STT externe ajouté.
+Transcription Safari capturée sur iPhone :
 
-Run `33104675409` :
+`Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams`
 
-- tests : **35/35** ;
-- build TypeScript + Vite/PWA : SUCCESS ;
-- runtime Chromium : 390 / 430 / 768 ;
-- `scrollWidth === viewport` aux 3 tailles ;
-- 5 sources visibles ;
-- fermer : 45×45 px ;
-- CTA Vocal : 110 px ;
-- actions Vocal : >=48 px ;
-- orb écoute : 74 px ;
-- 0 erreur page/console ;
-- E2E : `Hôtel Atlas`, 200 draps × 85 MAD + 40 serviettes × 22,5 MAD, TVA 20 % → une revue date → DEVIS brouillon éditable 2 lignes.
+Résultat parser observé dans le Preview :
 
-Captures artifact : picker + écoute sur 390/430/768, READY 390, éditeur 390.
+- client : `Pierra` ;
+- désignation : `draps de 2,30 m sur deux 2,20 m` ;
+- quantité : `5` ;
+- PU HT : `150` ;
+- TVA : `20` ;
+- lignes : `1`.
 
-**Score visuel web V1 : 9,6/10.**
+Le correctif ajoute `article` comme frontière/champ naturel sans corriger arbitrairement `Pierra` en `Pierre`.
+
+## Closeout V1
+
+Le commit final de closeout doit, dans un seul commit :
+
+1. supprimer l'instrumentation temporaire `/api/voice-debug` et tout envoi de transcription vers les logs ;
+2. restaurer la matrice parser historique **34 tests** et ajouter **6 régressions Safari réelles** ;
+3. synchroniser la base `5bd8755…` ;
+4. garder Production inchangée ;
+5. faire passer la certification exact-head de la PR #7.
+
+La preuve finale exact-head est la check-suite GitHub attachée au HEAD de closeout de `v1/voice-input` et le Preview associé, sans promotion Production.
 
 ## UI / référence
 
 - design system : `src/polish.css` ;
 - styles V1 : `src/voice-input.css` ;
 - mockup cible : `docs/mockups/VOICE_INPUT_V1.svg` ;
-- spec/certification : `docs/VOICE_INPUT_V1.md`.
-
-V1 est aligné sur les surfaces glass, le vert premium, les rayons, ombres, typographie et touch targets existants.
+- spec/certification : `docs/VOICE_INPUT_V1.md` ;
+- score visuel V1 : **9,6/10**.
 
 ## Gates globales encore ouvertes
 
-1. Permission + dictée micro réelle iPhone pour V1.
-2. Installation réelle iPhone/Android.
-3. Fermeture/réouverture sans perte sur appareil réel.
-4. Partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
-5. Human gate final.
-6. Merge uniquement après validation humaine et preuves requises.
+1. Installation réelle iPhone/Android.
+2. Fermeture/réouverture sans perte sur appareil réel.
+3. Partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
+4. Human gate final de la PWA complète.
+5. Merge/release uniquement après preuves et autorisations requises.
+
+Le gate V1 Vocal appareil réel est fermé. Il ne ferme pas automatiquement les gates PWA globales ci-dessus.
 
 ## NEXT EXACT
 
-Ne pas relancer de benchmark V1 : le web est certifié. Le prochain gate utile nécessite un iPhone réel avec une version accessible sur appareil. **Aucun Vercel sans autorisation explicite.**
+Certifier le HEAD de closeout de la PR #7, vérifier le Preview sans instrumentation de diagnostic, puis préparer le merge. **Aucune promotion Production sans autorisation explicite.**
 
 ## Prompt de reprise
 
-`Reprends Factea depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/VOICE_INPUT_V1.md. V1 Vocal est web-certifiée : produit/cert commit 35c1fc6352ea6a0c3c98134891ae9786889fd424, run 33104675409 SUCCESS, artifact 9659978460, 35/35 tests, build vert, runtime 390/430/768 sans overflow ni erreur, E2E Vocal → revue date → devis 2 lignes, score visuel 9,6/10. PR #7 draft sur v1/voice-input. Reste le gate permission/dictée micro iPhone réelle + human gate. PWA historique 110/116 = 94,8 %, core Input→Devis F1-F4 37/37. Aucun Vercel sans autorisation explicite.`
+`Reprends Factea depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/VOICE_INPUT_V1.md. V1 Vocal est validée sur iPhone réel : micro, transcription et Analyser PASS. La transcription Safari réelle "Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams" produit client Pierra, 1 ligne, quantité 5, PU 150. Le closeout final doit être exact-head, sans voice-debug, avec les 34 tests historiques + 6 régressions Safari, base 5bd8755 synchronisée, Preview seulement. PWA historique 110/116 = 94,8 %, core Input→Devis F1-F4 37/37. Aucun déploiement Production sans autorisation explicite.`

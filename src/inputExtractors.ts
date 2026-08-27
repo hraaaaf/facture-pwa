@@ -1,4 +1,6 @@
 import type { QuoteInputKind, RawQuotePayload } from './quoteImport'
+import { extractDocumentDate, extractMultilineClientName } from './importMetadata'
+import { pdfItemsToCandidateTables } from './pdfLayout'
 
 export interface ExtractedInput {
   kind: QuoteInputKind
@@ -114,13 +116,13 @@ export const extractedInputToRawQuote = (input: ExtractedInput): RawQuotePayload
   return {
     source: { kind: input.kind, name: input.name },
     client: {
-      name: extractLabel(input.text, ['client', 'raison sociale', 'customer']),
+      name: extractMultilineClientName(input.text) ?? extractLabel(input.text, ['client', 'raison sociale', 'customer']),
       address: extractLabel(input.text, ['adresse', 'address']),
       ice: extractLabel(input.text, ['ice']),
       ifNumber: extractLabel(input.text, ['if', 'identifiant fiscal'])
     },
     object: extractLabel(input.text, ['objet', 'object']),
-    date: extractLabel(input.text, ['date']),
+    date: extractDocumentDate(input.text) ?? extractLabel(input.text, ['date']),
     currency: extractLabel(input.text, ['devise', 'currency']) ?? (/(?:\bMAD\b|\bDHS?\b|dirhams?)/i.test(input.text) ? 'MAD' : undefined),
     lines: pickBestQuoteTable([...input.tables, ...inferredTables])
   }
@@ -250,11 +252,13 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
   const textPages: string[] = []
+  const pdfTables: ExtractedInput['tables'] = []
   const pagesForOcr: HTMLCanvasElement[] = []
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber)
     const items = await readPdfTextItems(page.streamTextContent() as unknown as PdfTextStreamLike)
+    pdfTables.push(...pdfItemsToCandidateTables(items))
     const pageText = cleanText(pdfItemsToText(items))
     if (pageText) {
       textPages.push(pageText)
@@ -275,7 +279,7 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
     name: file.name,
     mimeType: file.type,
     text,
-    tables: textToCandidateTables(text),
+    tables: [...pdfTables, ...textToCandidateTables(text)],
     warnings: pagesForOcr.length ? [`OCR utilisé sur ${pagesForOcr.length} page(s) PDF sans couche texte.`] : []
   }
 }

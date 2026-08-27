@@ -290,13 +290,13 @@ Preuves : BEFORE run `33061683923`, artifact `9641980643`; AFTER PR #6, HEAD `4e
 
 Corrections runtime certifiées : `Renouvelement linge hotellerie` → `Renouvellement linge hôtellerie`, `Drapp` → `Drap`, `bainn` → `bain`, `rectangulair` → `rectangulaire`; unités `pcs/unite/metres` → `Pièce/Unité/m`.
 
-**Score visuel F4 : 9,5/10.** Le flow et les totaux restent identiques ; seules les corrections lexicales ciblées changent visiblement.
+**Score visuel F4 : 9,5/10.**
 
 **Avancement core Input → Devis : 37/37 = 100 %.**
 
-## V1 — Input vocal → Devis — 10/11
+## V1 — Input vocal → Devis — 11/11
 
-**État : WEB CERTIFIÉ, MICRO IPHONE RÉEL RESTANT**
+**État : WEB + IPHONE RÉEL VALIDÉS**
 
 - [x] Goal visuel + baseline BEFORE + mockup cible ;
 - [x] cinquième source `Vocal` alignée Visual Polish V1 ;
@@ -304,15 +304,19 @@ Corrections runtime certifiées : `Renouvelement linge hotellerie` → `Renouvel
 - [x] transcription visible et modifiable ;
 - [x] extraction déterministe client / lignes / PU / TVA sans LLM ;
 - [x] réutilisation F4 + normalisation + revue canonique ;
-- [x] tests 35/35 + build ;
+- [x] tests + build ;
 - [x] runtime 390 / 430 / 768, zéro overflow / erreur console ;
 - [x] touch targets : fermer 45×45, actions Vocal >=48 px ;
-- [x] E2E Vocal → une revue date → DEVIS brouillon 2 lignes ;
-- [ ] permission / dictée micro réelle sur iPhone + human gate.
+- [x] E2E Vocal → revue → DEVIS brouillon éditable ;
+- [x] permission + dictée + transcription + `Analyser` réels sur iPhone, confirmation utilisateur.
 
-Preuve web : PR #7, commit certifié `35c1fc6352ea6a0c3c98134891ae9786889fd424`, run `33104675409` SUCCESS, artifact `9659978460`.
+Preuve web récente : PR #7, HEAD appareil réel `d4e40524460d9a5c31b78ff65c1f9c02356706d2`, run `33120907970` SUCCESS, artifact `9666431062`.
 
-**Score visuel web V1 : 9,6/10.**
+Preuve iPhone : Safari a transmis `Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams` et le parser a produit client `Pierra`, 1 ligne, quantité `5`, PU HT `150`, TVA `20`. L'utilisateur confirme ensuite : **« Ça marche maintenant ! »**.
+
+Le closeout final supprime l'instrumentation de logs de transcription, restaure les 34 tests historiques + 6 régressions Safari et synchronise la base `5bd8755…` avant certification exact-head.
+
+**Score visuel V1 : 9,6/10.**
 
 Le core F1–F4 reste historiquement `37/37`. V1 est une extension séparée et ne modifie pas rétroactivement ce dénominateur.
 
@@ -320,11 +324,11 @@ Le core F1–F4 reste historiquement `37/37`. V1 est une extension séparée et 
 
 # NEXT EXACT
 
-1. Gate V1 : tester permission + dictée micro réelle sur iPhone quand un build accessible sur appareil sera disponible sans contourner la règle de déploiement.
-2. Sur appareil réel : installation iPhone/Android puis fermeture/réouverture sans perte.
-3. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
-4. Human gate final de la PWA complète.
-5. Merge global uniquement après validation humaine si encore requis par la branche de release.
+1. Certifier le HEAD de closeout PR #7 après suppression de `voice-debug` et synchronisation de `5bd8755…`.
+2. Préparer le merge V1 ; aucune promotion Production sans autorisation explicite.
+3. Sur appareil réel : installation iPhone/Android puis fermeture/réouverture sans perte.
+4. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
+5. Human gate final de la PWA complète.
 
 ## Avancement mécanique historique PWA
 
@@ -334,4 +338,4 @@ Le core F1–F4 reste historiquement `37/37`. V1 est une extension séparée et 
 
 ## Définition de DONE PWA globale
 
-Le chantier PWA global reste dépendant des gates appareil réel/partage/human gate ci-dessus. Le core Input → Devis F1–F4 est CLOSED et mergé. L'extension V1 Vocal est web-certifiée mais reste ouverte sur le gate micro iPhone réel et le human gate. Aucun Vercel sans autorisation explicite.
+Le chantier PWA global reste dépendant des gates appareil réel/partage/human gate ci-dessus. Le core Input → Devis F1–F4 est CLOSED et mergé. L'extension V1 Vocal est validée sur web et iPhone réel ; son closeout exact-head reste à certifier avant merge. Aucun Vercel sans autorisation explicite.
