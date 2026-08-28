@@ -93,7 +93,9 @@ const parseNumberValue = (value: string): number | null => {
 
 const field = (text: string, names: string[], stopAtComma = false) => {
   const label = names.map(esc).join('|')
-  const nextField = String.raw`\s+(?:${article})(?:${boundary})(?=\s|[,.;:]|$)`
+  const isDesignationField = names.some(name => name === 'désignation' || name === 'designation')
+  const nextBoundary = (isDesignationField ? FIELD_LABELS.filter(item => item !== 'article') : FIELD_LABELS).map(esc).join('|')
+  const nextField = String.raw`\s+(?:${article})(?:${nextBoundary})(?=\s|[,.;:]|$)`
   const stop = stopAtComma ? String.raw`(?=${nextField}|[,.;]|$)` : String.raw`(?=${nextField}|[.;]|$)`
   const raw = text.match(new RegExp(String.raw`(?:${article})(?:${label})${connector}(.+?)${stop}`, 'i'))?.[1]?.trim()
   return raw?.replace(/[,;:]+$/, '').trim()
