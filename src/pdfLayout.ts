@@ -1,34 +1,64 @@
 export type PdfLayoutMatrix = Array<Array<string | number | null>>
 
-type PdfPositionedTextItemLike = {
-  str: string
-  transform: number[]
-  width?: number
-}
+type PdfItem = { str: string; transform: number[]; width?: number }
+type PositionedItem = { text: string; x: number; centerX: number; y: number }
+type ParsedNumericRow = { nums: string[]; inlineDesignation: string }
 
-type PositionedItem = {
-  text: string
-  x: number
-  centerX: number
-  y: number
-}
-
-const normalizeSearchText = (value: string) => value
+const normalize = (value: string) => value
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
   .toLowerCase()
   .replace(/\s+/g, ' ')
   .trim()
 
-const isPositionedTextItem = (item: unknown): item is PdfPositionedTextItemLike => {
-  if (!item || typeof item !== 'object') return false
-  const candidate = item as Partial<PdfPositionedTextItemLike>
-  return typeof candidate.str === 'string'
-    && Array.isArray(candidate.transform)
-    && candidate.transform.length >= 6
+const isItem = (value: unknown): value is PdfItem => {
+  if (!value || typeof value !== 'object') return false
+  const item = value as Partial<PdfItem>
+  return typeof item.str === 'string' && Array.isArray(item.transform) && item.transform.length >= 6
 }
 
-const groupByVisualLine = (items: PositionedItem[], tolerance = 3) => {
+const parseNumber = (value: string): number | null => {
+  const raw = value.trim().replace(/[\s\u00a0\u202f]/g, '').replace(',', '.')
+  if (!/^[-+]?\d+(?:\.\d+)?$/.test(raw)) return null
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const isNumeric = (value: string) => parseNumber(value) !== null
+
+const median = (values: number[]) => {
+  if (!values.length) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+}
+
+const cleanDesignation = (value: string) => value
+  .replace(/\t+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .replace(/\s+([),.;:])/g, '$1')
+  .trim()
+
+const explode = (item: PdfItem): PositionedItem[] => {
+  const raw = item.str.trim()
+  if (!raw) return []
+  const x = item.transform[4]
+  const y = item.transform[5]
+  const width = typeof item.width === 'number' && Number.isFinite(item.width) ? item.width : 0
+  const parts = [...raw.matchAll(/\S+/g)]
+  if (parts.length <= 1 || width <= 0) return [{ text: raw, x, centerX: x + width / 2, y }]
+  const denominator = Math.max(raw.length, 1)
+  return parts.map(match => {
+    const text = match[0]
+    const start = match.index ?? 0
+    const end = start + text.length
+    const partX = x + width * (start / denominator)
+    const partWidth = width * ((end - start) / denominator)
+    return { text, x: partX, centerX: partX + partWidth / 2, y }
+  })
+}
+
+const groupByVisualLine = (items: PositionedItem[], tolerance: number) => {
   const groups: PositionedItem[][] = []
   for (const item of [...items].sort((a, b) => b.y - a.y)) {
     const group = groups.find(existing => Math.abs(existing[0].y - item.y) <= tolerance)
@@ -38,148 +68,271 @@ const groupByVisualLine = (items: PositionedItem[], tolerance = 3) => {
   return groups
 }
 
-const lineText = (line: PositionedItem[]) => line
-  .slice()
+const lineText = (line: PositionedItem[]) => [...line]
   .sort((a, b) => a.x - b.x)
   .map(item => item.text)
   .join(' ')
 
-const cellText = (items: PositionedItem[]) => items
-  .slice()
-  .sort((a, b) => a.x - b.x)
-  .map(item => item.text)
-  .join(' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-
-const numericCell = (value: string) => /^[-+]?\d+(?:[.,]\d+)?$/.test(value.replace(/[\s\u00a0\u202f]/g, ''))
-
-const median = (values: number[]) => {
-  if (!values.length) return 0
-  const sorted = [...values].sort((a, b) => a - b)
-  const middle = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+const itemsToPositionedText = (items: unknown[]) => {
+  const positioned = items.filter(isItem).map(item => ({
+    text: item.str.trim(),
+    x: item.transform[4],
+    centerX: item.transform[4] + ((typeof item.width === 'number' ? item.width : 0) / 2),
+    y: item.transform[5]
+  })).filter(item => item.text)
+  return groupByVisualLine(positioned, 2)
+    .map(line => [...line].sort((a, b) => a.x - b.x).map(item => item.text).join('\t'))
+    .join('\n')
 }
 
-export const pdfItemsToCandidateTables = (items: Array<unknown>): PdfLayoutMatrix[] => {
-  const positioned = items
-    .filter(isPositionedTextItem)
-    .map(item => {
-      const text = item.str.trim()
-      const width = typeof item.width === 'number' && Number.isFinite(item.width) ? item.width : 0
-      return {
-        text,
-        x: item.transform[4],
-        centerX: item.transform[4] + width / 2,
-        y: item.transform[5]
-      }
-    })
-    .filter(item => item.text)
+const itemsToStreamText = (items: unknown[]) => items
+  .filter(isItem)
+  .map(item => item.str.trim())
+  .filter(Boolean)
+  .join('\n')
 
-  if (!positioned.length) return []
-  const visualLines = groupByVisualLine(positioned)
-  const header = visualLines.find(line => {
-    const joined = normalizeSearchText(lineText(line))
-    return /\b(designation|article|description|libelle)\b/.test(joined)
-      && /\b(quantite|qte|qty)\b/.test(joined)
-      && /\b(prix|p\.?u\.?)\b/.test(joined)
-  })
+const headerCompact = (value: string) => normalize(value).replace(/[^a-z0-9%]+/g, '')
+
+const trailingHeaderCell = /^(?:total(?:\s+ht)?|tva|vat|remise(?:\s*%)?|discount(?:\s*%)?)$/
+
+const findHeader = (lines: string[]) => {
+  for (let start = 0; start < lines.length; start += 1) {
+    for (let size = 1; size <= 6 && start + size <= lines.length; size += 1) {
+      let value = normalize(lines.slice(start, start + size).join(' '))
+      const compact = headerCompact(value)
+      const isHeader = /(designation|article|description|libelle)/.test(compact)
+        && /(quantite|qte|qty)/.test(compact)
+        && /(prix|pu)/.test(compact)
+      if (!isHeader) continue
+
+      let end = start + size - 1
+      while (end + 1 < lines.length && trailingHeaderCell.test(normalize(lines[end + 1]))) {
+        end += 1
+        value = normalize(`${value} ${lines[end]}`)
+      }
+      return { start, end, text: value }
+    }
+  }
+  return null
+}
+
+const parseNumericRow = (line: string, expectedCount: number, extraHeader: string | null): ParsedNumericRow | null => {
+  const tabParts = line.split(/\t+/).map(value => value.trim()).filter(Boolean)
+  const parts = tabParts.length > 1 ? tabParts : line.trim().split(/\s+/)
+  if (parts.length < expectedCount) return null
+  const tail = parts.slice(-expectedCount)
+  const numbers = tail.map(parseNumber)
+  if (numbers.some(value => value === null)) return null
+
+  if (extraHeader === 'Total HT') {
+    const [quantity, unitPrice, total] = numbers as number[]
+    const tolerance = Math.max(0.1, Math.abs(total) * 0.02)
+    if (Math.abs(quantity * unitPrice - total) > tolerance) return null
+  }
+  if (extraHeader === 'TVA') {
+    const vat = numbers[2] as number
+    if (vat < 0 || vat > 100) return null
+  }
+
+  return {
+    nums: tail.map(value => value.replace(/[\s\u00a0\u202f]/g, '')),
+    inlineDesignation: cleanDesignation(parts.slice(0, -expectedCount).join(' '))
+  }
+}
+
+const isTrailingDesignationContinuation = (value: string, expectedCount: number, extraHeader: string | null) => {
+  const candidate = cleanDesignation(value)
+  if (!candidate || isNumeric(candidate) || parseNumericRow(candidate, expectedCount, extraHeader)) return false
+  const first = candidate.match(/[0-9A-Za-zÀ-ÿ]/u)?.[0]
+  if (!first) return false
+  if (/\d/.test(first)) return true
+  return first === first.toLocaleLowerCase('fr-FR') && first !== first.toLocaleUpperCase('fr-FR')
+}
+
+export const pdfTextToCandidateTables = (text: string): PdfLayoutMatrix[] => {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').map(value => value.trim()).filter(Boolean)
+  const header = findHeader(lines)
   if (!header) return []
 
-  const anchor = (pattern: RegExp) => {
-    const matches = header.filter(item => pattern.test(normalizeSearchText(item.text)))
-    if (!matches.length) return null
-    return matches.sort((a, b) => a.x - b.x)[0].centerX
-  }
-
-  const quantityX = anchor(/\b(quantite|qte|qty)\b/)
-  const priceX = anchor(/\b(prix|p\.?u\.?)\b/)
-  const totalX = anchor(/\btotal\b/)
-  if (quantityX === null || priceX === null || priceX <= quantityX + 8) return []
-
-  const leftQuantityBoundary = quantityX - (priceX - quantityX) / 2
-  const quantityPriceBoundary = (quantityX + priceX) / 2
-  const priceTotalBoundary = totalX !== null && totalX > priceX
-    ? (priceX + totalX) / 2
-    : Number.POSITIVE_INFINITY
-
-  const columnOf = (item: PositionedItem) => {
-    if (item.centerX < leftQuantityBoundary) return 'designation' as const
-    if (item.centerX < quantityPriceBoundary) return 'quantity' as const
-    if (item.centerX < priceTotalBoundary) return 'unitPriceHT' as const
-    return 'total' as const
-  }
-
-  const headerY = header.reduce((sum, item) => sum + item.y, 0) / header.length
-  const numericRows = visualLines
-    .filter(line => line !== header)
-    .map(line => {
-      const cells = { designation: [] as PositionedItem[], quantity: [] as PositionedItem[], unitPriceHT: [] as PositionedItem[], total: [] as PositionedItem[] }
-      for (const item of line) cells[columnOf(item)].push(item)
-      const quantity = cellText(cells.quantity)
-      const unitPriceHT = cellText(cells.unitPriceHT)
-      return {
-        y: line.reduce((sum, item) => sum + item.y, 0) / line.length,
-        cells,
-        quantity,
-        unitPriceHT
-      }
-    })
-    .filter(row => numericCell(row.quantity) && numericCell(row.unitPriceHT))
-
-  if (!numericRows.length) return []
-  const closest = [...numericRows].sort((a, b) => Math.abs(a.y - headerY) - Math.abs(b.y - headerY))[0]
-  const direction = closest.y >= headerY ? 1 : -1
-  const rows = numericRows
-    .map(row => ({ ...row, t: (row.y - headerY) * direction }))
-    .filter(row => row.t > 3)
-    .sort((a, b) => a.t - b.t)
-
-  if (!rows.length) return []
-
-  const contiguous: typeof rows = []
-  const gaps: number[] = []
-  for (const row of rows) {
-    if (contiguous.length) {
-      const gap = row.t - contiguous[contiguous.length - 1].t
-      const typicalGap = median(gaps)
-      if (gaps.length >= 2 && typicalGap > 0 && gap > typicalGap * 2.2) break
-      gaps.push(gap)
+  const compactHeader = headerCompact(header.text)
+  const extraHeader = compactHeader.includes('total') ? 'Total HT' : /(tva|vat)/.test(compactHeader) ? 'TVA' : null
+  const expectedCount = extraHeader ? 3 : 2
+  const stopPattern = /^(?:total\s+ht|tva\b|total\s+ttc|arret|le\s+client|rc\s*:|rib\s*:)/i
+  let stopIndex = lines.length
+  for (let index = header.end + 1; index < lines.length; index += 1) {
+    if (stopPattern.test(normalize(lines[index]))) {
+      stopIndex = index
+      break
     }
-    contiguous.push(row)
   }
 
-  const body = positioned.map(item => ({ ...item, t: (item.y - headerY) * direction }))
+  const candidates: Array<ParsedNumericRow & { index: number; endIndex: number }> = []
+  for (let index = header.end + 1; index < stopIndex; index += 1) {
+    const sameLine = parseNumericRow(lines[index], expectedCount, extraHeader)
+    if (sameLine) {
+      candidates.push({ ...sameLine, index, endIndex: index })
+      continue
+    }
+
+    if (!isNumeric(lines[index])) continue
+    const numericLines = [lines[index]]
+    let cursor = index + 1
+    while (cursor < stopIndex && numericLines.length < expectedCount && isNumeric(lines[cursor])) {
+      numericLines.push(lines[cursor])
+      cursor += 1
+    }
+    if (numericLines.length !== expectedCount) continue
+    const separated = parseNumericRow(numericLines.join('\t'), expectedCount, extraHeader)
+    if (!separated) continue
+    candidates.push({ ...separated, index, endIndex: cursor - 1 })
+    index = cursor - 1
+  }
+  if (!candidates.length) return []
+
+  const rows: typeof candidates = []
+  for (const candidate of candidates) {
+    if (rows.length && candidate.index - rows[rows.length - 1].index > 12) break
+    rows.push(candidate)
+  }
+
+  const trailingCounts = rows.map((row, rowIndex) => {
+    const nextNumericIndex = rowIndex + 1 < rows.length ? rows[rowIndex + 1].index : stopIndex
+    let count = 0
+    for (let index = row.endIndex + 1; index < nextNumericIndex; index += 1) {
+      const candidate = cleanDesignation(lines[index])
+      if (!candidate || stopPattern.test(normalize(candidate))) break
+      if (!isTrailingDesignationContinuation(candidate, expectedCount, extraHeader)) break
+      count += 1
+    }
+    return count
+  })
+
   const matrix: PdfLayoutMatrix = [[
     'Désignation',
     'Quantité',
     'Prix unitaire HT',
-    ...(totalX !== null ? ['Total HT'] : [])
+    ...(extraHeader ? [extraHeader] : [])
   ]]
 
-  contiguous.forEach((row, index) => {
-    const previousT = index === 0 ? 0 : contiguous[index - 1].t
-    const nextT = index + 1 < contiguous.length
-      ? contiguous[index + 1].t
-      : row.t + Math.max(row.t - previousT, 24)
-    const top = (previousT + row.t) / 2
-    const bottom = (row.t + nextT) / 2
-    const designation = body
-      .filter(item => item.t > top && item.t < bottom && columnOf(item) === 'designation')
-      .sort((a, b) => Math.abs(a.t - b.t) > 1 ? a.t - b.t : a.x - b.x)
-      .map(item => item.text)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .replace(/\s+([),.;:])/g, '$1')
-      .trim()
-
-    matrix.push([
-      designation,
-      row.quantity,
-      row.unitPriceHT,
-      ...(totalX !== null ? [cellText(row.cells.total)] : [])
-    ])
+  rows.forEach((row, rowIndex) => {
+    const previous = rowIndex > 0 ? rows[rowIndex - 1] : null
+    const start = previous
+      ? previous.endIndex + 1 + trailingCounts[rowIndex - 1]
+      : header.end + 1
+    const end = row.index - 1
+    const designationParts: string[] = []
+    for (let index = start; index <= end; index += 1) {
+      const candidate = cleanDesignation(lines[index])
+      if (!candidate || stopPattern.test(normalize(candidate)) || isNumeric(candidate)) continue
+      if (parseNumericRow(candidate, expectedCount, extraHeader)) continue
+      designationParts.push(candidate)
+    }
+    if (row.inlineDesignation) designationParts.push(row.inlineDesignation)
+    for (let offset = 0; offset < trailingCounts[rowIndex]; offset += 1) {
+      const candidate = cleanDesignation(lines[row.endIndex + 1 + offset])
+      if (candidate) designationParts.push(candidate)
+    }
+    matrix.push([cleanDesignation(designationParts.join(' ')), ...row.nums])
   })
 
-  return matrix.length >= 2 ? [matrix] : []
+  return matrix.length > 1 ? [matrix] : []
+}
+
+const geometryTable = (items: unknown[]): PdfLayoutMatrix | null => {
+  const positioned = items.filter(isItem).flatMap(explode)
+  if (!positioned.length) return null
+  const lines = groupByVisualLine(positioned, 3)
+  const header = lines.find(line => {
+    const compact = headerCompact(lineText(line))
+    return /(designation|article|description|libelle)/.test(compact)
+      && /(quantite|qte|qty)/.test(compact)
+      && /(prix|pu)/.test(compact)
+  })
+  if (!header) return null
+
+  const headerText = normalize(lineText(header))
+  const compactHeader = headerCompact(headerText)
+  const extraHeader = compactHeader.includes('total') ? 'Total HT' : /(tva|vat)/.test(compactHeader) ? 'TVA' : null
+  const headerY = header.reduce((sum, item) => sum + item.y, 0) / header.length
+
+  type NumericRow = { y: number; nums: PositionedItem[]; distance: number; direction: 1 | -1 }
+  const candidates: NumericRow[] = []
+  for (const line of lines) {
+    if (line === header) continue
+    const nums = line.filter(item => isNumeric(item.text)).sort((a, b) => a.centerX - b.centerX)
+    if (nums.length < 2) continue
+    const y = line.reduce((sum, item) => sum + item.y, 0) / line.length
+    const delta = y - headerY
+    if (Math.abs(delta) <= 3) continue
+    candidates.push({ y, nums, distance: Math.abs(delta), direction: delta > 0 ? 1 : -1 })
+  }
+
+  const side = (direction: 1 | -1) => candidates
+    .filter(row => row.direction === direction && row.distance < 420)
+    .sort((a, b) => a.distance - b.distance)
+  const plus = side(1)
+  const minus = side(-1)
+  const minNumbers = extraHeader ? 3 : 2
+  const rows = (plus.filter(row => row.nums.length >= minNumbers).length > minus.filter(row => row.nums.length >= minNumbers).length ? plus : minus)
+    .filter(row => row.nums.length >= minNumbers)
+  if (!rows.length) return null
+
+  const contiguous: NumericRow[] = []
+  const gaps: number[] = []
+  for (const row of rows) {
+    if (contiguous.length) {
+      const gap = row.distance - contiguous[contiguous.length - 1].distance
+      const typical = median(gaps)
+      if (gaps.length >= 2 && typical > 0 && gap > typical * 2.1) break
+      gaps.push(gap)
+    }
+    contiguous.push(row)
+  }
+  if (!contiguous.length) return null
+
+  const quantityX = median(contiguous.map(row => row.nums[0].centerX))
+  const priceX = median(contiguous.map(row => row.nums[1].centerX))
+  if (!(priceX > quantityX + 6)) return null
+  const leftQuantityBoundary = quantityX - (priceX - quantityX) / 2
+  const direction = contiguous[0].direction
+  const body = positioned.map(item => ({ ...item, t: (item.y - headerY) * direction }))
+  const matrix: PdfLayoutMatrix = [['Désignation', 'Quantité', 'Prix unitaire HT', ...(extraHeader ? [extraHeader] : [])]]
+
+  contiguous.forEach((row, index) => {
+    const distance = Math.abs(row.y - headerY)
+    const previous = index === 0 ? 0 : Math.abs(contiguous[index - 1].y - headerY)
+    const next = index + 1 < contiguous.length ? Math.abs(contiguous[index + 1].y - headerY) : distance + Math.max(distance - previous, 24)
+    const top = (previous + distance) / 2
+    const bottom = (distance + next) / 2
+    const designation = cleanDesignation(body
+      .filter(item => item.t > top && item.t < bottom && item.centerX < leftQuantityBoundary)
+      .sort((a, b) => Math.abs(a.t - b.t) > 1 ? a.t - b.t : a.x - b.x)
+      .map(item => item.text)
+      .join(' '))
+    const nums = row.nums.map(item => item.text.replace(/[\s\u00a0\u202f]/g, ''))
+    matrix.push([designation, nums[0], nums[1], ...(extraHeader ? [nums[2] ?? ''] : [])])
+  })
+  return matrix.length > 1 ? matrix : null
+}
+
+const tableScore = (matrix: PdfLayoutMatrix | null) => {
+  if (!matrix) return -1
+  const body = matrix.slice(1)
+  const completeDesignations = body.filter(row => String(row[0] ?? '').trim().length >= 3).length
+  return body.length * 100 + completeDesignations
+}
+
+export const pdfItemsToCandidateTables = (items: unknown[]): PdfLayoutMatrix[] => {
+  const candidates = [
+    geometryTable(items),
+    pdfTextToCandidateTables(itemsToPositionedText(items))[0] ?? null,
+    pdfTextToCandidateTables(itemsToStreamText(items))[0] ?? null
+  ]
+  const best = candidates.sort((a, b) => tableScore(b) - tableScore(a))[0] ?? null
+  return best ? [best] : []
+}
+
+export function matrixToObjects(matrix: PdfLayoutMatrix) {
+  const headers = matrix[0].map(String)
+  return matrix.slice(1).map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? null])))
 }

@@ -511,10 +511,10 @@ const buildPremium = (document: CommercialDocument, company: CompanySettings) =>
     body: premiumRows(document),
     theme: 'plain',
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 4, minCellHeight: 13, valign: 'middle', halign: 'center', overflow: 'linebreak', lineColor: [232,239,234], lineWidth: 0.25, textColor: [32,46,37] },
-    headStyles: { fillColor: [22,48,36], textColor: [255,255,255], fontStyle: 'bold', minCellHeight: 12 },
+    headStyles: { fillColor: [22,48,36], textColor: [255,255,255], fontStyle: 'bold', minCellHeight: 12, cellPadding: 2.5 },
     alternateRowStyles: { fillColor: [250,252,251] },
     columnStyles: priced
-      ? { 0:{cellWidth:68,halign:'left'}, 1:{cellWidth:25}, 2:{cellWidth:20}, 3:{cellWidth:32}, 4:{cellWidth:35} }
+      ? { 0:{cellWidth:66,halign:'left'}, 1:{cellWidth:23}, 2:{cellWidth:24}, 3:{cellWidth:32}, 4:{cellWidth:35} }
       : { 0:{cellWidth:100,halign:'left'}, 1:{cellWidth:40}, 2:{cellWidth:40} },
     margin: { left: 15, right: 15, top: 18, bottom: 37 },
     willDrawPage: data => {
@@ -541,12 +541,10 @@ const buildPremium = (document: CommercialDocument, company: CompanySettings) =>
 
     const y = Math.max(end + 10, 136)
     pdf.setFont('helvetica', 'bold')
-    pdf.setTextColor(137,147,141)
-    pdf.setFontSize(6.5)
-    pdf.text('MONTANT EN LETTRES', 16, y)
     pdf.setTextColor(32,46,37)
-    pdf.setFontSize(8)
-    pdf.text(pdf.splitTextToSize(amountToFrenchDirhams(totals.totalTTC), 78), 16, y + 7)
+    pdf.setFontSize(7.6)
+    const words = `${stoppedAtLabel(document)} ${amountToFrenchDirhams(totals.totalTTC)} TTC`
+    pdf.text(pdf.splitTextToSize(words, 78), 16, y)
 
     pdf.setFillColor(249,252,250)
     pdf.setDrawColor(230,237,232)
