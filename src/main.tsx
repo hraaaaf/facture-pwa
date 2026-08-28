@@ -35,7 +35,11 @@ function Root() {
   const [bootCompany, setBootCompany] = useState<CompanySettings | null>(null)
 
   useEffect(() => {
-    void getCompany().then(setBootCompany)
+    void (async () => {
+      const company = await getCompany()
+      await seedNumberingCounters(company.numberingBaseline)
+      setBootCompany(company)
+    })()
   }, [])
 
   useEffect(() => {
@@ -68,7 +72,9 @@ function Root() {
   }
 
   const refreshAppData = async () => {
-    setBootCompany(await getCompany())
+    const company = await getCompany()
+    await seedNumberingCounters(company.numberingBaseline)
+    setBootCompany(company)
     setAppRevision(current => current + 1)
   }
 
