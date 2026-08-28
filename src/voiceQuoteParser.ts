@@ -22,6 +22,11 @@ const NUMBER_WORD = String.raw`zero|un|une|deux|trois|quatre|cinq|six|sept|huit|
 const SPOKEN_NUMBER_PATTERN = String.raw`(?:${NUMBER_WORD})(?:[-\s]+(?:${NUMBER_WORD})){0,8}`
 const NUMBER_VALUE_PATTERN = String.raw`(?:\d+(?:[.,]\d+)?|${SPOKEN_NUMBER_PATTERN})`
 
+const restoreFieldBoundaries = (value: string) => value
+  .replace(new RegExp(String.raw`([A-Za-zÀ-ÿ0-9])(?=(?:${article})(?:${boundary})(?=\s|[,.;:]|$))`, 'gi'), '$1 ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
 const normalizeWordNumber = (value: string) => value
   .toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -101,7 +106,7 @@ const numberField = (text: string, names: string[]) => {
 }
 
 export const voiceToRawQuote = (transcript: string, defaultVatRate: number): RawQuotePayload => {
-  const normalized = transcript.replace(/\s+/g, ' ').trim()
+  const normalized = restoreFieldBoundaries(transcript)
   const client = field(normalized, ['client'], true) ?? normalized.match(/(?:pour)\s+([^,.;]+?)(?=\s+(?:objet|article|avec|comprenant|incluant)(?=\s|[,.;:]|$)|[,.;]|$)/i)?.[1]?.trim()
   const object = field(normalized, ['objet'], true) ?? field(normalized, ['concernant'], true)
   const vat = numberField(normalized, ['tva', 'taxe'])
