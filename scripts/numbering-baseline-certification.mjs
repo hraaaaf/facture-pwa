@@ -24,7 +24,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function startServer(cwd, port) {
   const server = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', String(port)], {
     cwd,
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32'
   })
   let log = ''
   server.stdout.on('data', chunk => { log += chunk.toString() })
@@ -37,15 +38,25 @@ async function startServer(cwd, port) {
     } catch {}
     await sleep(250)
   }
-  server.kill('SIGTERM')
+  stopServer(server)
   throw new Error(`Preview unavailable in ${cwd}\n${log}`)
+}
+
+function signalServer(server, signal) {
+  if (!server.pid) return
+  try {
+    if (process.platform === 'win32') server.kill(signal)
+    else process.kill(-server.pid, signal)
+  } catch (error) {
+    if (error?.code !== 'ESRCH') throw error
+  }
 }
 
 async function stopServer(server) {
   if (server.exitCode !== null) return
-  server.kill('SIGTERM')
+  signalServer(server, 'SIGTERM')
   await Promise.race([new Promise(resolve => server.once('exit', resolve)), sleep(1200)])
-  if (server.exitCode === null) server.kill('SIGKILL')
+  if (server.exitCode === null) signalServer(server, 'SIGKILL')
 }
 
 async function openDocumentsStep(page, origin) {
