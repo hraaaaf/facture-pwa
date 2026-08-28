@@ -5,6 +5,7 @@ import App from './App'
 import OnboardingScreen from './OnboardingScreen'
 import PdfPreviewScreen from './PreviewV2'
 import SettingsScreen, { type PwaInstallPrompt } from './SettingsScreen'
+import { seedNumberingCounters } from './numberingBaseline'
 import { getCompany, saveCompany } from './storage'
 import { installSpeechRecognitionGuard } from './speechRecognitionGuard'
 import type { CommercialDocument, CompanySettings } from './types'
@@ -79,6 +80,7 @@ function Root() {
       <OnboardingScreen
         initialValue={bootCompany}
         onComplete={async company => {
+          await seedNumberingCounters(company.numberingBaseline)
           await saveCompany(company)
           window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
           setBootCompany(company)
