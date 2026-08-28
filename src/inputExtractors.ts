@@ -1,6 +1,7 @@
 import type { QuoteInputKind, RawQuotePayload } from './quoteImport'
 import { extractDocumentDate, extractMultilineClientName } from './importMetadata'
 import { pdfItemsToCandidateTables } from './pdfLayout'
+import { importDebug } from './importDebug'
 
 export interface ExtractedInput {
   kind: QuoteInputKind
@@ -103,6 +104,12 @@ export const pickBestQuoteTable = (tables: ExtractedInput['tables']): Array<Reco
   return best && scoreHeader(best[0]) > 0 ? matrixToObjects(best) : []
 }
 
+const tableDebugSummary = (tables: ExtractedInput['tables']) => tables.slice(0, 10).map(table => ({
+  rows: Math.max(0, table.length - 1),
+  columns: table[0]?.length ?? 0,
+  headers: (table[0] ?? []).slice(0, 8).map(value => String(value ?? '').slice(0, 80))
+}))
+
 const extractLabel = (text: string, labels: string[]) => {
   for (const label of labels) {
     const match = text.match(new RegExp(`(?:^|\\n)\\s*${label}\\s*[:\\-]\\s*([^\\n]+)`, 'i'))
@@ -113,18 +120,36 @@ const extractLabel = (text: string, labels: string[]) => {
 
 export const extractedInputToRawQuote = (input: ExtractedInput): RawQuotePayload => {
   const inferredTables = textToCandidateTables(input.text)
+  const clientName = extractMultilineClientName(input.text) ?? extractLabel(input.text, ['client', 'raison sociale', 'customer'])
+  const objectValue = extractLabel(input.text, ['objet', 'object'])
+  const dateValue = extractDocumentDate(input.text) ?? extractLabel(input.text, ['date'])
+  const lines = pickBestQuoteTable([...input.tables, ...inferredTables])
+
+  importDebug('quote.raw', {
+    kind: input.kind,
+    textLength: input.text.length,
+    inputTableCount: input.tables.length,
+    inferredTableCount: inferredTables.length,
+    inputTables: tableDebugSummary(input.tables),
+    inferredTables: tableDebugSummary(inferredTables),
+    lineCount: lines.length,
+    clientDetected: Boolean(clientName),
+    objectDetected: Boolean(objectValue),
+    dateDetected: Boolean(dateValue)
+  })
+
   return {
     source: { kind: input.kind, name: input.name },
     client: {
-      name: extractMultilineClientName(input.text) ?? extractLabel(input.text, ['client', 'raison sociale', 'customer']),
+      name: clientName,
       address: extractLabel(input.text, ['adresse', 'address']),
       ice: extractLabel(input.text, ['ice']),
       ifNumber: extractLabel(input.text, ['if', 'identifiant fiscal'])
     },
-    object: extractLabel(input.text, ['objet', 'object']),
-    date: extractDocumentDate(input.text) ?? extractLabel(input.text, ['date']),
+    object: objectValue,
+    date: dateValue,
     currency: extractLabel(input.text, ['devise', 'currency']) ?? (/(?:\bMAD\b|\bDHS?\b|dirhams?)/i.test(input.text) ? 'MAD' : undefined),
-    lines: pickBestQuoteTable([...input.tables, ...inferredTables])
+    lines
   }
 }
 
@@ -196,6 +221,25 @@ const isPdfTextItem = (item: unknown): item is PdfTextItemLike => {
     && candidate.transform.length >= 6
 }
 
+const pdfItemDebugSummary = (items: Array<unknown>) => {
+  const textItems = items.filter(isPdfTextItem)
+  const strings = textItems.map(item => item.str.trim()).filter(Boolean)
+  const joined = strings.join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  return {
+    itemCount: items.length,
+    textItemCount: textItems.length,
+    nonEmptyTextItemCount: strings.length,
+    numericItemCount: strings.filter(value => /^[-+]?\d+(?:[.,]\d+)?$/.test(value.replace(/[\s\u00a0\u202f]/g, ''))).length,
+    headerSignals: {
+      designation: /\b(designation|article|description|libelle)\b/.test(joined),
+      quantity: /\b(quantite|qte|qty)\b/.test(joined),
+      price: /\b(prix|p\.?u\.?)\b/.test(joined),
+      total: /\btotal\b/.test(joined),
+      vat: /\b(tva|vat)\b/.test(joined)
+    }
+  }
+}
+
 export const readPdfTextItems = async (stream: PdfTextStreamLike): Promise<Array<unknown>> => {
   const reader = stream.getReader()
   const items: Array<unknown> = []
@@ -247,10 +291,12 @@ const ocrImages = async (images: Array<Blob | HTMLCanvasElement>) => {
 }
 
 const extractPdf = async (file: File): Promise<ExtractedInput> => {
+  importDebug('pdf.start', { fileSize: file.size, mimeType: file.type })
   const pdfjs = await import('pdfjs-dist')
   const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+  importDebug('pdf.loaded', { numPages: pdf.numPages })
   const textPages: string[] = []
   const pdfTables: ExtractedInput['tables'] = []
   const pagesForOcr: HTMLCanvasElement[] = []
@@ -258,8 +304,18 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber)
     const items = await readPdfTextItems(page.streamTextContent() as unknown as PdfTextStreamLike)
-    pdfTables.push(...pdfItemsToCandidateTables(items))
+    const pageTables = pdfItemsToCandidateTables(items)
+    pdfTables.push(...pageTables)
     const pageText = cleanText(pdfItemsToText(items))
+
+    importDebug('pdf.page', {
+      pageNumber,
+      ...pdfItemDebugSummary(items),
+      pageTextLength: pageText.length,
+      candidateTableCount: pageTables.length,
+      candidateTables: tableDebugSummary(pageTables)
+    })
+
     if (pageText) {
       textPages.push(pageText)
       continue
@@ -270,16 +326,31 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
     canvas.height = Math.ceil(viewport.height)
     await page.render({ canvas, viewport }).promise
     pagesForOcr.push(canvas)
+    importDebug('pdf.ocr_queued', { pageNumber, width: canvas.width, height: canvas.height })
   }
 
   const ocrText = pagesForOcr.length ? await ocrImages(pagesForOcr) : ''
   const text = cleanText([...textPages, ocrText].filter(Boolean).join('\n'))
+  const textTables = textToCandidateTables(text)
+  const tables = [...pdfTables, ...textTables]
+  const bestLines = pickBestQuoteTable(tables)
+
+  importDebug('pdf.complete', {
+    textLength: text.length,
+    pdfTableCount: pdfTables.length,
+    textTableCount: textTables.length,
+    tableCount: tables.length,
+    tables: tableDebugSummary(tables),
+    bestLineCount: bestLines.length,
+    ocrPageCount: pagesForOcr.length
+  })
+
   return {
     kind: 'PDF',
     name: file.name,
     mimeType: file.type,
     text,
-    tables: [...pdfTables, ...textToCandidateTables(text)],
+    tables,
     warnings: pagesForOcr.length ? [`OCR utilisé sur ${pagesForOcr.length} page(s) PDF sans couche texte.`] : []
   }
 }
@@ -298,10 +369,20 @@ const extractImage = async (file: File): Promise<ExtractedInput> => {
 
 export const extractInputFile = async (file: File): Promise<ExtractedInput> => {
   const kind = detectInputKind(file)
-  if (kind === 'TEXT') return extractTextFile(file)
-  if (kind === 'EXCEL') return extractExcel(file)
-  if (kind === 'WORD') return extractWord(file)
-  if (kind === 'PDF') return extractPdf(file)
-  if (kind === 'IMAGE') return extractImage(file)
-  throw new Error('Format de fichier non supporté. Utilisez PDF, Excel, Word, image ou texte.')
+  importDebug('import.start', { kind, fileSize: file.size, mimeType: file.type })
+  try {
+    if (kind === 'TEXT') return await extractTextFile(file)
+    if (kind === 'EXCEL') return await extractExcel(file)
+    if (kind === 'WORD') return await extractWord(file)
+    if (kind === 'PDF') return await extractPdf(file)
+    if (kind === 'IMAGE') return await extractImage(file)
+    throw new Error('Format de fichier non supporté. Utilisez PDF, Excel, Word, image ou texte.')
+  } catch (caught) {
+    importDebug('import.error', {
+      kind,
+      errorName: caught instanceof Error ? caught.name : 'UnknownError',
+      errorMessage: caught instanceof Error ? caught.message : String(caught)
+    })
+    throw caught
+  }
 }
