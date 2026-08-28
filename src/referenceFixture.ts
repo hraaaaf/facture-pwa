@@ -1,5 +1,5 @@
 import type { CommercialDocument, CompanySettings } from './types'
-import { defaultNumberingPrefixes } from './types'
+import { defaultNumberingBaseline, defaultNumberingPrefixes } from './types'
 import { sourceTapistorLogoDataUrl } from './sourceReferenceLogo'
 
 /**
@@ -27,7 +27,8 @@ export const sourceReferenceCompany: CompanySettings = {
   managerSignatureDataUrl: '',
   pdfTemplate: 'original',
   onboardingCompleted: true,
-  numberingPrefixes: defaultNumberingPrefixes
+  numberingPrefixes: defaultNumberingPrefixes,
+  numberingBaseline: defaultNumberingBaseline()
 }
 
 const sourceBaseDocument = (): CommercialDocument => ({
