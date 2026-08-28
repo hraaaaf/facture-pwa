@@ -11,6 +11,13 @@ describe('voiceToRawQuote real Safari regressions', () => {
     expect(getLine(raw)).toMatchObject({ designation: 'draps de 2,30 m sur deux 2,20 m', quantity: 5, unitPriceHT: 150, vatRate: 20 })
   })
 
+  it('parses the latest iPhone transcript even when Safari glues a field boundary', () => {
+    const raw = voiceToRawQuote('Client Pirat désignation premier article des nappes 250 cm quantité cinqLe prix unitaire 150 HT', 20)
+    expect(raw.client?.name).toBe('Pirat')
+    expect(raw.lines).toHaveLength(1)
+    expect(getLine(raw)).toMatchObject({ designation: 'premier article des nappes 250 cm', quantity: 5, unitPriceHT: 150, vatRate: 20 })
+  })
+
   it('does not invent Pierre when Safari transcribes Pierra', () => {
     expect(voiceToRawQuote('Client Pierra article draps quantité cinq prix unitaire 150 dirhams', 20).client?.name).toBe('Pierra')
   })

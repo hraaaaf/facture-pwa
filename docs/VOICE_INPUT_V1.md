@@ -1,99 +1,79 @@
 # V1 — Input vocal → Devis
 
-Date : 27 août 2026
+Date : 28 août 2026
 
 ## Goal
 
-Ajouter un cinquième mode d'entrée `Vocal` dans `Input → Devis`, avec dictée, transcription modifiable et passage dans le pipeline déterministe existant, sans rupture visuelle avec l'UI certifiée Factea.
-
-## Goal visuel
-
-Le Vocal doit sembler natif au produit existant : mêmes surfaces glass, vert premium, rayons, ombres, typographie, bottom-sheet et touch targets que `Visual Polish V1`.
-
-Référence : `src/polish.css` + `docs/mockups/VOICE_INPUT_V1.svg`.
+Ajouter et maintenir un mode `Vocal` fiable dans `Input → Devis`, avec dictée Safari, transcription modifiable, extraction déterministe et revue stable jusqu'à la création du devis.
 
 ## Succès
 
-- [x] baseline BEFORE pré-Vocal issue de la certification F3 ;
-- [x] mockup cible 390 px figé avant implémentation ;
-- [x] cinquième source `Vocal` intégrée ;
-- [x] état écoute / arrêt / reprise ;
-- [x] transcription visible et modifiable ;
-- [x] fallback saisie manuelle si SpeechRecognition indisponible ;
-- [x] extraction déterministe quantité + désignation + PU + TVA ;
-- [x] réutilisation dictionnaire F4 + normalisation + revue ciblée + JSON canonique ;
-- [x] tests + build ;
-- [x] runtime Chromium 390 / 430 / 768 ;
-- [x] 0 overflow / 0 erreur console ;
-- [x] touch targets critiques >=45 px, actions Vocal >=48 px ;
-- [x] E2E Vocal → revue date → DEVIS brouillon éditable ;
-- [x] captures AFTER picker + écoute sur 390 / 430 / 768 ;
-- [x] comparaison BEFORE → mockup → AFTER effectuée ;
-- [x] permission / dictée micro réelle sur iPhone ;
-- [x] transcription réelle Safari ;
-- [x] `Analyser` réel Safari → ligne canonique ;
-- [x] human gate V1 réel : utilisateur confirme « Ça marche maintenant ! ».
+- [x] dictée et transcription Safari réelles sur iPhone ;
+- [x] fragments SpeechRecognition séparés proprement ;
+- [x] frontière Safari collée de type `cinqLe prix unitaire` réparée ;
+- [x] `article` conservé lorsqu'il appartient réellement à la désignation ;
+- [x] date locale du jour appliquée au devis vocal lorsqu'elle n'est pas dictée ;
+- [x] champs de revue stables pendant toute la saisie ;
+- [x] passage à l'étape suivante uniquement via validation explicite ;
+- [x] régression Safari réelle ajoutée ;
+- [x] télémétrie temporaire Vercel supprimée du candidat ;
+- [x] human gate iPhone : utilisateur confirme `Validé !` ;
+- [x] tests, build et runtime Chromium certifiés.
 
-## Preuve web
+## Preuve finale automatique
 
-Run exact-head de closeout : `33122759036` — **SUCCESS**.
+Run : `33180522924` — **SUCCESS**.
 
-HEAD certifié : `cae12b56ae9e78891962252909c433bd0c6d3a14`.
+HEAD code + certification : `82abf1243c24b330364504ff2cd1f6463848ce03`.
 
-Artifact : `9667130704` (`voice-input-v1-captures`).
+Artifact : `9689523190` (`voice-input-v1-captures`), SHA-256 `d508111397df2aa5b29c36bad94bc6e215b392b5ab7d290d11730ff84fa8615c`.
 
-Ce run confirme :
+Le run confirme :
 
-- suite totale : **82/82 tests PASS** ;
+- **96/96 tests PASS** sur 16 fichiers ;
 - parser historique : **34/34** ;
-- régressions Safari : **6/6** ;
-- build TypeScript + Vite/PWA : SUCCESS ;
-- runtime Chromium 390 / 430 / 768 : SUCCESS ;
-- 0 overflow horizontal ;
-- 0 erreur console/page ;
-- E2E structuré : client `Pierre`, quantité `6`, PU HT `150`, total HT `900`.
+- régressions Safari : **7/7** ;
+- TypeScript + Vite/PWA build : **SUCCESS** ;
+- runtime Chromium : **390 / 430 / 768 PASS** ;
+- `scrollWidth === viewport` sur les trois viewports ;
+- touch target fermeture : **45 × 45 px** ;
+- actions Vocal : **>= 48 px** ;
+- orb : **74 px** ;
+- 5 sources d'import présentes ;
+- **0 erreur console/page** ;
+- E2E : client `Pierre`, 1 ligne, quantité `6`, PU HT `150`, total HT `900`, création d'un DEVIS éditable.
 
-## Preuve iPhone réel
+## Preuve iPhone réelle
 
-Preview testé sur iPhone Safari / WebKit.
+Le diagnostic Vercel a capturé le comportement Safari réel et a montré deux causes distinctes :
 
-Transcription réellement capturée :
+1. Safari pouvait concaténer des segments sans espace, par exemple `cinqLe prix unitaire` ;
+2. l'ancienne revue supprimait un champ dès qu'il devenait valide, ce qui fermait visuellement la saisie avant validation explicite.
 
-`Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams`
+Le correctif final :
 
-Résultat parser réellement observé :
+- joint les fragments Safari avec un espace normalisé ;
+- restaure les frontières de champs collées ;
+- garde la liste de champs de revue stable pendant l'édition ;
+- exige `Valider les corrections` avant de quitter la revue lorsqu'une revue est nécessaire ;
+- évite une revue de date inutile en appliquant la date locale du jour au devis vocal.
 
-- client : `Pierra` ;
-- désignation : `draps de 2,30 m sur deux 2,20 m` ;
-- quantité : `5` ;
-- PU HT : `150` ;
-- TVA : `20` ;
-- lignes : `1`.
-
-Le moteur conserve `Pierra` tel que Safari l'a transcrit au lieu d'inventer `Pierre`.
-
-## Régressions verrouillées
-
-Le closeout final conserve :
-
-- les **34 tests parser historiques** ;
-- **6 tests Safari réels** dédiés à `article`, aux nombres parlés, à l'ordre prix/quantité et aux dimensions ;
-- fail-closed si désignation, quantité ou prix manque ou reste ambigu.
+Le parcours a ensuite été testé sur iPhone réel et explicitement validé par l'utilisateur le 28 août 2026.
 
 ## Sécurité / confidentialité
 
-L'endpoint temporaire `api/voice-debug.js` et l'envoi de transcription vers les logs Vercel ont été supprimés du closeout final et ne sont pas présents dans le candidat au merge.
+L'endpoint temporaire `api/voice-debug.js` et l'envoi de transcription vers les logs Vercel ont été supprimés avant closeout. `src/importDebug.ts` est revenu au no-op. Aucune télémétrie de transcription n'est destinée au merge final.
 
-`SpeechRecognition` reste un progressive enhancement. Aucun fournisseur STT externe n'est ajouté au projet. La transcription peut dépendre du service de reconnaissance du navigateur et ne doit pas être présentée comme strictement locale/offline.
+`SpeechRecognition` reste un progressive enhancement dépendant du navigateur. Aucun fournisseur STT externe n'est ajouté au projet et la dictée ne doit pas être présentée comme strictement locale/offline.
 
 ## Validation visuelle
 
-Aucun changement visuel n'est introduit par le correctif Safari ou le closeout. Les captures et la comparaison BEFORE → mockup → AFTER déjà certifiées restent valides.
+Le correctif conserve l'identité visuelle Vocal existante. La certification runtime confirme l'absence d'overflow et les dimensions critiques sur 390 / 430 / 768.
 
-**Score visuel V1 : 9,6/10.**
+**Score visuel conservé : 9,6/10.**
 
 ## État
 
-**V1 VOCAL VALIDÉE SUR WEB + IPHONE RÉEL — CLOSEOUT EXACT-HEAD CERTIFIÉ.**
+**V1 VOCAL IPHONE — RÉGRESSION CORRIGÉE, VALIDÉE SUR APPAREIL RÉEL ET CERTIFIÉE AUTOMATIQUEMENT.**
 
-Base `vercel/latest` synchronisée sur `5bd8755629b8f40c4b92d0aedd6e9d88ffabe88d`. PR #7 autorisée au merge. Aucune promotion Production n'est autorisée par ce closeout.
+PR de closeout : `#9`. Le merge vers `main` reste le gate qui peut déclencher la Production Vercel et nécessite donc l'autorisation explicite correspondante.

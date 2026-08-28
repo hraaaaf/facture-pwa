@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
 import { prepareImportDictionary } from './importDictionary'
+import { importDebug } from './importDebug'
 import { voiceToRawQuote } from './voiceQuoteParser'
 import {
   canonicalQuoteToDocumentFields,
@@ -88,6 +89,14 @@ const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
   return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
 }
 
+const localToday = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const getFieldValue = (quote: CanonicalQuoteJSON, field: string): string | number => {
   if (field === 'client.name') return quote.client.name ?? ''
   if (field === 'quote.object') return quote.quote.object ?? ''
@@ -143,6 +152,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
   const [mode, setMode] = useState<ImportMode>('PDF')
   const [step, setStep] = useState<Step>('PICKER')
   const [quote, setQuote] = useState<CanonicalQuoteJSON | null>(null)
+  const [reviewIssues, setReviewIssues] = useState<QuoteIssue[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState('')
   const [sourceName, setSourceName] = useState('')
@@ -182,9 +192,12 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     recognition.interimResults = true
     recognition.continuous = true
     recognition.onresult = event => {
-      let text = ''
-      for (let index = 0; index < event.results.length; index += 1) text += event.results[index][0].transcript
-      setVoiceText(text.trim())
+      const parts: string[] = []
+      for (let index = 0; index < event.results.length; index += 1) {
+        const part = event.results[index][0].transcript.trim()
+        if (part) parts.push(part)
+      }
+      setVoiceText(parts.join(' ').replace(/\s+/g, ' ').trim())
     }
     recognition.onerror = event => {
       setVoiceListening(false)
@@ -208,8 +221,11 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     }
     setStep('PROCESSING')
     setSourceName('Message vocal')
-    const canonical = normalizeImportedRaw(voiceToRawQuote(voiceText, defaultVatRate), defaultVatRate)
+    const raw = voiceToRawQuote(voiceText, defaultVatRate)
+    if (!raw.date) raw.date = localToday()
+    const canonical = normalizeImportedRaw(raw, defaultVatRate)
     setQuote(canonical)
+    setReviewIssues(canonical.issues.filter(issue => issue.severity === 'ERROR'))
     setWarnings([])
     setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
   }
@@ -220,6 +236,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     setVoiceListening(false)
     setStep('PICKER')
     setQuote(null)
+    setReviewIssues([])
     setWarnings([])
     setError('')
     setSourceName('')
@@ -237,6 +254,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
       const canonical = normalizeImportedRaw(raw, defaultVatRate)
       setWarnings(extracted.warnings)
       setQuote(canonical)
+      setReviewIssues(canonical.issues.filter(issue => issue.severity === 'ERROR'))
       setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Impossible de lire ce fichier.')
@@ -249,7 +267,19 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     const raw = patchRawField(canonicalToRaw(quote), issue.field, value)
     const next = normalizeImportedRaw(raw, defaultVatRate)
     setQuote(next)
-    if (next.status === 'READY') setStep('READY')
+    importDebug('voice.review.change', {
+      mode,
+      field: issue.field,
+      valueLength: value.length,
+      status: next.status,
+      remainingErrors: next.issues.filter(item => item.severity === 'ERROR').length
+    })
+  }
+
+  const confirmReview = () => {
+    if (!quote || errors.length > 0) return
+    importDebug('voice.review.confirm', { mode, status: quote.status, remainingErrors: errors.length })
+    setStep('READY')
   }
 
   const create = () => {
@@ -356,7 +386,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
             </div>
             <div className="quote-review-heading"><div><span className="section-kicker">Revue ciblée</span><h3>Uniquement les incertitudes</h3></div><button onClick={reset}>Changer de source</button></div>
             <div className="quote-review-list">
-              {errors.map(issue => {
+              {reviewIssues.map(issue => {
                 const editable = !['CURRENCY_UNSUPPORTED', 'LINES_REQUIRED'].includes(issue.code)
                 return (
                   <label className={`quote-review-field ${editable ? '' : 'blocked'}`} key={`${issue.code}-${issue.field}`}>
@@ -374,6 +404,10 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
               })}
             </div>
             {(warnings.length > 0 || quoteWarnings.length > 0) && <p className="quote-warning-note">{[...warnings, ...quoteWarnings.map(item => item.message)].join(' · ')}</p>}
+            <div className="quote-ready-actions">
+              <button onClick={reset}>Recommencer</button>
+              <button className="quote-primary" onClick={confirmReview} disabled={errors.length > 0}>Valider les corrections</button>
+            </div>
           </>
         )}
 
