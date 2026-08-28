@@ -8,14 +8,15 @@ Date : 28 août 2026
 
 ## Succès
 
-- Devis, Facture, BL et BC ont chacun leur dernier numéro réel.
-- `0` signifie aucun document antérieur.
-- Exemple cible : dernier numéro Facture `13` en 2026 → première facture Factea `F-2026-014`.
-- La reprise s'applique uniquement à l'année indiquée dans l'onboarding.
-- Les années suivantes repartent sur leur propre séquence.
-- Un compteur déjà supérieur n'est jamais diminué.
-- La baseline est conservée avec les réglages société et reste donc présente dans les sauvegardes locales.
-- BEFORE / AFTER requis : 390 / 430 / 768 / 1280.
+- [x] Devis, Facture, BL et BC ont chacun leur dernier numéro réel.
+- [x] `0` signifie aucun document antérieur.
+- [x] Exemple cible : dernier numéro Facture `13` en 2026 → première facture Factea `F-2026-014`.
+- [x] La reprise s'applique uniquement à l'année indiquée dans l'onboarding.
+- [x] Les années suivantes repartent sur leur propre séquence.
+- [x] Un compteur déjà supérieur n'est jamais diminué.
+- [x] La baseline est conservée avec les réglages société et resynchronisée au démarrage si le store compteur doit être reconstruit.
+- [x] BEFORE / AFTER : 390 / 430 / 768 / 1280.
+- [x] Zéro erreur page/console sur la certification navigateur.
 
 ## Implémentation
 
@@ -23,25 +24,42 @@ Branche : `feat/onboarding-numbering-baseline`
 
 PR : `#10`
 
-État : **IMPLÉMENTÉ — CERTIFICATION EN ATTENTE**
+Le bloc de reprise est intégré à l'étape 5 `Documents`. Les valeurs saisies initialisent les compteurs IndexedDB avant la fin de l'onboarding. La logique est monotone : une valeur existante plus élevée gagne toujours.
 
-Le bloc de reprise est intégré à l'étape 5 `Documents`. Les valeurs saisies alimentent les compteurs IndexedDB avant la fin de l'onboarding. La logique est monotone : une valeur existante plus élevée gagne toujours.
+La baseline est également persistée dans `CompanySettings` et réappliquée au démarrage / refresh de l'application. Cela évite qu'une restauration ou une reconstruction locale du store `counters` ne fasse repartir une série à 1.
 
-## Validation prévue
+## Preuve finale
 
-Workflow dédié : `Numbering Baseline Certification`.
+HEAD produit certifié : `85c2ba826474c4459341c2c2b50c847640625533`.
 
-Preuves attendues :
+Workflow : `Numbering Baseline Certification`.
 
-- tests unitaires ;
-- build TypeScript + Vite/PWA ;
-- capture BEFORE depuis `main` ;
-- capture AFTER depuis la branche ;
-- mêmes viewports 390 / 430 / 768 / 1280 ;
-- assertion IndexedDB `FACTURE:<année>.last === 13` ;
-- finalisation réelle d'une facture → `F-<année>-014` ;
-- zéro erreur console/page.
+Run exact-head : `33186834796` — **SUCCESS**.
 
-## Gate
+Artifact : `9692194956` (`numbering-baseline-before-after`).
 
-Le merge vers `main` n'est pas autorisé tant qu'il peut déclencher un déploiement Vercel sans autorisation explicite.
+Digest : `sha256:c34184d19d53b0b90d3868b5ea059181620839964d2bd0459e22a837c0b6cbc1`.
+
+Le run prouve :
+
+- **100/100 tests PASS** sur 17 fichiers ;
+- build TypeScript + Vite/PWA : SUCCESS ;
+- build de la baseline `main` : SUCCESS ;
+- BEFORE / AFTER sur 390 / 430 / 768 / 1280 ;
+- `FACTURE:2026.last === 13` après onboarding ;
+- suppression du compteur puis reload → compteur resynchronisé à `13` ;
+- finalisation réelle → `F-2026-014` ;
+- 0 erreur page ;
+- 0 erreur console.
+
+Comparaison visuelle BEFORE → AFTER effectuée sur les quatre viewports. Le nouveau bloc reste cohérent avec le design glass existant, sans clipping visible, et garde les quatre séries lisibles sur mobile.
+
+**Score visuel du changement : 9,5/10.**
+
+Preview Vercel du HEAD produit : `dpl_5dnMYncdjjuqv4LiCT6YjGyjnTRr` — **READY**, branche feature, sans promotion manuelle.
+
+## État
+
+**CERTIFIÉ — AUTORISÉ AU MERGE VERS `main` PAR L'UTILISATEUR LE 28 AOÛT 2026.**
+
+Le merge peut déclencher automatiquement le déploiement Production via l'intégration Git Vercel. Aucun appel manuel à l'API de déploiement Vercel n'est nécessaire.
