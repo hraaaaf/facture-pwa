@@ -73,6 +73,13 @@ export interface NumberingPrefixes {
   BC: string
 }
 
+export interface NumberingBaseline {
+  /** Calendar year to which the pre-existing document sequence belongs. */
+  year: number
+  /** Last number already consumed outside Factea. Zero means no previous document. */
+  lastUsed: Record<DocumentType, number>
+}
+
 export interface CompanySettings {
   name: string
   brand: string
@@ -96,6 +103,8 @@ export interface CompanySettings {
   pdfTemplate: PdfTemplatePreference
   onboardingCompleted: boolean
   numberingPrefixes: NumberingPrefixes
+  /** Initial real-world numbering state captured once during onboarding. */
+  numberingBaseline: NumberingBaseline
 }
 
 export const defaultNumberingPrefixes: NumberingPrefixes = {
@@ -104,6 +113,16 @@ export const defaultNumberingPrefixes: NumberingPrefixes = {
   BL: 'BL',
   BC: 'BC'
 }
+
+export const defaultNumberingBaseline = (): NumberingBaseline => ({
+  year: new Date().getFullYear(),
+  lastUsed: {
+    DEVIS: 0,
+    FACTURE: 0,
+    BL: 0,
+    BC: 0
+  }
+})
 
 export const defaultCompany: CompanySettings = {
   name: 'Benmoussa Rachid',
@@ -127,7 +146,8 @@ export const defaultCompany: CompanySettings = {
   managerSignatureDataUrl: '',
   pdfTemplate: 'premium',
   onboardingCompleted: false,
-  numberingPrefixes: defaultNumberingPrefixes
+  numberingPrefixes: defaultNumberingPrefixes,
+  numberingBaseline: defaultNumberingBaseline()
 }
 
 export const clientDisplayName = (client: Pick<ClientProfile, 'name' | 'company'>) =>
