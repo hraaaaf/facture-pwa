@@ -17,6 +17,7 @@ import './preview-fix.css'
 import './polish.css'
 import './touch-target-fix.css'
 import './voice-input.css'
+import './numbering-onboarding.css'
 
 installSpeechRecognitionGuard(window)
 registerSW({ immediate: true })
