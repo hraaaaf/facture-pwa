@@ -1,0 +1,32 @@
+name: PDF wording visual proof
+
+on:
+  push:
+    branches:
+      - cert/pdf-wording-visual
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Generate wording proof PDFs
+        run: npx vitest run certification/pdf-wording-visual.test.ts
+      - name: Upload wording proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-wording-visual-proof
+          path: artifacts/pdf-wording
+          if-no-files-found: error
+          retention-days: 3
