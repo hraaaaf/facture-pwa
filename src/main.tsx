@@ -5,6 +5,7 @@ import App from './App'
 import OnboardingScreen from './OnboardingScreen'
 import PdfPreviewScreen from './PreviewV2'
 import SettingsScreen, { type PwaInstallPrompt } from './SettingsScreen'
+import { seedNumberingCounters } from './numberingBaseline'
 import { getCompany, saveCompany } from './storage'
 import { installSpeechRecognitionGuard } from './speechRecognitionGuard'
 import type { CommercialDocument, CompanySettings } from './types'
@@ -16,6 +17,7 @@ import './preview-fix.css'
 import './polish.css'
 import './touch-target-fix.css'
 import './voice-input.css'
+import './numbering-onboarding.css'
 
 installSpeechRecognitionGuard(window)
 registerSW({ immediate: true })
@@ -33,7 +35,11 @@ function Root() {
   const [bootCompany, setBootCompany] = useState<CompanySettings | null>(null)
 
   useEffect(() => {
-    void getCompany().then(setBootCompany)
+    void (async () => {
+      const company = await getCompany()
+      await seedNumberingCounters(company.numberingBaseline)
+      setBootCompany(company)
+    })()
   }, [])
 
   useEffect(() => {
@@ -66,7 +72,9 @@ function Root() {
   }
 
   const refreshAppData = async () => {
-    setBootCompany(await getCompany())
+    const company = await getCompany()
+    await seedNumberingCounters(company.numberingBaseline)
+    setBootCompany(company)
     setAppRevision(current => current + 1)
   }
 
@@ -79,6 +87,7 @@ function Root() {
       <OnboardingScreen
         initialValue={bootCompany}
         onComplete={async company => {
+          await seedNumberingCounters(company.numberingBaseline)
           await saveCompany(company)
           window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
           setBootCompany(company)

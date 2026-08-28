@@ -1,5 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
-import type { CompanySettings } from './types'
+import { formatDocumentNumber } from './lib'
+import { sanitizeLastUsed } from './numberingBaseline'
+import type { CompanySettings, DocumentType } from './types'
 import './onboarding.css'
 
 type Props = {
@@ -8,6 +10,12 @@ type Props = {
 }
 
 const steps = ['Identité', 'Coordonnées', 'Identifiants', 'Banque', 'Documents'] as const
+const numberingTypes: Array<{ type: DocumentType; label: string }> = [
+  { type: 'DEVIS', label: 'Devis' },
+  { type: 'FACTURE', label: 'Facture' },
+  { type: 'BL', label: 'Bon de livraison' },
+  { type: 'BC', label: 'Bon de commande' }
+]
 
 export default function OnboardingScreen({ initialValue, onComplete }: Props) {
   const [draft, setDraft] = useState<CompanySettings>(initialValue)
@@ -16,6 +24,19 @@ export default function OnboardingScreen({ initialValue, onComplete }: Props) {
   const [error, setError] = useState('')
 
   const patch = (next: Partial<CompanySettings>) => setDraft(current => ({ ...current, ...next }))
+  const numberingYear = draft.numberingBaseline.year
+
+  const patchLastUsed = (type: DocumentType, value: number) => {
+    patch({
+      numberingBaseline: {
+        ...draft.numberingBaseline,
+        lastUsed: {
+          ...draft.numberingBaseline.lastUsed,
+          [type]: sanitizeLastUsed(value)
+        }
+      }
+    })
+  }
 
   const imageChanged = (key: 'logoDataUrl' | 'managerSignatureDataUrl') => (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -172,7 +193,7 @@ export default function OnboardingScreen({ initialValue, onComplete }: Props) {
 
           {step === 4 && (
             <>
-              <StepTitle eyebrow="Étape 5" title="Documents" copy="Choisis les valeurs par défaut. Elles resteront modifiables dans Réglages." />
+              <StepTitle eyebrow="Étape 5" title="Documents" copy="Reprends la numérotation réelle de la société puis choisis les valeurs par défaut." />
               <Field label="TVA par défaut %">
                 <input
                   autoFocus
@@ -185,6 +206,45 @@ export default function OnboardingScreen({ initialValue, onComplete }: Props) {
                   onChange={event => patch({ defaultVatRate: Math.min(100, Math.max(0, Number(event.target.value) || 0)) })}
                 />
               </Field>
+
+              <section className="onboarding-numbering-block" aria-labelledby="onboarding-numbering-title">
+                <header>
+                  <div>
+                    <span>Reprise de numérotation · {numberingYear}</span>
+                    <strong id="onboarding-numbering-title">Où se sont arrêtés les vrais documents ?</strong>
+                    <small>Indique le dernier numéro déjà utilisé. Factea commencera automatiquement au suivant.</small>
+                  </div>
+                  <span className="onboarding-numbering-badge">Important</span>
+                </header>
+
+                <div className="onboarding-numbering-grid">
+                  {numberingTypes.map(({ type, label }) => {
+                    const last = draft.numberingBaseline.lastUsed[type]
+                    const next = last + 1
+                    return (
+                      <label key={type} className="onboarding-numbering-field">
+                        <span>{label}</span>
+                        <div>
+                          <small>Dernier</small>
+                          <input
+                            aria-label={`Dernier numéro ${label}`}
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            max="999999"
+                            step="1"
+                            value={last}
+                            onChange={event => patchLastUsed(type, Number(event.target.value))}
+                          />
+                        </div>
+                        <small>Prochain : <b>{formatDocumentNumber(type, numberingYear, next, draft.numberingPrefixes)}</b></small>
+                      </label>
+                    )
+                  })}
+                </div>
+
+                <p>0 = aucun document antérieur pour ce type. Une séquence déjà consommée ne sera jamais réutilisée.</p>
+              </section>
 
               <div className="onboarding-choice-block">
                 <span>Modèle PDF par défaut</span>

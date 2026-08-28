@@ -1,0 +1,78 @@
+name: Numbering Baseline Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/OnboardingScreen.tsx'
+      - 'src/main.tsx'
+      - 'src/types.ts'
+      - 'src/numberingBaseline.ts'
+      - 'src/numberingBaseline.test.ts'
+      - 'src/numbering-onboarding.css'
+      - 'scripts/numbering-baseline-certification.mjs'
+      - '.github/workflows/numbering-baseline-cert.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: numbering-baseline-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build feature
+        run: npm run build
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Build main baseline
+        run: |
+          rm -rf /tmp/facture-main
+          mkdir -p /tmp/facture-main
+          git archive origin/main | tar -x -C /tmp/facture-main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
+          (cd /tmp/facture-main && npm run build)
+      - name: Browser certification
+        run: timeout --signal=TERM --kill-after=5s 180s node scripts/numbering-baseline-certification.mjs /tmp/facture-main .
+      - name: Verify report
+        run: |
+          node - <<'NODE'
+          const fs = require('fs')
+          const report = JSON.parse(fs.readFileSync('artifacts/numbering-baseline/report.json', 'utf8'))
+          if (report.failure) throw new Error(report.failure)
+          if (!Array.isArray(report.assertions) || report.assertions.length < 5 || report.assertions.some(item => !item.ok)) throw new Error('Assertions incomplete')
+          if ((report.pageErrors || []).length || (report.consoleErrors || []).length) throw new Error('Browser errors present')
+          for (const width of [390, 430, 768, 1280]) {
+            for (const phase of ['before', 'after']) {
+              const path = `artifacts/numbering-baseline/${phase}-${width}.png`
+              if (!fs.existsSync(path)) throw new Error(`Missing ${path}`)
+            }
+          }
+          console.log(`NUMBERING REPORT VERIFIED: ${report.assertions.length} assertions`)
+          NODE
+      - name: Upload visual proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: numbering-baseline-before-after
+          path: artifacts/numbering-baseline
+          if-no-files-found: error
+          retention-days: 5
