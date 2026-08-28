@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: numbering-baseline-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   certify:
     runs-on: ubuntu-latest
@@ -47,7 +51,7 @@ jobs:
           ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
           (cd /tmp/facture-main && npm run build)
       - name: Browser certification
-        run: node scripts/numbering-baseline-certification.mjs /tmp/facture-main .
+        run: timeout --signal=TERM --kill-after=5s 180s node scripts/numbering-baseline-certification.mjs /tmp/facture-main .
       - name: Verify report
         run: |
           node - <<'NODE'
