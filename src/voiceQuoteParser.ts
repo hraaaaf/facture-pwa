@@ -1,5 +1,4 @@
 import type { RawQuotePayload } from './quoteImport'
-import { importDebug } from './importDebug'
 
 const decimal = (value: string) => Number(value.replace(',', '.'))
 const esc = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -130,24 +129,11 @@ export const voiceToRawQuote = (transcript: string, defaultVatRate: number): Raw
     }
   }
 
-  const raw: RawQuotePayload = {
+  return {
     source: { kind: 'TEXT', name: 'Message vocal' },
     client: { name: client ?? null },
     object: object ?? 'Devis dicté vocalement',
     currency: 'MAD',
     lines
   }
-
-  importDebug('voice.parser', {
-    transcript,
-    normalized,
-    defaultVatRate,
-    detectedClient: client ?? null,
-    detectedObject: object ?? null,
-    vatRate,
-    lineCount: lines.length,
-    lines
-  })
-
-  return raw
 }
