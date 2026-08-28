@@ -99,6 +99,24 @@ async function readCounter(page, key) {
   }, key)
 }
 
+async function clearCounters(page) {
+  await page.evaluate(async () => {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('facture-pwa', 3)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('counters', 'readwrite')
+      tx.objectStore('counters').clear()
+      tx.oncomplete = resolve
+      tx.onerror = () => reject(tx.error)
+      tx.onabort = () => reject(tx.error)
+    })
+    db.close()
+  })
+}
+
 async function captureAfterAndVerify(browser) {
   const { server, origin } = await startServer(featureDir, 4182)
   try {
@@ -128,6 +146,14 @@ async function captureAfterAndVerify(browser) {
     const seeded = await readCounter(page, `FACTURE:${year}`)
     assert.equal(seeded?.last, 13)
     ok('Compteur facture initialisé au dernier vrai numéro', seeded)
+
+    await clearCounters(page)
+    assert.equal(await readCounter(page, `FACTURE:${year}`), undefined)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByText('Tableau de bord', { exact: true }).waitFor()
+    const reseeded = await readCounter(page, `FACTURE:${year}`)
+    assert.equal(reseeded?.last, 13)
+    ok('Baseline persistée et compteur resynchronisé au redémarrage', reseeded)
 
     await page.getByLabel('Nouveau document', { exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Nouveau document', exact: true })
