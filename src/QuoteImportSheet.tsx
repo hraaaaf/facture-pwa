@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
 import { prepareImportDictionary } from './importDictionary'
+import { importDebug } from './importDebug'
 import { voiceToRawQuote } from './voiceQuoteParser'
 import {
   canonicalQuoteToDocumentFields,
@@ -249,7 +250,19 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     const raw = patchRawField(canonicalToRaw(quote), issue.field, value)
     const next = normalizeImportedRaw(raw, defaultVatRate)
     setQuote(next)
-    if (next.status === 'READY') setStep('READY')
+    importDebug('voice.review.change', {
+      mode,
+      field: issue.field,
+      valueLength: value.length,
+      status: next.status,
+      remainingErrors: next.issues.filter(item => item.severity === 'ERROR').length
+    })
+  }
+
+  const finishIssueEdit = () => {
+    if (!quote) return
+    importDebug('voice.review.blur', { mode, status: quote.status, remainingErrors: errors.length })
+    if (quote.status === 'READY') setStep('READY')
   }
 
   const create = () => {
@@ -367,6 +380,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
                         inputMode={issueInputType(issue) === 'number' ? 'decimal' : undefined}
                         value={getFieldValue(quote, issue.field)}
                         onChange={event => changeIssue(issue, event.target.value)}
+                        onBlur={finishIssueEdit}
                       />
                     ) : <small>Corrigez la source puis relancez l’import. Aucune conversion ou ligne ne sera inventée.</small>}
                   </label>
