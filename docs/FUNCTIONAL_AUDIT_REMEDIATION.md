@@ -53,13 +53,13 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 - BL sans prix compte sans ajouter de montant ;
 - 390/430/768/1280 sans overflow ni erreur console/page.
 
-**État actuel : EN COURS — CI navigateur non terminée.**
+**État actuel : EN COURS — preuve métier acquise, CI finale en cours.**
 
 Repo : `hraaaaf/facture-pwa`
 Branche : `fix/dashboard-year-stats`
 PR : `#11` draft
-HEAD produit/cert candidat : `d2153d2bd2e683d21b1d2258419d04bc4bbaff29`
-Run : `33272762635` — en cours au moment de cette mise à jour.
+HEAD candidat : `70eb7fd9fdace804de20f863d54241014dec62f5`
+Run courant : `33273982753` — en cours.
 
 Changements produit :
 - `src/dashboardStats.ts` : agrégation annuelle métier isolée ;
@@ -71,10 +71,28 @@ Certification :
 - `scripts/dashboard-stats-certification.mjs` ;
 - BEFORE/AFTER 390/430/768/1280 + assertions métier.
 
+Preuves déjà obtenues :
+- `102/102` tests unitaires verts sur les HEAD précédents ;
+- build TypeScript/Vite/PWA vert ;
+- navigateur : `7/7` assertions atteintes deux fois ;
+- baseline : Facture `4 / 1 900 MAD` ;
+- AFTER : Facture `2 / 300 MAD` ;
+- BL sans prix : `1 / 0 MAD` ;
+- 390/430/768/1280 sans overflow ;
+- 0 erreur page / console ;
+- captures BEFORE/AFTER produites.
+
+Incidents de harnais :
+- run `33272762635` : assertions 7/7 puis annulation du job pendant le teardown ;
+- run `33272928812` : assertions 7/7 puis timeout 180 s, serveurs `npm preview` restés vivants ;
+- stratégie changée : suppression des processus `npm preview`, remplacés au HEAD `70eb7fd9…` par deux serveurs HTTP statiques gérés dans le même process Node.
+
+Aucune modification des critères métier ou visuels n’a été faite pour rendre la CI verte.
+
 ## Avancement audit remediation
 
-**0/7 clos** tant que l’étape 1 n’a pas sa preuve finale.
+**0/7 clos** tant que l’étape 1 n’a pas une CI finale verte puis son closeout/merge.
 
 ## Next exact
 
-Terminer la certification du run `33272762635`; si verte, inspecter rapport/artefact, mettre ce fichier à jour, rendre la PR prête, merger puis vérifier `main` post-merge. Si rouge, diagnostiquer l’étape exacte, corriger et relancer sans affaiblir les critères.
+Vérifier le run `33273982753`. Si vert : inspecter rapport/artefact, marquer l’étape 1 close, rendre la PR prête, merger et vérifier `main` post-merge. Si rouge : diagnostiquer l’étape exacte sans affaiblir les critères.
