@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createLocalBackup, getDocuments, type LocalBackup } from './storage'
+import { createLocalBackup, getDocuments } from './storage'
 import {
   getBackupContinuity,
   markBackupCreated,
@@ -24,15 +24,17 @@ const downloadBackup = (file: File) => {
 
 export default function BackupReminder() {
   const [urgency, setUrgency] = useState<BackupReminderUrgency | null>(null)
-  const [prepared, setPrepared] = useState<LocalBackup | null>(null)
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState('')
 
+  const showFeedback = (message: string) => {
+    setFeedback(message)
+    window.setTimeout(() => setFeedback(''), 2600)
+  }
+
   const refresh = async () => {
     const documents = await getDocuments()
-    const nextUrgency = reminderUrgency(documents.length, getBackupContinuity())
-    setUrgency(nextUrgency)
-    if (nextUrgency) setPrepared(await createLocalBackup())
+    setUrgency(reminderUrgency(documents.length, getBackupContinuity()))
   }
 
   useEffect(() => {
@@ -53,28 +55,39 @@ export default function BackupReminder() {
   }, [])
 
   const backupNow = async () => {
-    if (!prepared || busy) return
+    if (busy) return
     setBusy(true)
     setFeedback('')
-    const file = new File([JSON.stringify(prepared, null, 2)], backupFileName(), { type: 'application/json' })
-    const navigatorWithShare = navigator as Navigator & { canShare?: (data?: ShareData) => boolean }
     try {
-      if (
+      const backup = await createLocalBackup()
+      const file = new File([JSON.stringify(backup, null, 2)], backupFileName(), { type: 'application/json' })
+      const navigatorWithShare = navigator as Navigator & { canShare?: (data?: ShareData) => boolean }
+      const canShareFile =
         typeof navigator.share === 'function'
         && typeof navigatorWithShare.canShare === 'function'
         && navigatorWithShare.canShare({ files: [file] })
-      ) {
-        await navigator.share({ title: 'Sauvegarde Factea', text: 'Sauvegarde complète Factea', files: [file] })
-        markBackupCreated()
+
+      if (canShareFile) {
+        try {
+          await navigator.share({ title: 'Sauvegarde Factea', text: 'Sauvegarde complète Factea', files: [file] })
+          markBackupCreated()
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            showFeedback('Partage annulé')
+            return
+          }
+          downloadBackup(file)
+          markBackupCreated()
+        }
       } else {
         downloadBackup(file)
         markBackupCreated()
       }
+
       setUrgency(null)
-      setFeedback('Sauvegarde créée')
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') setFeedback('Partage annulé')
-      else setFeedback('Sauvegarde impossible')
+      showFeedback('Sauvegarde créée')
+    } catch {
+      showFeedback('Sauvegarde impossible')
     } finally {
       setBusy(false)
     }
@@ -92,7 +105,7 @@ export default function BackupReminder() {
             <small>{urgency === 'urgent' ? 'Garde une copie hors du téléphone.' : 'La dernière copie a plus de 7 jours.'}</small>
           </div>
           <div className="backup-reminder-actions">
-            <button className="backup-reminder-primary" disabled={!prepared || busy} onClick={() => void backupNow()}>{busy ? 'Préparation…' : 'Sauvegarder'}</button>
+            <button className="backup-reminder-primary" disabled={busy} onClick={() => void backupNow()}>{busy ? 'Préparation…' : 'Sauvegarder'}</button>
             <button className="backup-reminder-later" onClick={() => { snoozeBackupReminder(); setUrgency(null) }}>Demain</button>
           </div>
         </>
