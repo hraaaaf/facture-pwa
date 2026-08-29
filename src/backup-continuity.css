@@ -1,0 +1,47 @@
+.backup-reminder-shell {
+  position: fixed;
+  z-index: 80;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  width: auto;
+  max-width: 560px;
+  margin-inline: auto;
+  padding: 12px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: rgba(250, 252, 250, 0.9);
+  box-shadow: 0 16px 42px rgba(26, 48, 37, 0.18);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.backup-reminder-copy { min-width: 0; display: grid; gap: 2px; }
+.backup-reminder-copy strong { color: #193529; font-size: 0.9rem; line-height: 1.2; }
+.backup-reminder-copy small { color: #60736a; font-size: 0.72rem; line-height: 1.25; }
+.backup-reminder-kicker { color: #6b7c74; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.backup-reminder-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.backup-reminder-actions button { min-height: 38px; border: 0; border-radius: 12px; padding: 0 11px; font: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
+.backup-reminder-primary { background: #1f5b43; color: #fff; box-shadow: 0 6px 16px rgba(31, 91, 67, 0.2); }
+.backup-reminder-primary:disabled { opacity: 0.52; cursor: default; }
+.backup-reminder-later { background: rgba(31, 91, 67, 0.08); color: #365a49; }
+.backup-due { border-color: rgba(180, 140, 65, 0.2); }
+.backup-urgent { border-color: rgba(181, 92, 76, 0.22); }
+.backup-success { justify-content: center; text-align: center; }
+
+@media (max-width: 430px) {
+  .backup-reminder-shell { gap: 8px; padding: 11px 10px; border-radius: 18px; }
+  .backup-reminder-actions { gap: 4px; }
+  .backup-reminder-actions button { min-height: 36px; padding-inline: 9px; font-size: 0.72rem; }
+}
+
+@media (max-width: 360px) {
+  .backup-reminder-shell { align-items: stretch; flex-direction: column; }
+  .backup-reminder-actions { width: 100%; }
+  .backup-reminder-actions button { flex: 1; }
+}

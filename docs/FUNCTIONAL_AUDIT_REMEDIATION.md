@@ -16,13 +16,13 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 
 ## Séquence 1 → 7
 
-1. **Dashboard annuel fiable** — CERTIFIÉ, MERGE PR #11 RESTANT
+1. **Dashboard annuel fiable** — CLOS
    - « Cette année » filtre réellement l’année courante ;
    - DRAFT/CANCELLED exclus des KPI ;
    - FINALIZED/PAID uniquement ;
    - BL sans prix : document compté, montant = 0.
 
-2. **Continuité / sauvegarde des données** — À FAIRE
+2. **Continuité / sauvegarde des données** — EN COURS
    - réduire le risque de perte lié au stockage uniquement local ;
    - conserver une solution simple, explicite et compatible PWA.
 
@@ -43,58 +43,44 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 
 ## Étape 1 — Dashboard annuel fiable
 
-**Goal** : les cartes « Cette année » représentent uniquement l’activité métier valide de l’année courante.
+**État : CLOS — PR #11 mergée et production READY.**
 
-**Succès** :
-- baseline reproduit le défaut audité ;
-- AFTER filtre l’année courante ;
-- DRAFT/CANCELLED exclus ;
-- FINALIZED/PAID inclus ;
-- BL sans prix compte sans ajouter de montant ;
-- 390/430/768/1280 sans overflow ni erreur console/page.
+Preuve canonique :
+- PR `#11` : MERGED ;
+- `main` : `cdf8306483e7749fffefc406e3e97782b7f04306` ;
+- run `33274002642` : SUCCESS ;
+- `102/102` tests ;
+- build TypeScript/Vite/PWA + baseline `main` ;
+- navigateur `7/7` assertions ;
+- BEFORE/AFTER 390/430/768/1280, 0 overflow, 0 erreur page/console ;
+- artefact `9720952874`, SHA-256 `766d8287196bebab96646b510c1c4ef856bf97fd9254efe1832f3b00e1c9d58e` ;
+- production auto `dpl_EZWXTGhnXfDPPTCQY1vNrHuT2iJ2` READY ;
+- alias public HTTP 200.
 
-**État : CERTIFIÉ — PR #11 à merger.**
+## Étape 2 — Continuité / sauvegarde des données
+
+**Goal** : qu’un utilisateur ayant des documents locaux soit activement poussé à garder une copie récente hors du téléphone, sans compte ni cloud imposé.
+
+**Succès attendu** :
+- aucune alerte si aucun document ;
+- données existantes sans sauvegarde : rappel visible ;
+- sauvegarde < 7 jours : aucun rappel ;
+- sauvegarde >= 7 jours : rappel ; >= 30 jours : urgence ;
+- report « Demain » : 24 h ;
+- bouton Sauvegarder : partage natif de fichier quand disponible, téléchargement JSON sinon ;
+- les exports JSON historiques depuis Réglages sont aussi reconnus comme sauvegardes récentes ;
+- BEFORE/AFTER 390/430/768/1280 sans overflow ni erreur navigateur.
+
+**État : EN COURS — branche et certification à valider.**
 
 Repo : `hraaaaf/facture-pwa`
-Branche : `fix/dashboard-year-stats`
-PR : `#11`
-HEAD certifié avant ce commit documentaire : `4f988c01b9dbeb361ecddbefcc3314376db06870`
-Run de certification : `33274002642` — **SUCCESS**.
-Artefact : `dashboard-stats-before-after`, ID `9720952874`, SHA-256 `766d8287196bebab96646b510c1c4ef856bf97fd9254efe1832f3b00e1c9d58e`.
-
-Changements produit :
-- `src/dashboardStats.ts` : agrégation annuelle métier isolée ;
-- `src/App.tsx` : dashboard branché sur cette agrégation ;
-- `src/dashboardStats.test.ts` : régressions dédiées.
-
-Certification :
-- `102/102` tests unitaires verts ;
-- build TypeScript/Vite/PWA vert ;
-- build de la baseline `main` vert ;
-- navigateur : `7/7` assertions ;
-- baseline : Facture `4 / 1 900 MAD` ;
-- AFTER : Facture `2 / 300 MAD` ;
-- BL sans prix : `1 / 0 MAD` ;
-- 390/430/768/1280 : scrollWidth = innerWidth ;
-- 0 erreur page ;
-- 0 erreur console ;
-- captures BEFORE/AFTER présentes aux 4 viewports ;
-- diff pixel BEFORE/AFTER : 390 = 0,157 %, 430 = 0,143 %, 768 = 0,090 %, 1280 = 0,054 % ;
-- score visuel du lot : **10/10 conformité à la référence**, changement visible limité aux KPI attendus.
-
-Incidents de harnais et résolution :
-- run `33272762635` : assertions 7/7 puis annulation pendant teardown ;
-- run `33272928812` : assertions 7/7 puis timeout 180 s, serveurs `npm preview` persistants ;
-- après deux échecs similaires, stratégie changée : serveurs enfants supprimés et remplacés par deux serveurs HTTP statiques gérés dans le même process Node ;
-- run `33274002642` : teardown, rapport et upload d’artefact terminés avec succès.
-
-Aucun critère métier ou visuel n’a été affaibli pour obtenir le vert.
+Branche : `feat/backup-continuity`
+Base : `cdf8306483e7749fffefc406e3e97782b7f04306`
 
 ## Avancement audit remediation
 
-Avant merge : **0/7 clos, étape 1 certifiée**.
-Après merge vérifié de la PR #11 sur `main` : **1/7 clos = 14,3 %**.
+**1/7 clos = 14,3 %.**
 
 ## Next exact
 
-Exiger une CI verte sur le HEAD documentaire final de la PR #11, rendre la PR prête, merger avec contrôle du SHA, vérifier `main` post-merge et l’état du déploiement automatique. Ensuite passer à l’étape 2 : continuité / sauvegarde des données.
+Créer le candidat Step 2, ouvrir la PR, exécuter la certification complète, inspecter les captures/rapport, corriger si nécessaire puis closeout/merge si vert.

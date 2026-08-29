@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState, type MouseEvent as ReactMouseEvent } f
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
+import BackupReminder from './BackupReminder'
 import OnboardingScreen from './OnboardingScreen'
 import PdfPreviewScreen from './PreviewV2'
 import SettingsScreen, { type PwaInstallPrompt } from './SettingsScreen'
@@ -102,6 +103,8 @@ function Root() {
       <div onClickCapture={captureSettings}>
         <App key={appRevision} />
       </div>
+
+      <BackupReminder key={`backup-${appRevision}`} />
 
       {settingsOpen && (
         <div className="preview-overlay settings-overlay" role="dialog" aria-modal="true" aria-label="Réglages">
