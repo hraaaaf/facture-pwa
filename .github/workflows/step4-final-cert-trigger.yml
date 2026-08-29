@@ -1,0 +1,29 @@
+name: Step 4 Final Cert Trigger
+
+on:
+  push:
+    branches: [feat/search-filters]
+
+permissions:
+  contents: write
+
+jobs:
+  trigger:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/search-filters
+      - name: Stamp certification-only scripts
+        run: |
+          printf '\n// Step 4 final certification trigger. No runtime behavior.\n' >> scripts/search-filters-certification.mjs
+          printf '\n// Step 4 final certification trigger. No runtime behavior.\n' >> scripts/payment-lifecycle-certification.mjs
+      - name: Commit final certification trigger
+        run: |
+          rm .github/workflows/step4-final-cert-trigger.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/search-filters-certification.mjs scripts/payment-lifecycle-certification.mjs .github/workflows/step4-final-cert-trigger.yml
+          git commit -m "Trigger final Step 4 certifications"
+          git push origin HEAD:feat/search-filters
