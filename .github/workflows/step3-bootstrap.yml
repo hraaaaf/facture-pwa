@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: 22
       - name: Apply deterministic patch
-        run: python scripts/apply-step3-payment-lifecycle.py
+        run: |
+          python scripts/apply-step3-payment-lifecycle.py
+          python scripts/apply-step3-compat.py
       - name: Install and test candidate
         run: |
           npm install --no-audit --no-fund
@@ -30,7 +32,7 @@ jobs:
         run: |
           git config user.name 'hraaaaf'
           git config user.email '123034021+hraaaaf@users.noreply.github.com'
-          git add src/types.ts src/lib.ts src/storage.ts src/App.tsx src/paymentLifecycle.ts src/paymentLifecycle.test.ts src/payment-lifecycle.css scripts/payment-lifecycle-certification.mjs .github/workflows/payment-lifecycle-cert.yml docs/FUNCTIONAL_AUDIT_REMEDIATION.md
+          git add src/types.ts src/lib.ts src/storage.ts src/App.tsx src/paymentLifecycle.ts src/paymentLifecycle.test.ts src/payment-lifecycle.css src/dashboardStats.test.ts src/lib.test.ts src/referenceFixture.ts scripts/payment-lifecycle-certification.mjs .github/workflows/payment-lifecycle-cert.yml docs/FUNCTIONAL_AUDIT_REMEDIATION.md
           git diff --cached --exit-code && exit 0
           git commit -m 'Add invoice payment lifecycle'
           git push origin HEAD:feat/invoice-payment-lifecycle
