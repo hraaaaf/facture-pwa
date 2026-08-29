@@ -71,7 +71,7 @@ const waitForServer = async (url) => {
 const startPreview = async (cwd, port) => {
   const child = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', String(port)], {
     cwd,
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'ignore', 'pipe']
   })
   let stderr = ''
   child.stderr.on('data', chunk => { stderr += chunk.toString() })
@@ -84,9 +84,22 @@ const startPreview = async (cwd, port) => {
   }
 }
 
-const stopPreview = child => {
-  if (!child.killed) child.kill('SIGTERM')
-}
+const stopPreview = child => new Promise(resolve => {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    resolve()
+    return
+  }
+
+  const forceTimer = setTimeout(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+  }, 2_000)
+
+  child.once('exit', () => {
+    clearTimeout(forceTimer)
+    resolve()
+  })
+  child.kill('SIGTERM')
+})
 
 const seedApp = async (page, documents) => {
   await page.evaluate(async seededDocuments => {
@@ -200,8 +213,10 @@ try {
   if (report.failure) throw new Error(report.failure)
 } finally {
   await browser.close()
-  stopPreview(mainPreview.child)
-  stopPreview(featurePreview.child)
+  await Promise.all([
+    stopPreview(mainPreview.child),
+    stopPreview(featurePreview.child)
+  ])
 }
 
 console.log(`DASHBOARD STATS CERTIFIED: ${report.assertions.length}/${report.assertions.length} assertions`)
