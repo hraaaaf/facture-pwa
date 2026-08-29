@@ -1,0 +1,76 @@
+name: Backup Continuity Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/main.tsx'
+      - 'src/BackupReminder.tsx'
+      - 'src/backupContinuity.ts'
+      - 'src/backupContinuity.test.ts'
+      - 'src/backup-continuity.css'
+      - 'scripts/backup-continuity-certification.mjs'
+      - '.github/workflows/backup-continuity-cert.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-continuity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build feature
+        run: npm run build
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Build main baseline
+        run: |
+          rm -rf /tmp/facture-main
+          mkdir -p /tmp/facture-main
+          git archive origin/main | tar -x -C /tmp/facture-main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
+          (cd /tmp/facture-main && npm run build)
+      - name: Browser before-after certification
+        run: timeout --signal=TERM --kill-after=5s 180s node scripts/backup-continuity-certification.mjs /tmp/facture-main .
+      - name: Verify report
+        run: |
+          node - <<'NODE'
+          const fs = require('fs')
+          const report = JSON.parse(fs.readFileSync('artifacts/backup-continuity/report.json', 'utf8'))
+          if (report.failure) throw new Error(report.failure)
+          if (!Array.isArray(report.assertions) || report.assertions.length !== 7 || report.assertions.some(item => !item.ok)) throw new Error('Backup continuity assertions incomplete')
+          for (const width of [390, 430, 768, 1280]) {
+            for (const phase of ['before', 'after']) {
+              const file = `artifacts/backup-continuity/${phase}-${width}.png`
+              if (!fs.existsSync(file)) throw new Error(`Missing ${file}`)
+            }
+          }
+          console.log('BACKUP CONTINUITY REPORT VERIFIED')
+          NODE
+      - name: Upload visual proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-continuity-before-after
+          path: artifacts/backup-continuity
+          if-no-files-found: error
+          retention-days: 5
