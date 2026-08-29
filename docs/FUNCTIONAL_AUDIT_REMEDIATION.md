@@ -106,8 +106,7 @@ Validation croisée :
 - preview Vercel du HEAD certifié `dpl_3nGcHactrYLZ2mDNoDztFhkbcwa4` : READY, HTTP 200 ;
 - run Dashboard `33275965224` : tests `114/114` + builds feature/main verts, données dashboard correctes sur les 4 viewports, zéro erreur ; rouge uniquement parce que le script exigeait encore que `main` reproduise l’ancien bug Step 1 (`4 / 1 900 MAD`) ;
 - contrat Dashboard corrigé au commit `9b2b20f51a53bc51884cb168e933f0dde62bca0b` pour vérifier la baseline déjà corrigée (`2 / 300 MAD`) et la non-régression feature ;
-- HEAD final avant merge : `1042c0c74b1f099b74d97a1dce1ba493419ce1eb` ; delta depuis le HEAD produit certifié : uniquement `scripts/dashboard-stats-certification.mjs` + ce fichier canonique ;
-- dernier cycle final lancé : Payment `33276278567`, Numbering `33276278558`, Dashboard `33276278565` ;
+- delta depuis le HEAD produit certifié : uniquement le contrat de certification Dashboard et ce fichier canonique ;
 - aucun déploiement Vercel manuel lancé.
 
 ## Avancement audit remediation
