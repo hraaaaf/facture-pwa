@@ -1,0 +1,24 @@
+name: Step 5 Bootstrap
+on:
+  push:
+    branches: [feat/client-catalog-management]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/client-catalog-management
+      - name: Patch Step 5
+        run: node scripts/step5-bootstrap.mjs
+      - name: Commit
+        run: |
+          rm .github/workflows/step5-bootstrap.yml scripts/step5-bootstrap.mjs
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Add client and catalog management [skip ci]"
+          git push origin HEAD:feat/client-catalog-management
