@@ -19,7 +19,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 1. **Dashboard annuel fiable** — CLOS
 2. **Continuité / sauvegarde des données** — CLOS
 3. **Cycle facture / encaissement** — CLOS
-4. **Recherche / filtres** — MERGÉ — production en cours
+4. **Recherche / filtres** — CLOS
 5. **Gestion Clients / Catalogue** — À FAIRE
 6. **Garde-fous OCR / imports lourds** — À FAIRE
 7. **Actions mortes / cohérence UX** — À FAIRE
@@ -94,7 +94,7 @@ Note CI :
 
 **Goal** : rendre l’historique réellement exploitable sur mobile avec recherche par ICE / IF / désignation ligne, filtre montant TTC et période, sans alourdir l’interface.
 
-**État : MERGÉ — production automatique en cours.**
+**État : CLOS — PR #14 mergée et production READY.**
 
 Fonctionnel vérifié :
 - recherche texte couvre numéro, client, adresse, ICE, IF, objet, type, statut, désignation et unité ;
@@ -120,8 +120,8 @@ Preuve canonique :
 - BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
 - artefact Search `9722768087`, SHA-256 `598e369e587f6653e027c38d69d92524271935ea5528e236de221b53fbd68c1a` ;
 - score visuel inspecté : **9,6/10** ;
-- preview Vercel PR : READY ;
-- production auto `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` sur le commit exact de merge : `BUILDING` au dernier contrôle ;
+- production auto `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` : READY sur le commit exact de merge ;
+- alias public `facture-pwa.vercel.app` : HTTP 200 ;
 - aucun déploiement Vercel manuel lancé.
 
 Note CI :
@@ -131,8 +131,8 @@ Note CI :
 
 ## Avancement audit remediation
 
-**3/7 clos + Step 4 mergé, production en cours.**
+**4/7 clos = 57,1 %.**
 
 ## Next exact
 
-Vérifier `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` → si READY + alias public HTTP 200, fermer Step 4 à 4/7 = 57,1 % → human gate avant Step 5.
+Human gate. Étape 5 — Gestion Clients / Catalogue : démarrer uniquement après un nouveau `Go` utilisateur.
