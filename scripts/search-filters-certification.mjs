@@ -114,3 +114,5 @@ finally {
 writeFileSync(join(artifactDir,'report.json'), JSON.stringify(report,null,2))
 if (failures.length) { console.error(failures.join('\n')); process.exit(1) }
 console.log(`SEARCH FILTERS CERTIFIED: ${assertions.length}/${assertions.length} assertions`)
+
+// Step 4 final certification trigger. No runtime behavior.
