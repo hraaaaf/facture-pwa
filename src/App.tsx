@@ -7,6 +7,7 @@ import {
   documentTotals,
   lineTotalHT
 } from './lib'
+import { dashboardStatsForYear } from './dashboardStats'
 import { generatePdf } from './pdf'
 import { QuoteImportSheet, type ImportedQuoteFields } from './QuoteImportSheet'
 import {
@@ -306,14 +307,7 @@ function Home({ documents, onEdit, onHistory, onSettings, onNew }: {
   onSettings: () => void
   onNew: () => void
 }) {
-  const stats = (['DEVIS', 'FACTURE', 'BL', 'BC'] as DocumentType[]).map(type => {
-    const list = documents.filter(document => document.type === type && document.status !== 'CANCELLED')
-    const amount = list.reduce((sum, document) => {
-      if (document.type === 'BL' && !document.blShowPrices) return sum
-      return sum + documentTotals(document).totalTTC
-    }, 0)
-    return { type, count: list.length, amount }
-  })
+  const stats = dashboardStatsForYear(documents, new Date().getFullYear())
 
   return (
     <main className="screen home-screen with-bottom-nav">
