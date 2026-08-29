@@ -77,7 +77,7 @@ try {
   await seed(baselinePage, baseline.url)
   await baselinePage.locator('.history-search input').fill('001111111111111')
   await baselinePage.waitForTimeout(100)
-  check('baseline_defect', await baselinePage.locator('.premium-history-card').count() === 0, 'baseline should not find ICE')
+  check('baseline_search_ice', await baselinePage.locator('.premium-history-card').count() === 1 && (await baselinePage.locator('.premium-history-card').first().innerText()).includes('Atlas Hôtel'), 'certified main should find Atlas by ICE')
   await baselinePage.close()
 
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
@@ -115,4 +115,4 @@ writeFileSync(join(artifactDir,'report.json'), JSON.stringify(report,null,2))
 if (failures.length) { console.error(failures.join('\n')); process.exit(1) }
 console.log(`SEARCH FILTERS CERTIFIED: ${assertions.length}/${assertions.length} assertions`)
 
-// Step 4 final certification trigger. No runtime behavior.
+// Step 5: baseline is the already-certified Step 4 main behavior.
