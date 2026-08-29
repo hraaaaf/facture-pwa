@@ -1,0 +1,92 @@
+name: Payment Lifecycle Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/types.ts'
+      - 'src/lib.ts'
+      - 'src/lib.test.ts'
+      - 'src/storage.ts'
+      - 'src/App.tsx'
+      - 'src/paymentLifecycle.ts'
+      - 'src/paymentLifecycle.test.ts'
+      - 'src/payment-lifecycle.css'
+      - 'src/dashboardStats.test.ts'
+      - 'src/referenceFixture.ts'
+      - 'scripts/payment-lifecycle-certification.mjs'
+      - '.github/workflows/payment-lifecycle-cert.yml'
+      - 'docs/FUNCTIONAL_AUDIT_REMEDIATION.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payment-lifecycle-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build feature
+        run: npm run build
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Build main baseline
+        run: |
+          rm -rf /tmp/facture-main
+          mkdir -p /tmp/facture-main
+          git archive origin/main | tar -x -C /tmp/facture-main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
+          (cd /tmp/facture-main && npm run build)
+
+      - name: Browser before-after certification
+        run: timeout --signal=TERM --kill-after=5s 180s node scripts/payment-lifecycle-certification.mjs /tmp/facture-main .
+
+      - name: Verify report
+        run: |
+          node - <<'NODE'
+          const fs = require('fs')
+          const r = JSON.parse(fs.readFileSync('artifacts/payment-lifecycle/report.json', 'utf8'))
+          if (r.failure) throw new Error(r.failure)
+          if (!Array.isArray(r.assertions) || r.assertions.length !== 10 || r.assertions.some(x => !x.ok)) {
+            throw new Error('Payment lifecycle assertions incomplete')
+          }
+          for (const width of [390, 430, 768, 1280]) {
+            for (const phase of ['before', 'after']) {
+              const path = `artifacts/payment-lifecycle/${phase}-${width}.png`
+              if (!fs.existsSync(path)) throw new Error(`Missing ${path}`)
+            }
+          }
+          console.log('PAYMENT LIFECYCLE REPORT VERIFIED: 10/10')
+          NODE
+
+      - name: Upload visual proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-lifecycle-before-after
+          path: artifacts/payment-lifecycle
+          if-no-files-found: error
+          retention-days: 5
