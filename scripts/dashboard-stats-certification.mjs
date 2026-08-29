@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { spawn } from 'node:child_process'
+import { createServer } from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -56,49 +56,60 @@ const fixtureDocuments = [
   doc({ id: '008', type: 'BC', amount: 500, status: 'FINALIZED' })
 ]
 
-const waitForServer = async (url) => {
-  const deadline = Date.now() + 20_000
-  while (Date.now() < deadline) {
+const mimeType = file => {
+  const ext = path.extname(file).toLowerCase()
+  if (ext === '.html') return 'text/html; charset=utf-8'
+  if (ext === '.js' || ext === '.mjs') return 'text/javascript; charset=utf-8'
+  if (ext === '.css') return 'text/css; charset=utf-8'
+  if (ext === '.json' || ext === '.webmanifest') return 'application/json; charset=utf-8'
+  if (ext === '.png') return 'image/png'
+  if (ext === '.svg') return 'image/svg+xml'
+  if (ext === '.woff2') return 'font/woff2'
+  return 'application/octet-stream'
+}
+
+const startStaticServer = async (rootDir, port) => {
+  const distDir = path.join(rootDir, 'dist')
+  const server = createServer(async (request, response) => {
     try {
-      const response = await fetch(url)
-      if (response.ok) return
-    } catch {}
-    await new Promise(resolve => setTimeout(resolve, 200))
-  }
-  throw new Error(`Preview server unavailable: ${url}`)
+      const url = new URL(request.url ?? '/', `http://127.0.0.1:${port}`)
+      const requested = decodeURIComponent(url.pathname)
+      const relative = requested === '/' ? 'index.html' : requested.replace(/^\/+/, '')
+      let file = path.resolve(distDir, relative)
+      if (!file.startsWith(`${distDir}${path.sep}`) && file !== path.join(distDir, 'index.html')) {
+        response.writeHead(403)
+        response.end('Forbidden')
+        return
+      }
+      try {
+        const stat = await fs.stat(file)
+        if (stat.isDirectory()) file = path.join(file, 'index.html')
+      } catch {
+        file = path.join(distDir, 'index.html')
+      }
+      const body = await fs.readFile(file)
+      response.writeHead(200, {
+        'Content-Type': mimeType(file),
+        'Cache-Control': 'no-store'
+      })
+      response.end(body)
+    } catch (error) {
+      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+      response.end(error instanceof Error ? error.message : String(error))
+    }
+  })
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(port, '127.0.0.1', resolve)
+  })
+
+  return server
 }
 
-const startPreview = async (cwd, port) => {
-  const child = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', String(port)], {
-    cwd,
-    stdio: ['ignore', 'ignore', 'pipe']
-  })
-  let stderr = ''
-  child.stderr.on('data', chunk => { stderr += chunk.toString() })
-  try {
-    await waitForServer(`http://127.0.0.1:${port}`)
-    return { child, stderr: () => stderr }
-  } catch (error) {
-    child.kill('SIGTERM')
-    throw new Error(`${error.message}\n${stderr}`)
-  }
-}
-
-const stopPreview = child => new Promise(resolve => {
-  if (child.exitCode !== null || child.signalCode !== null) {
-    resolve()
-    return
-  }
-
-  const forceTimer = setTimeout(() => {
-    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
-  }, 2_000)
-
-  child.once('exit', () => {
-    clearTimeout(forceTimer)
-    resolve()
-  })
-  child.kill('SIGTERM')
+const closeServer = server => new Promise((resolve, reject) => {
+  server.closeAllConnections?.()
+  server.close(error => error ? reject(error) : resolve())
 })
 
 const seedApp = async (page, documents) => {
@@ -177,8 +188,8 @@ const capturePhase = async ({ browser, phase, url }) => {
 const findCard = (capture, label) => capture.cards.find(card => card.label === label)
 const normalizeAmount = value => Number(String(value).replace(/[^0-9,-]/g, '').replace(',', '.'))
 
-const mainPreview = await startPreview(mainDir, 4181)
-const featurePreview = await startPreview(featureDir, 4182)
+const mainServer = await startStaticServer(mainDir, 4181)
+const featureServer = await startStaticServer(featureDir, 4182)
 const browser = await chromium.launch({ headless: true })
 
 let report
@@ -213,10 +224,7 @@ try {
   if (report.failure) throw new Error(report.failure)
 } finally {
   await browser.close()
-  await Promise.all([
-    stopPreview(mainPreview.child),
-    stopPreview(featurePreview.child)
-  ])
+  await Promise.all([closeServer(mainServer), closeServer(featureServer)])
 }
 
 console.log(`DASHBOARD STATS CERTIFIED: ${report.assertions.length}/${report.assertions.length} assertions`)
