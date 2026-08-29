@@ -26,12 +26,12 @@ function serve(root) {
 }
 
 async function seed(page) {
-  await page.goto('about:blank')
   await page.goto(currentUrl)
   await page.evaluate(async () => {
     const req = indexedDB.open('facture-pwa', 3)
     const db = await new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error) })
     const tx = db.transaction(['settings', 'documents'], 'readwrite')
+    tx.objectStore('documents').clear()
     tx.objectStore('settings').put({
       name:'TAPISTOR',brand:'TAPISTOR',address:'Rabat',cityLabel:'Rabat',phone:'',fax:'',email:'',ice:'001',ifNumber:'001',rc:'',patente:'',cnss:'',bankName:'',rib:'',legalLine:'',defaultVatRate:20,logoDataUrl:'',managerSignatureDataUrl:'',pdfTemplate:'premium',onboardingCompleted:true,
       numberingPrefixes:{DEVIS:'DEV',FACTURE:'F',BL:'BL',BC:'BC'},numberingBaseline:{year:2026,lastUsed:{DEVIS:0,FACTURE:202,BL:0,BC:0}}
@@ -48,6 +48,18 @@ async function seed(page) {
   await page.reload()
   await page.getByText('Historique', { exact: true }).last().click()
   await page.waitForTimeout(250)
+}
+
+async function rawInvoice(page) {
+  return page.evaluate(async () => {
+    const req = indexedDB.open('facture-pwa', 3)
+    const db = await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})
+    const tx = db.transaction('documents','readonly')
+    const r = tx.objectStore('documents').get('invoice-pay')
+    const value = await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})
+    db.close()
+    return value
+  })
 }
 
 function check(name, ok, detail='') { assertions.push({ name, ok, detail }); if (!ok) failures.push(`${name}: ${detail}`) }
@@ -84,30 +96,48 @@ try {
   const card = page.locator('.premium-history-card').filter({ hasText: 'Client Paiement' })
   await card.getByText('Encaisser', { exact: true }).click()
   check('payment_sheet', await page.getByRole('dialog', { name: 'Encaissement facture' }).isVisible(), 'payment sheet should open')
-  await page.getByLabel('Montant').fill('400')
+
+  await page.getByLabel('Montant').fill('1300')
   await page.getByLabel('Mode de règlement').selectOption('BANK_TRANSFER')
+  await page.getByLabel('Date').fill('2026-08-20')
+  await page.getByRole('button', { name: 'Enregistrer le paiement' }).click()
+  await page.getByText(/dépasse le reste dû/i).waitFor()
+  let raw = await rawInvoice(page)
+  check('overpayment_rejected', raw.payments?.length === 0 && raw.status === 'FINALIZED', JSON.stringify({status:raw.status,payments:raw.payments?.length}))
+
+  await page.getByLabel('Montant').fill('400')
+  await page.getByLabel('Date').fill('2026-07-31')
+  await page.getByRole('button', { name: 'Enregistrer le paiement' }).click()
+  await page.getByText(/ne peut pas précéder la date de facture/i).waitFor()
+  raw = await rawInvoice(page)
+  check('pre_invoice_payment_rejected', raw.payments?.length === 0 && raw.status === 'FINALIZED', JSON.stringify({status:raw.status,payments:raw.payments?.length}))
+
+  await page.getByLabel('Date').fill('2026-08-20')
   await page.getByRole('button', { name: 'Enregistrer le paiement' }).click()
   await page.waitForTimeout(200)
   check('partial_payment', (await page.locator('.payment-sheet').innerText()).includes('800,00') && (await page.locator('.payment-sheet').innerText()).includes('400,00'), '400 payment should leave 800')
+
   await page.getByLabel('Montant').fill('800')
+  await page.getByLabel('Date').fill('2026-08-21')
   await page.getByRole('button', { name: 'Ajouter le paiement' }).click()
   await page.waitForTimeout(200)
   await page.getByRole('button', { name: 'Fermer' }).click()
-  await page.reload(); await page.getByText('Historique', { exact: true }).last().click(); await page.waitForTimeout(200)
+  await page.reload()
+  await page.getByText('Historique', { exact: true }).last().click()
+  await page.waitForTimeout(200)
   const paidCard = page.locator('.premium-history-card').filter({ hasText: 'Client Paiement' })
   check('full_payment_persists', (await paidCard.innerText()).includes('Payé') && !(await paidCard.innerText()).includes('Reste'), 'second payment should settle and persist')
-  const raw = await page.evaluate(async () => {
-    const req = indexedDB.open('facture-pwa', 3); const db = await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})
-    const tx=db.transaction('documents','readonly'); const r=tx.objectStore('documents').get('invoice-pay'); const value=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)}); db.close(); return value
-  })
-  check('ledger_atomicity', raw.status === 'PAID' && raw.payments?.length === 2 && Math.abs(raw.payments.reduce((s,p)=>s+p.amount,0)-1200)<0.001, JSON.stringify({status:raw.status,payments:raw.payments?.length}))
+  raw = await rawInvoice(page)
+  check('ledger_atomicity', raw.status === 'PAID' && raw.payments?.length === 2 && Math.abs(raw.payments.reduce((sum,payment)=>sum+payment.amount,0)-1200)<0.001, JSON.stringify({status:raw.status,payments:raw.payments?.length}))
   await page.close()
 
   const layoutsOk = widths.every(width => ['before','after'].every(phase => { const x=report.widths[width][phase]; return x.scrollWidth === x.innerWidth && x.pageErrors.length === 0 && x.consoleErrors.length === 0 }))
   check('responsive_clean', layoutsOk, 'all viewports require exact width and zero browser errors')
 } catch (error) { report.failure = error instanceof Error ? error.stack : String(error); failures.push(report.failure) }
 finally {
-  await browser.close(); baseline.server.closeAllConnections?.(); feature.server.closeAllConnections?.(); await Promise.all([new Promise(r=>baseline.server.close(r)),new Promise(r=>feature.server.close(r))])
+  await browser.close()
+  baseline.server.closeAllConnections?.(); feature.server.closeAllConnections?.()
+  await Promise.all([new Promise(resolveClose=>baseline.server.close(resolveClose)),new Promise(resolveClose=>feature.server.close(resolveClose))])
 }
 writeFileSync(join(artifactDir,'report.json'), JSON.stringify(report,null,2))
 if (failures.length) { console.error(failures.join('\n')); process.exit(1) }
