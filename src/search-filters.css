@@ -90,3 +90,5 @@
   .advanced-search-grid { grid-template-columns: 1fr; }
   .advanced-search-grid label.full { grid-column: auto; }
 }
+
+/* Certification trigger only. */
