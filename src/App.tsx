@@ -8,6 +8,7 @@ import {
   lineTotalHT
 } from './lib'
 import { dashboardStatsForYear } from './dashboardStats'
+import { activeAdvancedFilterCount, defaultDocumentSearchFilters, filterDocuments } from './documentSearch'
 import { invoicePaymentStateLabel, invoicePaymentSummary, paymentMethodLabel, paymentMethodOptions } from './paymentLifecycle'
 import { generatePdf } from './pdf'
 import { QuoteImportSheet, type ImportedQuoteFields } from './QuoteImportSheet'
@@ -36,6 +37,7 @@ import type {
 import { clientDisplayName, defaultCompany } from './types'
 import './memory.css'
 import './payment-lifecycle.css'
+import './search-filters.css'
 
 type View = 'home' | 'editor' | 'history'
 type IconName = 'home' | 'history' | 'plus' | 'settings' | 'search' | 'file' | 'invoice' | 'truck' | 'order' | 'chevron' | 'back' | 'save' | 'eye' | 'trash' | 'more' | 'check'
@@ -259,15 +261,6 @@ export default function App() {
     }
   }
 
-  const filteredDocuments = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('fr')
-    if (!query) return documents
-    return documents.filter(document =>
-      [document.number, document.client, document.object, documentLabel(document.type), documentStatusLabel(document.status)]
-        .join(' ').toLocaleLowerCase('fr').includes(query)
-    )
-  }, [documents, search])
-
   return (
     <div className="app-shell">
       <div className="ambient ambient-one" />
@@ -280,7 +273,7 @@ export default function App() {
 
       {view === 'history' && (
         <History
-          documents={filteredDocuments}
+          documents={documents}
           search={search}
           onSearch={setSearch}
           onHome={() => setView('home')}
@@ -426,18 +419,38 @@ function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplica
   onPayment: (document: CommercialDocument) => void
 }) {
   const [filter, setFilter] = useState<'ALL' | DocumentType>('ALL')
-  const visibleDocuments = filter === 'ALL' ? documents : documents.filter(document => document.type === filter)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [advanced, setAdvanced] = useState(() => defaultDocumentSearchFilters())
+  const effectiveFilters = { ...advanced, query: search, type: filter }
+  const visibleDocuments = filterDocuments(documents, effectiveFilters)
+  const advancedCount = activeAdvancedFilterCount(effectiveFilters)
   const filters: Array<{ value: 'ALL' | DocumentType; label: string }> = [
     { value: 'ALL', label: 'Tous' }, { value: 'FACTURE', label: 'Factures' }, { value: 'DEVIS', label: 'Devis' }, { value: 'BL', label: 'BL' }, { value: 'BC', label: 'BC' }
   ]
+  const resetAdvanced = () => setAdvanced(defaultDocumentSearchFilters())
 
   return (
     <main className="screen with-bottom-nav history-screen">
       <header className="history-header premium-history-header"><div><p className="eyebrow">ARCHIVES LOCALES</p><h1>Historique</h1><p className="muted">{visibleDocuments.length} document{visibleDocuments.length > 1 ? 's' : ''}</p></div></header>
-      <label className="search-surface interactive-search history-search"><Icon name="search" /><input value={search} onChange={event => onSearch(event.target.value)} placeholder="Client, numéro, objet, statut…" /></label>
+      <label className="search-surface interactive-search history-search"><Icon name="search" /><input value={search} onChange={event => onSearch(event.target.value)} placeholder="Client, n°, ICE, désignation, objet…" /></label>
       <div className="history-filters" role="group" aria-label="Filtrer les documents">
         {filters.map(item => <button key={item.value} className={filter === item.value ? 'active' : ''} onClick={() => setFilter(item.value)}>{item.label}</button>)}
       </div>
+      <div className="advanced-search-toolbar">
+        <button className={`advanced-search-toggle ${advancedOpen ? 'active' : ''}`} onClick={() => setAdvancedOpen(value => !value)} aria-expanded={advancedOpen}>Filtres{advancedCount > 0 && <span className="advanced-search-count">{advancedCount}</span>}</button>
+        {advancedCount > 0 && <button className="advanced-search-reset" style={{ width: 'auto', marginTop: 0 }} onClick={resetAdvanced}>Effacer</button>}
+      </div>
+      {advancedOpen && (
+        <section className="advanced-search-panel" aria-label="Filtres avancés">
+          <div className="advanced-search-grid">
+            <label className="full"><span>Période</span><select value={advanced.period} onChange={event => setAdvanced(current => ({ ...current, period: event.target.value as typeof current.period }))}><option value="ALL">Toutes les dates</option><option value="THIS_MONTH">Ce mois</option><option value="THIS_YEAR">Cette année</option><option value="CUSTOM">Personnalisée</option></select></label>
+            {advanced.period === 'CUSTOM' && <><label><span>Du</span><input type="date" value={advanced.dateFrom} onChange={event => setAdvanced(current => ({ ...current, dateFrom: event.target.value }))} /></label><label><span>Au</span><input type="date" value={advanced.dateTo} onChange={event => setAdvanced(current => ({ ...current, dateTo: event.target.value }))} /></label></>}
+            <label><span>Montant min. TTC</span><input type="number" inputMode="decimal" min="0" value={advanced.amountMin} onChange={event => setAdvanced(current => ({ ...current, amountMin: event.target.value }))} placeholder="0" /></label>
+            <label><span>Montant max. TTC</span><input type="number" inputMode="decimal" min="0" value={advanced.amountMax} onChange={event => setAdvanced(current => ({ ...current, amountMax: event.target.value }))} placeholder="Ex. 5000" /></label>
+          </div>
+          <button className="advanced-search-reset" onClick={resetAdvanced}>Réinitialiser les filtres avancés</button>
+        </section>
+      )}
 
       <div className="premium-history-list">
         {visibleDocuments.map(document => {

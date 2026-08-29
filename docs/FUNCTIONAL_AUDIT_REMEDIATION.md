@@ -19,7 +19,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 1. **Dashboard annuel fiable** — CLOS
 2. **Continuité / sauvegarde des données** — CLOS
 3. **Cycle facture / encaissement** — CLOS
-4. **Recherche / filtres** — À FAIRE
+4. **Recherche / filtres** — CERTIFIÉ — merge en cours
 5. **Gestion Clients / Catalogue** — À FAIRE
 6. **Garde-fous OCR / imports lourds** — À FAIRE
 7. **Actions mortes / cohérence UX** — À FAIRE
@@ -90,10 +90,45 @@ Note CI :
 - contrat corrigé au commit `9b2b20f51a53bc51884cb168e933f0dde62bca0b` ;
 - cycle final Dashboard `33276330638` : SUCCESS.
 
+## Étape 4 — Recherche / filtres
+
+**Goal** : rendre l’historique réellement exploitable sur mobile avec recherche par ICE / IF / désignation ligne, filtre montant TTC et période, sans alourdir l’interface.
+
+**État : CERTIFIÉ — PR #14 prête au merge.**
+
+Fonctionnel vérifié :
+- recherche texte couvre numéro, client, adresse, ICE, IF, objet, type, statut, désignation et unité ;
+- recherche insensible à la casse et aux accents ;
+- filtres de type existants conservés ;
+- périodes `Toutes les dates`, `Ce mois`, `Cette année`, `Personnalisée` ;
+- bornes personnalisées inclusives ;
+- montant TTC min/max ;
+- BL sans prix traité à `0` pour le filtre montant ;
+- panneau avancé compact, fermé par défaut, responsive mobile.
+
+Preuve canonique avant merge :
+- PR `#14` ;
+- HEAD final certifié : `3f9f2daa6e3147d3530c7310702ffa84575439ff` ;
+- Search Filters `33280408651` : SUCCESS ;
+- Payment Lifecycle `33280408637` : SUCCESS ;
+- Dashboard Stats `33280408697` : SUCCESS ;
+- `121/121` tests ;
+- navigateur Search : `6/6` assertions ;
+- BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
+- artefact Search `9722768087`, SHA-256 `598e369e587f6653e027c38d69d92524271935ea5528e236de221b53fbd68c1a` ;
+- score visuel inspecté : **9,6/10** ;
+- preview Vercel PR : READY ;
+- aucun déploiement Vercel manuel lancé.
+
+Note CI :
+- un ancien contrat Payment Lifecycle exigeait encore la baseline pré-Step 3 ;
+- ce contrat a été aligné sur `main` certifié ;
+- le HEAD final humain `3f9f2daa...` a ensuite obtenu les trois certifications SUCCESS.
+
 ## Avancement audit remediation
 
-**3/7 clos = 42,9 %.**
+**3/7 clos + Step 4 certifié, merge en cours.**
 
 ## Next exact
 
-Human gate. Étape 4 — Recherche / filtres : démarrer uniquement après un nouveau `Go` utilisateur.
+Merge PR #14 → vérifier production automatique → fermer Step 4 → human gate avant Step 5.
