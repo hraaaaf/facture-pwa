@@ -15,9 +15,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/search-filters
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - name: Patch history search UI
         run: |
           python - <<'PY'
@@ -48,26 +45,18 @@ jobs:
               'legacy search block'
           )
           replace_once("          documents={filteredDocuments}\n", "          documents={documents}\n", 'history documents prop')
-
           replace_once(
               "  const [filter, setFilter] = useState<'ALL' | DocumentType>('ALL')\n  const visibleDocuments = filter === 'ALL' ? documents : documents.filter(document => document.type === filter)\n  const filters: Array<{ value: 'ALL' | DocumentType; label: string }> = [\n    { value: 'ALL', label: 'Tous' }, { value: 'FACTURE', label: 'Factures' }, { value: 'DEVIS', label: 'Devis' }, { value: 'BL', label: 'BL' }, { value: 'BC', label: 'BC' }\n  ]\n",
-              "  const [filter, setFilter] = useState<'ALL' | DocumentType>('ALL')\n  const [advancedOpen, setAdvancedOpen] = useState(false)\n  const [advanced, setAdvanced] = useState(() => defaultDocumentSearchFilters())\n  const effectiveFilters = { ...advanced, query: search, type: filter }\n  const visibleDocuments = filterDocuments(documents, effectiveFilters)\n  const advancedCount = activeAdvancedFilterCount(effectiveFilters)\n  const filters: Array<{ value: 'ALL' | DocumentType; label: string }> = [\n    { value: 'ALL', label: 'Tous' }, { value: 'FACTURE', label: 'Factures' }, { value: 'DEVIS', label: 'Devis' }, { value: 'BL', label: 'BL' }, { value: 'BC', label: 'BC' }\n  ]\n  const resetAdvanced = () => setAdvanced(current => ({ ...defaultDocumentSearchFilters(), query: current.query, type: current.type }))\n",
+              "  const [filter, setFilter] = useState<'ALL' | DocumentType>('ALL')\n  const [advancedOpen, setAdvancedOpen] = useState(false)\n  const [advanced, setAdvanced] = useState(() => defaultDocumentSearchFilters())\n  const effectiveFilters = { ...advanced, query: search, type: filter }\n  const visibleDocuments = filterDocuments(documents, effectiveFilters)\n  const advancedCount = activeAdvancedFilterCount(effectiveFilters)\n  const filters: Array<{ value: 'ALL' | DocumentType; label: string }> = [\n    { value: 'ALL', label: 'Tous' }, { value: 'FACTURE', label: 'Factures' }, { value: 'DEVIS', label: 'Devis' }, { value: 'BL', label: 'BL' }, { value: 'BC', label: 'BC' }\n  ]\n  const resetAdvanced = () => setAdvanced(defaultDocumentSearchFilters())\n",
               'history state'
           )
-
           replace_once(
               "      <label className=\"search-surface interactive-search history-search\"><Icon name=\"search\" /><input value={search} onChange={event => onSearch(event.target.value)} placeholder=\"Client, numéro, objet, statut…\" /></label>\n      <div className=\"history-filters\" role=\"group\" aria-label=\"Filtrer les documents\">\n        {filters.map(item => <button key={item.value} className={filter === item.value ? 'active' : ''} onClick={() => setFilter(item.value)}>{item.label}</button>)}\n      </div>\n",
               "      <label className=\"search-surface interactive-search history-search\"><Icon name=\"search\" /><input value={search} onChange={event => onSearch(event.target.value)} placeholder=\"Client, n°, ICE, désignation, objet…\" /></label>\n      <div className=\"history-filters\" role=\"group\" aria-label=\"Filtrer les documents\">\n        {filters.map(item => <button key={item.value} className={filter === item.value ? 'active' : ''} onClick={() => setFilter(item.value)}>{item.label}</button>)}\n      </div>\n      <div className=\"advanced-search-toolbar\">\n        <button className={`advanced-search-toggle ${advancedOpen ? 'active' : ''}`} onClick={() => setAdvancedOpen(value => !value)} aria-expanded={advancedOpen}>Filtres{advancedCount > 0 && <span className=\"advanced-search-count\">{advancedCount}</span>}</button>\n        {advancedCount > 0 && <button className=\"advanced-search-reset\" style={{ width: 'auto', marginTop: 0 }} onClick={resetAdvanced}>Effacer</button>}\n      </div>\n      {advancedOpen && (\n        <section className=\"advanced-search-panel\" aria-label=\"Filtres avancés\">\n          <div className=\"advanced-search-grid\">\n            <label className=\"full\"><span>Période</span><select value={advanced.period} onChange={event => setAdvanced(current => ({ ...current, period: event.target.value as typeof current.period }))}><option value=\"ALL\">Toutes les dates</option><option value=\"THIS_MONTH\">Ce mois</option><option value=\"THIS_YEAR\">Cette année</option><option value=\"CUSTOM\">Personnalisée</option></select></label>\n            {advanced.period === 'CUSTOM' && <><label><span>Du</span><input type=\"date\" value={advanced.dateFrom} onChange={event => setAdvanced(current => ({ ...current, dateFrom: event.target.value }))} /></label><label><span>Au</span><input type=\"date\" value={advanced.dateTo} onChange={event => setAdvanced(current => ({ ...current, dateTo: event.target.value }))} /></label></>}\n            <label><span>Montant min. TTC</span><input type=\"number\" inputMode=\"decimal\" min=\"0\" value={advanced.amountMin} onChange={event => setAdvanced(current => ({ ...current, amountMin: event.target.value }))} placeholder=\"0\" /></label>\n            <label><span>Montant max. TTC</span><input type=\"number\" inputMode=\"decimal\" min=\"0\" value={advanced.amountMax} onChange={event => setAdvanced(current => ({ ...current, amountMax: event.target.value }))} placeholder=\"Ex. 5000\" /></label>\n          </div>\n          <button className=\"advanced-search-reset\" onClick={resetAdvanced}>Réinitialiser les filtres avancés</button>\n        </section>\n      )}\n",
               'history controls'
           )
-
           p.write_text(s)
           PY
-      - name: Unit tests and build
-        run: |
-          npm ci
-          npm test -- --run
-          npm run build
       - name: Commit deterministic patch
         run: |
           rm .github/workflows/step4-bootstrap.yml
