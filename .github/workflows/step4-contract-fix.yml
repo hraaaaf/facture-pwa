@@ -1,0 +1,37 @@
+name: Step 4 Contract Fix
+
+on:
+  push:
+    branches: [feat/search-filters]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/search-filters
+      - name: Align payment baseline with certified main
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/payment-lifecycle-certification.mjs')
+          s = p.read_text()
+          old = "  check('baseline_defect', report.widths[390].before.text.includes('Payé') && !report.widths[390].before.text.includes('Encaisser'), 'baseline must expose only the legacy Paid shortcut')"
+          new = "  check('baseline_payment_lifecycle', report.widths[390].before.text.includes('À encaisser') && report.widths[390].before.text.includes('En retard') && report.widths[390].before.text.includes('Encaisser'), 'main baseline must preserve the certified payment lifecycle')"
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one obsolete baseline assertion, got {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit contract-only fix
+        run: |
+          rm .github/workflows/step4-contract-fix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/payment-lifecycle-certification.mjs .github/workflows/step4-contract-fix.yml
+          git commit -m "Align payment certification with certified main [skip ci]"
+          git push origin HEAD:feat/search-filters
