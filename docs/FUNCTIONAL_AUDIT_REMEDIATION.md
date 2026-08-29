@@ -19,7 +19,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 1. **Dashboard annuel fiable** — CLOS
 2. **Continuité / sauvegarde des données** — CLOS
 3. **Cycle facture / encaissement** — CLOS
-4. **Recherche / filtres** — CERTIFIÉ — merge en cours
+4. **Recherche / filtres** — MERGÉ — production en cours
 5. **Gestion Clients / Catalogue** — À FAIRE
 6. **Garde-fous OCR / imports lourds** — À FAIRE
 7. **Actions mortes / cohérence UX** — À FAIRE
@@ -94,7 +94,7 @@ Note CI :
 
 **Goal** : rendre l’historique réellement exploitable sur mobile avec recherche par ICE / IF / désignation ligne, filtre montant TTC et période, sans alourdir l’interface.
 
-**État : CERTIFIÉ — PR #14 prête au merge.**
+**État : MERGÉ — production automatique en cours.**
 
 Fonctionnel vérifié :
 - recherche texte couvre numéro, client, adresse, ICE, IF, objet, type, statut, désignation et unité ;
@@ -106,9 +106,12 @@ Fonctionnel vérifié :
 - BL sans prix traité à `0` pour le filtre montant ;
 - panneau avancé compact, fermé par défaut, responsive mobile.
 
-Preuve canonique avant merge :
-- PR `#14` ;
-- HEAD final certifié : `3f9f2daa6e3147d3530c7310702ffa84575439ff` ;
+Preuve canonique :
+- PR `#14` : MERGED le 29 août 2026 ;
+- HEAD produit certifié : `3f9f2daa6e3147d3530c7310702ffa84575439ff` ;
+- HEAD final branche : `f9e13108aed19bb364bddcd307958d97786e6b6f` ;
+- merge `main` : `3f4b1405b91ccd4a6da753de4d5723d51e345981` ;
+- compare HEAD final → merge : `0` fichier différent ;
 - Search Filters `33280408651` : SUCCESS ;
 - Payment Lifecycle `33280408637` : SUCCESS ;
 - Dashboard Stats `33280408697` : SUCCESS ;
@@ -118,6 +121,7 @@ Preuve canonique avant merge :
 - artefact Search `9722768087`, SHA-256 `598e369e587f6653e027c38d69d92524271935ea5528e236de221b53fbd68c1a` ;
 - score visuel inspecté : **9,6/10** ;
 - preview Vercel PR : READY ;
+- production auto `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` sur le commit exact de merge : `BUILDING` au dernier contrôle ;
 - aucun déploiement Vercel manuel lancé.
 
 Note CI :
@@ -127,8 +131,8 @@ Note CI :
 
 ## Avancement audit remediation
 
-**3/7 clos + Step 4 certifié, merge en cours.**
+**3/7 clos + Step 4 mergé, production en cours.**
 
 ## Next exact
 
-Merge PR #14 → vérifier production automatique → fermer Step 4 → human gate avant Step 5.
+Vérifier `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` → si READY + alias public HTTP 200, fermer Step 4 à 4/7 = 57,1 % → human gate avant Step 5.
