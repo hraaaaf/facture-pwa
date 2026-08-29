@@ -40,50 +40,43 @@ Preuve canonique :
 
 ## Étape 2 — Continuité / sauvegarde des données
 
-**Goal** : qu’un utilisateur ayant des documents locaux soit activement poussé à garder une copie récente hors du téléphone, sans compte ni cloud imposé.
+**État : CLOS — PR #12 mergée et production READY.**
 
-**État : CERTIFIÉ — PR #12 à merger.**
+Preuve canonique :
+- PR `#12` : MERGED ;
+- `main` : `ee14680c4637370ac253ca907e4e8fb64c64e721` ;
+- run `33274757981` : SUCCESS, `107/107` tests, navigateur `7/7` ;
+- run numérotation `33274757955` : SUCCESS ;
+- artefact `9721171861`, SHA-256 `9f32f21e854dc00380dc3c5ef7270ce7bf23cc60004b3c34f689f651850d2ab5` ;
+- production auto `dpl_4dSoPNeDURi3wwujXZbMq54umuLi` READY ;
+- alias public HTTP 200.
+
+## Étape 3 — Cycle facture / encaissement
+
+**Goal** : une facture doit permettre de suivre l’échéance et les règlements réels sans perdre la simplicité mobile ni affaiblir le verrouillage après finalisation.
+
+**Succès attendu** :
+- échéance optionnelle mais validée, jamais antérieure à la date facture ;
+- mode de règlement prévu ;
+- paiements/acompte append-only après finalisation ;
+- aucun paiement nul, négatif, antérieur à la facture ou supérieur au reste dû ;
+- calcul fiable Total / Encaissé / Reste ;
+- états opérationnels À encaisser / Partiel / En retard / Payé ;
+- passage automatique à PAID quand le reste atteint zéro ;
+- compatibilité avec les anciennes factures PAID sans historique détaillé ;
+- historique + éditeur cohérents sur mobile ;
+- BEFORE/AFTER 390/430/768/1280, zéro overflow et zéro erreur navigateur.
+
+**État : EN COURS.**
 
 Repo : `hraaaaf/facture-pwa`
-Branche : `feat/backup-continuity`
-Base : `cdf8306483e7749fffefc406e3e97782b7f04306`
-HEAD produit certifié : `9c94d56c6313bebe2aa0016f1e6ce30ac48b9334`
-PR : `#12`
-
-Fonctionnel :
-- aucune alerte sans document ;
-- données sans sauvegarde : rappel visible ;
-- sauvegarde < 7 jours : aucun rappel ;
-- sauvegarde >= 7 jours : rappel ; >= 30 jours : urgence ;
-- report `Demain` : 24 h ;
-- backup généré au clic pour inclure l’état local le plus récent ;
-- partage natif de fichier si disponible, téléchargement JSON sinon ;
-- export historique depuis Réglages reconnu comme sauvegarde récente.
-
-Certification :
-- run `33274757981` : **SUCCESS** ;
-- `107/107` tests, 19 fichiers ;
-- build TypeScript/Vite/PWA feature : succès ;
-- build baseline `main` : succès ;
-- navigateur : `7/7` assertions ;
-- téléchargement réel : `facture-pwa-backup-2026-08-29.json` ;
-- `lastBackupAt` écrit après succès, `snoozedUntil` vide ;
-- BEFORE : aucun rappel ; AFTER : rappel `Sauvegarde à faire` ;
-- 390/430/768/1280 : `scrollWidth = innerWidth` ;
-- 0 erreur page, 0 erreur console ;
-- artefact `backup-continuity-before-after`, ID `9721171861`, SHA-256 `9f32f21e854dc00380dc3c5ef7270ce7bf23cc60004b3c34f689f651850d2ab5` ;
-- score visuel du lot : **9,7/10** ; rappel flottant sans déplacement de layout.
-
-Validation croisée :
-- run numérotation `33274757955` : **SUCCESS**, y compris tests/build/browser/report ;
-- preview Vercel automatique du HEAD produit : `dpl_4FuhezgPfXxzuZAa6GNtbYr7EDqY` READY ;
-- aucun déploiement Vercel manuel lancé.
+Branche : `feat/invoice-payment-lifecycle`
+Base : `ee14680c4637370ac253ca907e4e8fb64c64e721`
 
 ## Avancement audit remediation
 
-Avant merge PR #12 : **1/7 clos, étape 2 certifiée**.
-Après merge vérifié : **2/7 clos = 28,6 %**.
+**2/7 clos = 28,6 %.**
 
 ## Next exact
 
-Merger la PR #12 avec contrôle du SHA, vérifier `main` post-merge et le déploiement automatique associé, puis ouvrir l’étape 3 : cycle facture / encaissement.
+Construire le candidat Step 3, exécuter tests/build, ouvrir la PR et certifier le cycle d’encaissement BEFORE/AFTER avant tout merge.

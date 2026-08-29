@@ -42,6 +42,13 @@ export const validateDocument = (doc: CommercialDocument): ValidationIssue[] => 
     issues.push({ field: 'date', message: 'La date est invalide.' })
   }
   if (!doc.lines.length) issues.push({ field: 'lines', message: 'Ajoutez au moins un article.' })
+  if (doc.type === 'FACTURE' && doc.dueDate) {
+    if (Number.isNaN(new Date(`${doc.dueDate}T12:00:00`).getTime())) {
+      issues.push({ field: 'dueDate', message: 'La date d’échéance est invalide.' })
+    } else if (doc.dueDate < doc.date) {
+      issues.push({ field: 'dueDate', message: 'L’échéance ne peut pas précéder la date de facture.' })
+    }
+  }
   if (doc.globalDiscountPercent < 0 || doc.globalDiscountPercent > 100) {
     issues.push({ field: 'globalDiscountPercent', message: 'La remise globale doit être comprise entre 0 et 100 %.' })
   }
@@ -165,6 +172,9 @@ export const createBlankDocument = (
     object: '',
     blShowPrices: false,
     globalDiscountPercent: 0,
+    dueDate: '',
+    paymentMethod: 'UNSPECIFIED',
+    payments: [],
     status: 'DRAFT',
     finalizedAt: '',
     paidAt: '',

@@ -3,6 +3,16 @@ import { temporaryTapistorLogoDataUrl } from './brand'
 export type DocumentType = 'DEVIS' | 'FACTURE' | 'BL' | 'BC'
 export type PdfTemplatePreference = 'original' | 'premium'
 export type DocumentStatus = 'DRAFT' | 'FINALIZED' | 'PAID' | 'CANCELLED'
+export type PaymentMethod = 'UNSPECIFIED' | 'BANK_TRANSFER' | 'CASH' | 'CHECK' | 'CARD' | 'OTHER'
+
+export interface PaymentRecord {
+  id: string
+  amount: number
+  date: string
+  method: PaymentMethod
+  note: string
+  createdAt: string
+}
 
 export interface DocumentLine {
   id: string
@@ -57,6 +67,12 @@ export interface CommercialDocument {
   lines: DocumentLine[]
   blShowPrices: boolean
   globalDiscountPercent: number
+  /** Optional payment due date for invoices. Empty means no due date tracked. */
+  dueDate: string
+  /** Intended/default settlement method. Individual payments keep their own method. */
+  paymentMethod: PaymentMethod
+  /** Append-only settlement ledger for invoices. */
+  payments: PaymentRecord[]
   status: DocumentStatus
   finalizedAt: string
   paidAt: string

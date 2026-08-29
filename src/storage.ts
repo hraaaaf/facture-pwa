@@ -1,4 +1,4 @@
-import { formatDocumentNumber, validateDocument, validateNumberingPrefixes } from './lib'
+import { documentTotals, formatDocumentNumber, validateDocument, validateNumberingPrefixes } from './lib'
 import type {
   CatalogItem,
   ClientProfile,
@@ -6,7 +6,9 @@ import type {
   CompanySettings,
   DocumentLine,
   DocumentStatus,
-  DocumentType
+  DocumentType,
+  PaymentMethod,
+  PaymentRecord
 } from './types'
 import {
   clientDisplayName,
@@ -91,6 +93,9 @@ const isDocumentType = (value: unknown): value is DocumentType =>
 const isStatus = (value: unknown): value is DocumentStatus =>
   value === 'DRAFT' || value === 'FINALIZED' || value === 'PAID' || value === 'CANCELLED'
 
+const isPaymentMethod = (value: unknown): value is PaymentMethod =>
+  value === 'UNSPECIFIED' || value === 'BANK_TRANSFER' || value === 'CASH' || value === 'CHECK' || value === 'CARD' || value === 'OTHER'
+
 const stringOr = (record: Record<string, unknown>, key: string, fallback = '') =>
   typeof record[key] === 'string' ? record[key] as string : fallback
 
@@ -123,6 +128,14 @@ const normalizeLine = (value: unknown): DocumentLine => {
   }
 }
 
+const normalizePayment = (value: unknown): PaymentRecord => {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.amount !== 'number' || !Number.isFinite(value.amount) || value.amount <= 0) {
+    throw new Error('Paiement invalide')
+  }
+  if (typeof value.date !== 'string' || typeof value.createdAt !== 'string' || !isPaymentMethod(value.method)) throw new Error('Paiement invalide')
+  return { id: value.id, amount: value.amount, date: value.date, method: value.method, note: stringOr(value, 'note'), createdAt: value.createdAt }
+}
+
 const normalizeDocument = (value: unknown): CommercialDocument => {
   if (!isRecord(value) || typeof value.id !== 'string' || !isDocumentType(value.type)) throw new Error('Document invalide')
   if (
@@ -145,6 +158,9 @@ const normalizeDocument = (value: unknown): CommercialDocument => {
     lines: value.lines.map(normalizeLine),
     blShowPrices: value.blShowPrices,
     globalDiscountPercent: numberOr(value, 'globalDiscountPercent', 0),
+    dueDate: stringOr(value, 'dueDate'),
+    paymentMethod: isPaymentMethod(value.paymentMethod) ? value.paymentMethod : 'UNSPECIFIED',
+    payments: Array.isArray(value.payments) ? value.payments.map(normalizePayment) : [],
     status: isStatus(value.status) ? value.status : (legacyHadNumber ? 'FINALIZED' : 'DRAFT'),
     finalizedAt: stringOr(value, 'finalizedAt', legacyHadNumber ? value.updatedAt : ''),
     paidAt: stringOr(value, 'paidAt'),
@@ -550,6 +566,69 @@ export const finalizeDocument = async (doc: CommercialDocument, company: Company
       settled = true
       db.close()
       if (!saved) reject(new Error('Finalisation incomplète'))
+      else resolve(saved)
+    }
+  })
+}
+
+export const recordInvoicePayment = async (
+  id: string,
+  input: { amount: number; date: string; method: PaymentMethod; note?: string }
+): Promise<CommercialDocument> => {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DOCS_STORE, 'readwrite')
+    const store = tx.objectStore(DOCS_STORE)
+    const request = store.get(id) as IDBRequest<unknown>
+    let saved: CommercialDocument | undefined
+    let settled = false
+    const fail = (error: unknown) => {
+      if (settled) return
+      settled = true
+      try { tx.abort() } catch { /* transaction already finished */ }
+      db.close()
+      reject(error ?? new Error('Encaissement impossible'))
+    }
+    request.onerror = () => fail(request.error)
+    request.onsuccess = () => {
+      try {
+        const current = normalizeDocument(request.result)
+        if (current.type !== 'FACTURE') throw new Error('Seule une facture peut recevoir un paiement.')
+        if (current.status === 'DRAFT') throw new Error('Finalisez la facture avant d’enregistrer un paiement.')
+        if (current.status === 'CANCELLED') throw new Error('Une facture annulée ne peut pas être encaissée.')
+        if (current.status === 'PAID') throw new Error('Cette facture est déjà soldée.')
+        const amount = Math.round((input.amount + Number.EPSILON) * 100) / 100
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('Le montant du paiement doit être supérieur à 0.')
+        if (!input.date || Number.isNaN(new Date(`${input.date}T12:00:00`).getTime())) throw new Error('La date de paiement est invalide.')
+        if (input.date < current.date) throw new Error('Le paiement ne peut pas précéder la date de facture.')
+        if (!isPaymentMethod(input.method) || input.method === 'UNSPECIFIED') throw new Error('Choisissez un mode de règlement.')
+        const total = documentTotals(current).totalTTC
+        const alreadyPaid = Math.round((current.payments.reduce((sum, payment) => sum + payment.amount, 0) + Number.EPSILON) * 100) / 100
+        const remaining = Math.round((Math.max(0, total - alreadyPaid) + Number.EPSILON) * 100) / 100
+        if (amount - remaining > 0.005) throw new Error(`Le paiement dépasse le reste dû de ${remaining.toFixed(2)} MAD.`)
+        const now = new Date().toISOString()
+        const payment: PaymentRecord = { id: crypto.randomUUID(), amount, date: input.date, method: input.method, note: input.note?.trim() ?? '', createdAt: now }
+        const payments = [...current.payments, payment]
+        const paidTotal = Math.round((alreadyPaid + amount + Number.EPSILON) * 100) / 100
+        const fullyPaid = total - paidTotal <= 0.005
+        saved = {
+          ...current,
+          payments,
+          paymentMethod: current.paymentMethod === 'UNSPECIFIED' ? input.method : current.paymentMethod,
+          status: fullyPaid ? 'PAID' : 'FINALIZED',
+          paidAt: fullyPaid ? now : current.paidAt,
+          updatedAt: now
+        }
+        store.put(saved)
+      } catch (error) { fail(error) }
+    }
+    tx.onerror = () => fail(tx.error)
+    tx.onabort = () => fail(tx.error)
+    tx.oncomplete = () => {
+      if (settled) return
+      settled = true
+      db.close()
+      if (!saved) reject(new Error('Encaissement incomplet'))
       else resolve(saved)
     }
   })
