@@ -18,7 +18,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 
 1. **Dashboard annuel fiable** — CLOS
 2. **Continuité / sauvegarde des données** — CLOS
-3. **Cycle facture / encaissement** — CERTIFIÉ, MERGE PR #13 RESTANT
+3. **Cycle facture / encaissement** — CLOS
 4. **Recherche / filtres** — À FAIRE
 5. **Gestion Clients / Catalogue** — À FAIRE
 6. **Garde-fous OCR / imports lourds** — À FAIRE
@@ -55,25 +55,7 @@ Preuve canonique :
 
 **Goal** : une facture doit permettre de suivre l’échéance et les règlements réels sans perdre la simplicité mobile ni affaiblir le verrouillage après finalisation.
 
-**Succès attendu** :
-- échéance optionnelle mais validée, jamais antérieure à la date facture ;
-- mode de règlement prévu ;
-- paiements/acompte append-only après finalisation ;
-- aucun paiement nul, négatif, antérieur à la facture ou supérieur au reste dû ;
-- calcul fiable Total / Encaissé / Reste ;
-- états opérationnels À encaisser / Partiel / En retard / Payé ;
-- passage automatique à PAID quand le reste atteint zéro ;
-- compatibilité avec les anciennes factures PAID sans historique détaillé ;
-- historique + éditeur cohérents sur mobile ;
-- BEFORE/AFTER 390/430/768/1280, zéro overflow et zéro erreur navigateur.
-
-**État : CERTIFIÉ — PR #13 à merger après dernier passage CI du contrat Dashboard corrigé.**
-
-Repo : `hraaaaf/facture-pwa`
-Branche : `feat/invoice-payment-lifecycle`
-Base : `ee14680c4637370ac253ca907e4e8fb64c64e721`
-PR : `#13`
-HEAD produit certifié : `312281897ae761dd6458cab340aecef23f95980e`
+**État : CLOS — PR #13 mergée et production READY.**
 
 Fonctionnel vérifié :
 - échéance + mode de règlement prévu sur facture ;
@@ -86,35 +68,32 @@ Fonctionnel vérifié :
 - historique distingue `À encaisser`, `En retard` et `Payé` ;
 - données de règlement intégrées au document local et donc au backup JSON existant.
 
-Certification principale :
-- run `33275965240` : **SUCCESS** ;
-- `114/114` tests, 20 fichiers ;
-- build TypeScript/Vite/PWA feature : succès ;
-- build baseline `main` : succès ;
-- navigateur : `10/10` assertions ;
-- garde-fous navigateur : surpaiement et paiement antérieur rejetés avec `0` écriture ;
-- ledger final : `PAID`, `2` paiements, total encaissé exact ;
-- BEFORE/AFTER : `390/430/768/1280` ;
-- tous les viewports : `scrollWidth = innerWidth` ;
-- zéro erreur page, zéro erreur console ;
-- artefact `payment-lifecycle-before-after`, ID `9721508962`, taille `2 943 136` octets ;
-- SHA-256 `96383f57681d763bcfc569dab0acdc5f1f2956b8ce56f390173f8ff5da5ca1e4` ;
-- score visuel inspecté : **9,7/10**.
-
-Validation croisée :
-- run numérotation `33275965210` : **SUCCESS** ;
-- preview Vercel du HEAD certifié `dpl_3nGcHactrYLZ2mDNoDztFhkbcwa4` : READY, HTTP 200 ;
-- run Dashboard `33275965224` : tests `114/114` + builds feature/main verts, données dashboard correctes sur les 4 viewports, zéro erreur ; rouge uniquement parce que le script exigeait encore que `main` reproduise l’ancien bug Step 1 (`4 / 1 900 MAD`) ;
-- contrat Dashboard corrigé au commit `9b2b20f51a53bc51884cb168e933f0dde62bca0b` pour vérifier la baseline déjà corrigée (`2 / 300 MAD`) et la non-régression feature ;
-- delta depuis le HEAD produit certifié : uniquement le contrat de certification Dashboard et ce fichier canonique ;
+Preuve canonique :
+- PR `#13` : MERGED le 29 août 2026 ;
+- HEAD certifié : `9a2c95a92a2744bbaa78d8034cee9891f1aa60da` ;
+- merge `main` : `2d948ef1fa500eff9b2c42c73467733bf724a328` ;
+- compare HEAD certifié → merge : `0` fichier différent ;
+- Payment Lifecycle `33276330633` : SUCCESS ;
+- Dashboard Stats `33276330638` : SUCCESS ;
+- Numbering Baseline `33276330645` : SUCCESS ;
+- `114/114` tests, build TypeScript/Vite/PWA + baseline `main` ;
+- navigateur paiement : `10/10` assertions ;
+- BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
+- artefact principal `9721508962`, SHA-256 `96383f57681d763bcfc569dab0acdc5f1f2956b8ce56f390173f8ff5da5ca1e4` ;
+- score visuel inspecté : **9,7/10** ;
+- production auto `dpl_7qUeA92X8A8XnHAJtnABKknV8oQD` : READY sur le commit exact de merge ;
+- alias public `facture-pwa.vercel.app` : HTTP 200 ;
 - aucun déploiement Vercel manuel lancé.
+
+Note CI :
+- l’ancien rouge Dashboard `33275965224` venait d’un contrat historique exigeant encore le bug Step 1 sur la baseline ;
+- contrat corrigé au commit `9b2b20f51a53bc51884cb168e933f0dde62bca0b` ;
+- cycle final Dashboard `33276330638` : SUCCESS.
 
 ## Avancement audit remediation
 
-**2/7 clos = 28,6 %.**
-
-Après merge + production vérifiés de la PR #13 : **3/7 clos = 42,9 %.**
+**3/7 clos = 42,9 %.**
 
 ## Next exact
 
-Obtenir le dernier cycle CI vert après correction du contrat Dashboard, passer la PR #13 ready, merger avec contrôle du HEAD, vérifier `main` post-merge et le déploiement automatique associé, puis ouvrir l’étape 4 — Recherche / filtres uniquement après le prochain Go utilisateur.
+Human gate. Étape 4 — Recherche / filtres : démarrer uniquement après un nouveau `Go` utilisateur.
