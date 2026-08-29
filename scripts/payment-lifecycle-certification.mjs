@@ -86,7 +86,7 @@ try {
     }
   }
 
-  check('baseline_defect', report.widths[390].before.text.includes('Payé') && !report.widths[390].before.text.includes('Encaisser'), 'baseline must expose only the legacy Paid shortcut')
+  check('baseline_payment_lifecycle', report.widths[390].before.text.includes('À encaisser') && report.widths[390].before.text.includes('En retard') && report.widths[390].before.text.includes('Encaisser'), 'main baseline must preserve the certified payment lifecycle')
   check('operational_states', report.widths[390].after.text.includes('À encaisser') && report.widths[390].after.text.includes('En retard'), 'feature must distinguish unpaid and overdue')
   check('balance_visibility', report.widths[390].after.text.includes('Reste') && report.widths[390].after.text.includes('1 200,00') && report.widths[390].after.text.includes('600,00'), 'remaining balances must be visible')
 
