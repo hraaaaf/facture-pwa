@@ -8,6 +8,7 @@ import {
   lineTotalHT
 } from './lib'
 import { dashboardStatsForYear } from './dashboardStats'
+import { invoicePaymentStateLabel, invoicePaymentSummary, paymentMethodLabel, paymentMethodOptions } from './paymentLifecycle'
 import { generatePdf } from './pdf'
 import { QuoteImportSheet, type ImportedQuoteFields } from './QuoteImportSheet'
 import {
@@ -17,6 +18,7 @@ import {
   getCompany,
   getDocuments,
   rememberDocument,
+  recordInvoicePayment,
   removeDocument,
   saveClientProfile,
   saveDocument,
@@ -28,10 +30,12 @@ import type {
   CommercialDocument,
   CompanySettings,
   DocumentLine,
-  DocumentType
+  DocumentType,
+  PaymentMethod
 } from './types'
 import { clientDisplayName, defaultCompany } from './types'
 import './memory.css'
+import './payment-lifecycle.css'
 
 type View = 'home' | 'editor' | 'history'
 type IconName = 'home' | 'history' | 'plus' | 'settings' | 'search' | 'file' | 'invoice' | 'truck' | 'order' | 'chevron' | 'back' | 'save' | 'eye' | 'trash' | 'more' | 'check'
@@ -72,6 +76,7 @@ export default function App() {
   const [notice, setNotice] = useState('')
   const [newOpen, setNewOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [paymentTarget, setPaymentTarget] = useState<CommercialDocument | null>(null)
   const autosaveTimer = useRef<number | null>(null)
   const autosaveGeneration = useRef(0)
 
@@ -221,6 +226,16 @@ export default function App() {
     return saved
   }
 
+  const recordPayment = async (input: { amount: number; date: string; method: PaymentMethod; note?: string }) => {
+    if (!paymentTarget) throw new Error('Facture introuvable')
+    const saved = await recordInvoicePayment(paymentTarget.id, input)
+    setPaymentTarget(saved)
+    if (draft?.id === saved.id) setDraft(saved)
+    await refresh()
+    showNotice(saved.status === 'PAID' ? 'Facture soldée' : 'Paiement enregistré')
+    return saved
+  }
+
   const changeStatus = async (id: string, status: 'PAID' | 'CANCELLED') => {
     try {
       if (status === 'CANCELLED' && !window.confirm('Annuler ce document ? Son numéro restera réservé définitivement.')) return
@@ -275,6 +290,7 @@ export default function App() {
           onConvert={convertDocument}
           onDelete={deleteDocument}
           onStatus={changeStatus}
+          onPayment={setPaymentTarget}
         />
       )}
 
@@ -291,11 +307,13 @@ export default function App() {
           onSaveClient={persistClient}
           onPdf={document => generatePdf(document, company)}
           onConvert={targetType => convertDocument(draft, targetType)}
+          onPayment={setPaymentTarget}
         />
       )}
 
       {newOpen && <NewDocumentSheet onClose={() => setNewOpen(false)} onNew={startDocument} onImport={() => { setNewOpen(false); setImportOpen(true) }} />}
       {importOpen && <QuoteImportSheet defaultVatRate={company.defaultVatRate} onClose={() => setImportOpen(false)} onCreate={startImportedQuote} />}
+      {paymentTarget && <PaymentSheet value={paymentTarget} onClose={() => setPaymentTarget(null)} onSave={recordPayment} />}
     </div>
   )
 }
@@ -394,7 +412,7 @@ function BottomNav({ active, onHome, onNew, onHistory }: { active: 'home' | 'his
   )
 }
 
-function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplicate, onConvert, onDelete, onStatus }: {
+function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplicate, onConvert, onDelete, onStatus, onPayment }: {
   documents: CommercialDocument[]
   search: string
   onSearch: (value: string) => void
@@ -405,6 +423,7 @@ function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplica
   onConvert: (document: CommercialDocument, targetType: DocumentType) => void
   onDelete: (id: string) => void
   onStatus: (id: string, status: 'PAID' | 'CANCELLED') => void
+  onPayment: (document: CommercialDocument) => void
 }) {
   const [filter, setFilter] = useState<'ALL' | DocumentType>('ALL')
   const visibleDocuments = filter === 'ALL' ? documents : documents.filter(document => document.type === filter)
@@ -424,15 +443,17 @@ function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplica
         {visibleDocuments.map(document => {
           const totals = documentTotals(document)
           const showAmount = document.type !== 'BL' || document.blShowPrices
+          const payment = document.type === 'FACTURE' ? invoicePaymentSummary(document) : null
           return (
             <article className={`premium-history-card status-${document.status.toLowerCase()}`} key={document.id}>
               <button className="premium-history-main" onClick={() => onEdit(document)}>
                 <span className={`document-badge small ${typeClass[document.type]}`}><Icon name={documentIcon[document.type]} /></span>
                 <span className="history-copy">
-                  <span className="history-card-topline"><strong>{document.client || documentLabel(document.type)}</strong><span className="saved-chip"><span className="status-dot" /> {documentStatusLabel(document.status)}</span></span>
+                  <span className="history-card-topline"><strong>{document.client || documentLabel(document.type)}</strong><span className={`saved-chip ${payment ? `payment-state-${payment.state.toLowerCase()}` : ''}`}><span className="status-dot" /> {payment ? invoicePaymentStateLabel(payment.state) : documentStatusLabel(document.status)}</span></span>
                   <span className="history-number">{documentLabel(document.type)} · {document.number ? `#${document.number}` : 'Numéro non attribué'}</span>
                   <span className="history-object">{document.object || 'Sans objet'}</span>
                   <span className="history-meta-line"><span>{shortDate(document.date)}</span>{showAmount && <strong>{money(totals.totalTTC)}</strong>}</span>
+                  {payment && payment.state !== 'PAID' && payment.state !== 'CANCELLED' && payment.state !== 'DRAFT' && <span className="invoice-balance-line">Reste {money(payment.remaining)}{document.dueDate ? ` · Échéance ${shortDate(document.dueDate)}` : ''}</span>}
                 </span><Icon name="chevron" />
               </button>
 
@@ -441,7 +462,7 @@ function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplica
                 <button onClick={() => onDuplicate(document)}>Dupliquer</button>
                 {document.type === 'DEVIS' && document.status !== 'CANCELLED' && <button onClick={() => onConvert(document, 'FACTURE')}>→ Facture</button>}
                 {document.type === 'DEVIS' && document.status !== 'CANCELLED' && <button onClick={() => onConvert(document, 'BL')}>→ BL</button>}
-                {document.type === 'FACTURE' && document.status === 'FINALIZED' && <button onClick={() => onStatus(document.id, 'PAID')}>Payé</button>}
+                {document.type === 'FACTURE' && (document.status === 'FINALIZED' || document.status === 'PAID') && <button onClick={() => onPayment(document)}>{document.status === 'PAID' ? 'Paiements' : 'Encaisser'}</button>}
                 {(document.status === 'FINALIZED' || document.status === 'PAID') && <button className="danger" onClick={() => onStatus(document.id, 'CANCELLED')}>Annuler</button>}
                 {document.status === 'DRAFT' && <button className="danger" onClick={() => onDelete(document.id)}>Supprimer</button>}
               </div>
@@ -455,7 +476,7 @@ function History({ documents, search, onSearch, onHome, onNew, onEdit, onDuplica
   )
 }
 
-function Editor({ value, company, clients, catalog, onChange, onBack, onSave, onFinalize, onSaveClient, onPdf, onConvert }: {
+function Editor({ value, company, clients, catalog, onChange, onBack, onSave, onFinalize, onSaveClient, onPdf, onConvert, onPayment }: {
   value: CommercialDocument
   company: CompanySettings
   clients: ClientProfile[]
@@ -467,11 +488,13 @@ function Editor({ value, company, clients, catalog, onChange, onBack, onSave, on
   onSaveClient: (client: ClientProfile) => Promise<ClientProfile>
   onPdf: (document: CommercialDocument) => void
   onConvert: (type: DocumentType) => void
+  onPayment: (document: CommercialDocument) => void
 }) {
   const [clientForm, setClientForm] = useState<ClientProfile | null>(null)
   const totals = documentTotals(value)
   const pricingVisible = value.type !== 'BL' || value.blShowPrices
   const editable = value.status === 'DRAFT'
+  const payment = value.type === 'FACTURE' ? invoicePaymentSummary(value) : null
   const patch = (next: Partial<CommercialDocument>) => { if (editable) onChange({ ...value, ...next }) }
   const updateLine = (id: string, next: Partial<DocumentLine>) => patch({ lines: value.lines.map(line => line.id === id ? { ...line, ...next } : line) })
 
@@ -544,6 +567,31 @@ function Editor({ value, company, clients, catalog, onChange, onBack, onSave, on
           <label><span>N° document</span><input value={value.number || 'Attribué à la finalisation'} readOnly /></label>
           <label><span>Date</span><input type="date" value={value.date} disabled={!editable} onChange={event => patch({ date: event.target.value })} /></label>
         </section>
+
+        {value.type === 'FACTURE' && payment && (
+          <section className="invoice-lifecycle-card glass-panel">
+            <div className="invoice-lifecycle-head">
+              <div><span className="section-kicker">Encaissement</span><h2>{invoicePaymentStateLabel(payment.state)}</h2></div>
+              {!editable && <span className={`invoice-payment-chip payment-state-${payment.state.toLowerCase()}`}>{invoicePaymentStateLabel(payment.state)}</span>}
+            </div>
+            {editable ? (
+              <div className="invoice-terms-grid">
+                <label><span>Échéance</span><input type="date" value={value.dueDate} onChange={event => patch({ dueDate: event.target.value })} /></label>
+                <label><span>Mode prévu</span><select value={value.paymentMethod} onChange={event => patch({ paymentMethod: event.target.value as PaymentMethod })}>{paymentMethodOptions.map(option => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+              </div>
+            ) : (
+              <>
+                <div className="invoice-balance-grid">
+                  <div><span>Total</span><strong>{money(payment.total)}</strong></div>
+                  <div><span>Encaissé</span><strong>{money(payment.paid)}</strong></div>
+                  <div className="remaining"><span>Reste dû</span><strong>{money(payment.remaining)}</strong></div>
+                </div>
+                <div className="invoice-terms-readonly"><span>{value.dueDate ? `Échéance ${shortDate(value.dueDate)}` : 'Échéance non renseignée'}</span><span>{paymentMethodLabel(value.paymentMethod)}</span></div>
+                {(value.status === 'FINALIZED' || value.status === 'PAID') && <button className="invoice-payment-action" onClick={() => onPayment(value)}>{value.status === 'PAID' ? 'Voir les paiements' : 'Enregistrer un paiement / acompte'}</button>}
+              </>
+            )}
+          </section>
+        )}
 
         <section className="editor-section">
           <div className="editor-section-title">
@@ -671,6 +719,68 @@ function Editor({ value, company, clients, catalog, onChange, onBack, onSave, on
         />
       )}
     </>
+  )
+}
+
+function PaymentSheet({ value, onClose, onSave }: {
+  value: CommercialDocument
+  onClose: () => void
+  onSave: (input: { amount: number; date: string; method: PaymentMethod; note?: string }) => Promise<CommercialDocument>
+}) {
+  const summary = invoicePaymentSummary(value)
+  const today = new Date()
+  const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const [amount, setAmount] = useState(summary.remaining)
+  const [date, setDate] = useState(localDate)
+  const [method, setMethod] = useState<PaymentMethod>(value.paymentMethod)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => { setAmount(summary.remaining) }, [summary.remaining])
+
+  const save = async () => {
+    if (method === 'UNSPECIFIED') {
+      setError('Choisissez un mode de règlement.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await onSave({ amount, date, method, note })
+      setNote('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Encaissement impossible')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="payment-sheet-layer" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+      <section className="payment-sheet" role="dialog" aria-modal="true" aria-label="Encaissement facture">
+        <div className="sheet-handle" />
+        <header><div><span className="section-kicker">Facture {value.number}</span><h2>Encaissements</h2><small>{value.client}</small></div><button onClick={onClose} aria-label="Fermer">×</button></header>
+        <div className="payment-sheet-summary">
+          <div><span>Total TTC</span><strong>{money(summary.total)}</strong></div>
+          <div><span>Encaissé</span><strong>{money(summary.paid)}</strong></div>
+          <div className="remaining"><span>Reste dû</span><strong>{money(summary.remaining)}</strong></div>
+        </div>
+        <div className="payment-sheet-terms"><span>{value.dueDate ? `Échéance ${shortDate(value.dueDate)}` : 'Sans échéance renseignée'}</span><span>{paymentMethodLabel(value.paymentMethod)}</span></div>
+
+        {value.payments.length > 0 ? <div className="payment-history"><span className="section-kicker">Historique</span>{value.payments.map(payment => <article key={payment.id}><div><strong>{money(payment.amount)}</strong><small>{shortDate(payment.date)} · {paymentMethodLabel(payment.method)}</small></div>{payment.note && <span>{payment.note}</span>}</article>)}</div> : value.status === 'PAID' ? <p className="payment-legacy-note">Facture marquée payée sans détail de règlement historique.</p> : null}
+
+        {value.status === 'FINALIZED' && summary.remaining > 0 && (
+          <div className="payment-form">
+            <div className="payment-form-grid"><label><span>Montant</span><input type="number" inputMode="decimal" min="0.01" step="0.01" max={summary.remaining} value={amount} onChange={event => setAmount(Math.max(0, Number(event.target.value) || 0))} /></label><label><span>Date</span><input type="date" value={date} onChange={event => setDate(event.target.value)} /></label></div>
+            <label><span>Mode de règlement</span><select value={method} onChange={event => setMethod(event.target.value as PaymentMethod)}>{paymentMethodOptions.map(option => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+            <label><span>Note facultative</span><input value={note} onChange={event => setNote(event.target.value)} placeholder="Référence, acompte…" /></label>
+            {error && <p className="payment-form-error">{error}</p>}
+            <button className="payment-save" disabled={busy || amount <= 0} onClick={() => void save()}>{busy ? 'Enregistrement…' : summary.paid > 0 ? 'Ajouter le paiement' : 'Enregistrer le paiement'}</button>
+          </div>
+        )}
+      </section>
+    </div>
   )
 }
 

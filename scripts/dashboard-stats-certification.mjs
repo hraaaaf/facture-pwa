@@ -88,10 +88,7 @@ const startStaticServer = async (rootDir, port) => {
         file = path.join(distDir, 'index.html')
       }
       const body = await fs.readFile(file)
-      response.writeHead(200, {
-        'Content-Type': mimeType(file),
-        'Cache-Control': 'no-store'
-      })
+      response.writeHead(200, { 'Content-Type': mimeType(file), 'Cache-Control': 'no-store' })
       response.end(body)
     } catch (error) {
       response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
@@ -103,7 +100,6 @@ const startStaticServer = async (rootDir, port) => {
     server.once('error', reject)
     server.listen(port, '127.0.0.1', resolve)
   })
-
   return server
 }
 
@@ -187,6 +183,14 @@ const capturePhase = async ({ browser, phase, url }) => {
 
 const findCard = (capture, label) => capture.cards.find(card => card.label === label)
 const normalizeAmount = value => Number(String(value).replace(/[^0-9,-]/g, '').replace(',', '.'))
+const exactInvoiceStats = capture => {
+  const card = findCard(capture, 'Facture')
+  return card?.count === 2 && normalizeAmount(card?.amount) === 300
+}
+const blZeroAmount = capture => {
+  const card = findCard(capture, 'Bon de livraison')
+  return card?.count === 1 && normalizeAmount(card?.amount) === 0
+}
 
 const mainServer = await startStaticServer(mainDir, 4181)
 const featureServer = await startStaticServer(featureDir, 4182)
@@ -198,18 +202,15 @@ try {
   const after = await capturePhase({ browser, phase: 'after', url: 'http://127.0.0.1:4182' })
   const before390 = before.captures.find(item => item.width === 390)
   const after390 = after.captures.find(item => item.width === 390)
-  const beforeFacture = findCard(before390, 'Facture')
-  const afterFacture = findCard(after390, 'Facture')
-  const afterBl = findCard(after390, 'Bon de livraison')
 
   const assertions = [
-    { name: 'baseline reproduces audited defect', ok: beforeFacture?.count === 4 && normalizeAmount(beforeFacture?.amount) === 1900, detail: beforeFacture },
-    { name: 'feature keeps only 2026 finalized/paid invoices', ok: afterFacture?.count === 2 && normalizeAmount(afterFacture?.amount) === 300, detail: afterFacture },
-    { name: 'BL without prices counts but contributes zero amount', ok: afterBl?.count === 1 && normalizeAmount(afterBl?.amount) === 0, detail: afterBl },
-    { name: 'period remains This year', ok: after390?.period === 'Cette année', detail: after390?.period },
-    { name: 'all target widths have no horizontal overflow', ok: after.captures.every(item => item.scrollWidth <= item.innerWidth), detail: after.captures.map(item => ({ width: item.width, scrollWidth: item.scrollWidth, innerWidth: item.innerWidth })) },
-    { name: 'no page errors', ok: after.pageErrors.length === 0, detail: after.pageErrors },
-    { name: 'no console errors', ok: after.consoleErrors.length === 0, detail: after.consoleErrors }
+    { name: 'main baseline keeps certified yearly invoice stats', ok: exactInvoiceStats(before390), detail: findCard(before390, 'Facture') },
+    { name: 'feature keeps certified yearly invoice stats', ok: exactInvoiceStats(after390), detail: findCard(after390, 'Facture') },
+    { name: 'BL without prices counts but contributes zero amount', ok: blZeroAmount(before390) && blZeroAmount(after390), detail: { before: findCard(before390, 'Bon de livraison'), after: findCard(after390, 'Bon de livraison') } },
+    { name: 'period remains This year', ok: before390?.period === 'Cette année' && after390?.period === 'Cette année', detail: { before: before390?.period, after: after390?.period } },
+    { name: 'all target widths have no horizontal overflow', ok: [...before.captures, ...after.captures].every(item => item.scrollWidth <= item.innerWidth), detail: { before: before.captures.map(item => ({ width: item.width, scrollWidth: item.scrollWidth, innerWidth: item.innerWidth })), after: after.captures.map(item => ({ width: item.width, scrollWidth: item.scrollWidth, innerWidth: item.innerWidth })) } },
+    { name: 'no page errors', ok: before.pageErrors.length === 0 && after.pageErrors.length === 0, detail: { before: before.pageErrors, after: after.pageErrors } },
+    { name: 'no console errors', ok: before.consoleErrors.length === 0 && after.consoleErrors.length === 0, detail: { before: before.consoleErrors, after: after.consoleErrors } }
   ]
 
   report = {

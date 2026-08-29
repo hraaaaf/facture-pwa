@@ -23,6 +23,9 @@ const baseDocument = (): CommercialDocument => ({
   object: 'Test',
   blShowPrices: false,
   globalDiscountPercent: 0,
+  dueDate: '',
+  paymentMethod: 'UNSPECIFIED',
+  payments: [],
   status: 'DRAFT',
   finalizedAt: '',
   paidAt: '',
@@ -80,6 +83,13 @@ describe('validation métier', () => {
     expect(messages.some(message => message.includes('client'))).toBe(true)
     expect(messages.some(message => message.includes('quantité'))).toBe(true)
     expect(messages.some(message => message.includes('TVA'))).toBe(true)
+  })
+
+  it('refuse une échéance antérieure à la date de facture', () => {
+    const document = baseDocument()
+    document.dueDate = '2026-07-05'
+    const messages = validateDocument(document).map(issue => issue.message)
+    expect(messages.some(message => message.includes('échéance') && message.includes('précéder'))).toBe(true)
   })
 })
 
