@@ -16,8 +16,8 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 
 ## Séquence 1 → 7
 
-1. **Dashboard annuel fiable** — EN COURS
-   - « Cette année » doit réellement filtrer l’année courante ;
+1. **Dashboard annuel fiable** — CERTIFIÉ, MERGE PR #11 RESTANT
+   - « Cette année » filtre réellement l’année courante ;
    - DRAFT/CANCELLED exclus des KPI ;
    - FINALIZED/PAID uniquement ;
    - BL sans prix : document compté, montant = 0.
@@ -53,13 +53,14 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 - BL sans prix compte sans ajouter de montant ;
 - 390/430/768/1280 sans overflow ni erreur console/page.
 
-**État actuel : EN COURS — preuve métier acquise, CI finale en cours.**
+**État : CERTIFIÉ — PR #11 à merger.**
 
 Repo : `hraaaaf/facture-pwa`
 Branche : `fix/dashboard-year-stats`
-PR : `#11` draft
-HEAD candidat : `70eb7fd9fdace804de20f863d54241014dec62f5`
-Run courant : `33273982753` — en cours.
+PR : `#11`
+HEAD certifié avant ce commit documentaire : `4f988c01b9dbeb361ecddbefcc3314376db06870`
+Run de certification : `33274002642` — **SUCCESS**.
+Artefact : `dashboard-stats-before-after`, ID `9720952874`, SHA-256 `766d8287196bebab96646b510c1c4ef856bf97fd9254efe1832f3b00e1c9d58e`.
 
 Changements produit :
 - `src/dashboardStats.ts` : agrégation annuelle métier isolée ;
@@ -67,32 +68,33 @@ Changements produit :
 - `src/dashboardStats.test.ts` : régressions dédiées.
 
 Certification :
-- `.github/workflows/dashboard-stats-cert.yml` ;
-- `scripts/dashboard-stats-certification.mjs` ;
-- BEFORE/AFTER 390/430/768/1280 + assertions métier.
-
-Preuves déjà obtenues :
-- `102/102` tests unitaires verts sur les HEAD précédents ;
+- `102/102` tests unitaires verts ;
 - build TypeScript/Vite/PWA vert ;
-- navigateur : `7/7` assertions atteintes deux fois ;
+- build de la baseline `main` vert ;
+- navigateur : `7/7` assertions ;
 - baseline : Facture `4 / 1 900 MAD` ;
 - AFTER : Facture `2 / 300 MAD` ;
 - BL sans prix : `1 / 0 MAD` ;
-- 390/430/768/1280 sans overflow ;
-- 0 erreur page / console ;
-- captures BEFORE/AFTER produites.
+- 390/430/768/1280 : scrollWidth = innerWidth ;
+- 0 erreur page ;
+- 0 erreur console ;
+- captures BEFORE/AFTER présentes aux 4 viewports ;
+- diff pixel BEFORE/AFTER : 390 = 0,157 %, 430 = 0,143 %, 768 = 0,090 %, 1280 = 0,054 % ;
+- score visuel du lot : **10/10 conformité à la référence**, changement visible limité aux KPI attendus.
 
-Incidents de harnais :
-- run `33272762635` : assertions 7/7 puis annulation du job pendant le teardown ;
-- run `33272928812` : assertions 7/7 puis timeout 180 s, serveurs `npm preview` restés vivants ;
-- stratégie changée : suppression des processus `npm preview`, remplacés au HEAD `70eb7fd9…` par deux serveurs HTTP statiques gérés dans le même process Node.
+Incidents de harnais et résolution :
+- run `33272762635` : assertions 7/7 puis annulation pendant teardown ;
+- run `33272928812` : assertions 7/7 puis timeout 180 s, serveurs `npm preview` persistants ;
+- après deux échecs similaires, stratégie changée : serveurs enfants supprimés et remplacés par deux serveurs HTTP statiques gérés dans le même process Node ;
+- run `33274002642` : teardown, rapport et upload d’artefact terminés avec succès.
 
-Aucune modification des critères métier ou visuels n’a été faite pour rendre la CI verte.
+Aucun critère métier ou visuel n’a été affaibli pour obtenir le vert.
 
 ## Avancement audit remediation
 
-**0/7 clos** tant que l’étape 1 n’a pas une CI finale verte puis son closeout/merge.
+Avant merge : **0/7 clos, étape 1 certifiée**.
+Après merge vérifié de la PR #11 sur `main` : **1/7 clos = 14,3 %**.
 
 ## Next exact
 
-Vérifier le run `33273982753`. Si vert : inspecter rapport/artefact, marquer l’étape 1 close, rendre la PR prête, merger et vérifier `main` post-merge. Si rouge : diagnostiquer l’étape exacte sans affaiblir les critères.
+Exiger une CI verte sur le HEAD documentaire final de la PR #11, rendre la PR prête, merger avec contrôle du SHA, vérifier `main` post-merge et l’état du déploiement automatique. Ensuite passer à l’étape 2 : continuité / sauvegarde des données.
