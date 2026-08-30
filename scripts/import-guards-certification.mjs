@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { jsPDF } from 'jspdf'
 import { createServer } from 'node:http'
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
@@ -51,6 +52,16 @@ function check(name, ok, detail='') {
   if (!ok) failures.push(`${name}: ${detail}`)
 }
 
+function pdfWithPages(pageCount) {
+  const pdf = new jsPDF({ compress:true })
+  pdf.text('Factea import guard certification', 20, 20)
+  for (let page = 2; page <= pageCount; page += 1) {
+    pdf.addPage()
+    pdf.text(`Page ${page}`, 20, 20)
+  }
+  return Buffer.from(pdf.output('arraybuffer'))
+}
+
 const baseline = await serve(baselineRoot)
 const feature = await serve(featureRoot)
 const browser = await chromium.launch({ headless:true })
@@ -88,6 +99,13 @@ try {
   })
   await page.getByText('Fichier trop lourd. Limite : 15 Mo.', { exact:true }).waitFor({ timeout:3000 })
   check('oversized_rejected', await page.getByText('Fichier trop lourd. Limite : 15 Mo.', { exact:true }).count() === 1, 'oversized file must fail before heavy parsing')
+
+  await page.getByRole('button', { name:'Annuler', exact:true }).click()
+  await page.locator('.quote-file-input').setInputFiles({
+    name:'21-pages.pdf', mimeType:'application/pdf', buffer:pdfWithPages(21)
+  })
+  await page.getByText('PDF trop long. Limite : 20 pages.', { exact:true }).waitFor({ timeout:10000 })
+  check('pdf_page_limit', await page.getByText('PDF trop long. Limite : 20 pages.', { exact:true }).count() === 1, '21-page PDF must be rejected before page rendering/OCR')
 
   await page.getByRole('button', { name:'Annuler', exact:true }).click()
   await page.locator('.quote-file-input').setInputFiles({
