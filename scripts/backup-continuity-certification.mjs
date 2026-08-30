@@ -157,6 +157,7 @@ let report
 try {
   const before = await capturePhase({ browser, phase: 'before', url: 'http://127.0.0.1:4191' })
   const after = await capturePhase({ browser, phase: 'after', url: 'http://127.0.0.1:4192' })
+  const before390 = before.captures.find(item => item.width === 390)
   const after390 = after.captures.find(item => item.width === 390)
 
   const downloadPromise = after.page.waitForEvent('download')
@@ -170,7 +171,7 @@ try {
   await after.page.close()
 
   const assertions = [
-    { name: 'baseline has no proactive reminder', ok: before.captures.every(item => item.reminder === ''), detail: before.captures.map(item => ({ width: item.width, reminder: item.reminder })) },
+    { name: 'baseline retains proactive reminder', ok: before390?.reminder.includes('Sauvegarde à faire') && before390?.reminder.includes('Garde une copie hors du téléphone'), detail: before390?.reminder },
     { name: 'feature warns when data exists without backup', ok: after390?.reminder.includes('Sauvegarde à faire') && after390?.reminder.includes('Garde une copie hors du téléphone'), detail: after390?.reminder },
     { name: 'backup action downloads a full JSON backup', ok: suggestedName.startsWith('facture-pwa-backup-') && suggestedName.endsWith('.json'), detail: suggestedName },
     { name: 'successful backup records freshness metadata', ok: typeof backupMeta.lastBackupAt === 'string' && backupMeta.lastBackupAt.length > 0, detail: backupMeta },

@@ -4,223 +4,137 @@ Date de départ : 29 août 2026
 
 ## Goal global
 
-Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 9/10 sur les usages réels, sans sacrifier la simplicité mobile, le local-first, la fiabilité métier ni la preuve.
+Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 9/10 sur les usages réels, sans sacrifier simplicité mobile, local-first, fiabilité métier ni preuve.
 
 ## Doctrine
 
-- chaque étape est close uniquement avec preuve ;
-- aucune promotion/déploiement Vercel manuel sans autorisation explicite ;
-- les changements UI conservent une preuve BEFORE/AFTER aux viewports pertinents ;
-- une CI en cours ne bloque pas le travail indépendant ;
-- `DONE` = code + tests + comportement observé + closeout cohérent.
+- une étape est close uniquement avec code + tests + comportement observé + closeout cohérent ;
+- UI/UX : BEFORE → Goal → implémentation → AFTER mêmes viewports → comparaison + tests + score visuel ;
+- aucun déploiement Vercel manuel sans autorisation explicite ;
+- une CI en cours n’arrête pas le travail indépendant.
 
 ## Séquence 1 → 7
 
 1. **Dashboard annuel fiable** — CLOS
-2. **Continuité / sauvegarde des données** — CLOS
+2. **Continuité / sauvegarde** — CLOS
 3. **Cycle facture / encaissement** — CLOS
 4. **Recherche / filtres** — CLOS
-5. **Gestion Clients / Catalogue** — CLOS
+5. **Clients / Catalogue** — CLOS
 6. **Garde-fous OCR / imports lourds** — CLOS
-7. **Actions mortes / cohérence UX** — À FAIRE
+7. **Actions mortes / cohérence UX** — CERTIFIÉ, merge/production à prouver
 
 ## Étape 1 — Dashboard annuel fiable
 
-**État : CLOS — PR #11 mergée et production READY.**
+**État : CLOS.**
 
-Preuve canonique :
-- PR `#11` : MERGED ;
-- `main` : `cdf8306483e7749fffefc406e3e97782b7f04306` ;
-- run `33274002642` : SUCCESS ;
-- `102/102` tests ;
-- navigateur `7/7` assertions ;
+Preuve :
+- PR `#11` MERGED ; main `cdf8306483e7749fffefc406e3e97782b7f04306` ;
+- run `33274002642` SUCCESS ; `102/102` tests ; navigateur `7/7` ;
 - artefact `9720952874`, SHA-256 `766d8287196bebab96646b510c1c4ef856bf97fd9254efe1832f3b00e1c9d58e` ;
-- production auto `dpl_EZWXTGhnXfDPPTCQY1vNrHuT2iJ2` READY ;
-- alias public HTTP 200.
+- production `dpl_EZWXTGhnXfDPPTCQY1vNrHuT2iJ2` READY ; HTTP 200.
 
-## Étape 2 — Continuité / sauvegarde des données
+## Étape 2 — Continuité / sauvegarde
 
-**État : CLOS — PR #12 mergée et production READY.**
+**État : CLOS.**
 
-Preuve canonique :
-- PR `#12` : MERGED ;
-- `main` : `ee14680c4637370ac253ca907e4e8fb64c64e721` ;
-- run `33274757981` : SUCCESS, `107/107` tests, navigateur `7/7` ;
-- run numérotation `33274757955` : SUCCESS ;
+Preuve :
+- PR `#12` MERGED ; main `ee14680c4637370ac253ca907e4e8fb64c64e721` ;
+- run `33274757981` SUCCESS ; `107/107` tests ; navigateur `7/7` ;
+- numérotation `33274757955` SUCCESS ;
 - artefact `9721171861`, SHA-256 `9f32f21e854dc00380dc3c5ef7270ce7bf23cc60004b3c34f689f651850d2ab5` ;
-- production auto `dpl_4dSoPNeDURi3wwujXZbMq54umuLi` READY ;
-- alias public HTTP 200.
+- production `dpl_4dSoPNeDURi3wwujXZbMq54umuLi` READY ; HTTP 200.
 
 ## Étape 3 — Cycle facture / encaissement
 
-**Goal** : une facture doit permettre de suivre l’échéance et les règlements réels sans perdre la simplicité mobile ni affaiblir le verrouillage après finalisation.
+**État : CLOS.**
 
-**État : CLOS — PR #13 mergée et production READY.**
+Fonctionnel : échéance, règlements partiels/acompte, mode, reste dû, retard, surpaiement refusé, historique append-only, compatibilité anciennes factures payées.
 
-Fonctionnel vérifié :
-- échéance + mode de règlement prévu sur facture ;
-- historique d’encaissement append-only ;
-- acompte et paiement partiel avec reste dû ;
-- surpaiement refusé sans écriture ;
-- paiement antérieur à la facture refusé sans écriture ;
-- second règlement soldant la facture persiste et passe automatiquement à `PAID` ;
-- ancienne facture `PAID` sans ledger détaillé reste considérée soldée ;
-- historique distingue `À encaisser`, `En retard` et `Payé` ;
-- données de règlement intégrées au document local et donc au backup JSON existant.
-
-Preuve canonique :
-- PR `#13` : MERGED le 29 août 2026 ;
-- HEAD certifié : `9a2c95a92a2744bbaa78d8034cee9891f1aa60da` ;
-- merge `main` : `2d948ef1fa500eff9b2c42c73467733bf724a328` ;
-- compare HEAD certifié → merge : `0` fichier différent ;
-- Payment Lifecycle `33276330633` : SUCCESS ;
-- Dashboard Stats `33276330638` : SUCCESS ;
-- Numbering Baseline `33276330645` : SUCCESS ;
-- `114/114` tests, build TypeScript/Vite/PWA + baseline `main` ;
-- navigateur paiement : `10/10` assertions ;
-- BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
-- artefact principal `9721508962`, SHA-256 `96383f57681d763bcfc569dab0acdc5f1f2956b8ce56f390173f8ff5da5ca1e4` ;
-- score visuel inspecté : **9,7/10** ;
-- production auto `dpl_7qUeA92X8A8XnHAJtnABKknV8oQD` : READY sur le commit exact de merge ;
-- alias public `facture-pwa.vercel.app` : HTTP 200 ;
-- aucun déploiement Vercel manuel lancé.
-
-Note CI :
-- l’ancien rouge Dashboard `33275965224` venait d’un contrat historique exigeant encore le bug Step 1 sur la baseline ;
-- contrat corrigé au commit `9b2b20f51a53bc51884cb168e933f0dde62bca0b` ;
-- cycle final Dashboard `33276330638` : SUCCESS.
+Preuve :
+- PR `#13` MERGED ; merge `2d948ef1fa500eff9b2c42c73467733bf724a328` ;
+- HEAD certifié `9a2c95a92a2744bbaa78d8034cee9891f1aa60da` ;
+- runs Payment `33276330633`, Dashboard `33276330638`, Numbering `33276330645` SUCCESS ;
+- `114/114` tests ; navigateur paiement `10/10` ;
+- artefact `9721508962`, SHA-256 `96383f57681d763bcfc569dab0acdc5f1f2956b8ce56f390173f8ff5da5ca1e4` ;
+- visuel **9,7/10** ; production `dpl_7qUeA92X8A8XnHAJtnABKknV8oQD` READY ; HTTP 200.
 
 ## Étape 4 — Recherche / filtres
 
-**Goal** : rendre l’historique réellement exploitable sur mobile avec recherche par ICE / IF / désignation ligne, filtre montant TTC et période, sans alourdir l’interface.
+**État : CLOS.**
 
-**État : CLOS — PR #14 mergée et production READY.**
+Fonctionnel : recherche numéro/client/adresse/ICE/IF/objet/type/statut/désignation/unité, accents/casse, période, TTC min/max, BL sans prix = 0.
 
-Fonctionnel vérifié :
-- recherche texte couvre numéro, client, adresse, ICE, IF, objet, type, statut, désignation et unité ;
-- recherche insensible à la casse et aux accents ;
-- filtres de type existants conservés ;
-- périodes `Toutes les dates`, `Ce mois`, `Cette année`, `Personnalisée` ;
-- bornes personnalisées inclusives ;
-- montant TTC min/max ;
-- BL sans prix traité à `0` pour le filtre montant ;
-- panneau avancé compact, fermé par défaut, responsive mobile.
+Preuve :
+- PR `#14` MERGED ; merge `3f4b1405b91ccd4a6da753de4d5723d51e345981` ;
+- HEAD produit certifié `3f9f2daa6e3147d3530c7310702ffa84575439ff` ;
+- Search `33280408651`, Payment `33280408637`, Dashboard `33280408697` SUCCESS ;
+- `121/121` tests ; navigateur Search `6/6` ;
+- artefact `9722768087`, SHA-256 `598e369e587f6653e027c38d69d92524271935ea5528e236de221b53fbd68c1a` ;
+- visuel **9,6/10** ; production `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` READY ; HTTP 200.
 
-Preuve canonique :
-- PR `#14` : MERGED le 29 août 2026 ;
-- HEAD produit certifié : `3f9f2daa6e3147d3530c7310702ffa84575439ff` ;
-- HEAD final branche : `f9e13108aed19bb364bddcd307958d97786e6b6f` ;
-- merge `main` : `3f4b1405b91ccd4a6da753de4d5723d51e345981` ;
-- compare HEAD final → merge : `0` fichier différent ;
-- Search Filters `33280408651` : SUCCESS ;
-- Payment Lifecycle `33280408637` : SUCCESS ;
-- Dashboard Stats `33280408697` : SUCCESS ;
-- `121/121` tests ;
-- navigateur Search : `6/6` assertions ;
-- BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
-- artefact Search `9722768087`, SHA-256 `598e369e587f6653e027c38d69d92524271935ea5528e236de221b53fbd68c1a` ;
-- score visuel inspecté : **9,6/10** ;
-- production auto `dpl_GMMvKZH1gnfcTQmdJJaQjCdSumwq` : READY sur le commit exact de merge ;
-- alias public `facture-pwa.vercel.app` : HTTP 200 ;
-- aucun déploiement Vercel manuel lancé.
+## Étape 5 — Clients / Catalogue
 
-Note CI :
-- un ancien contrat Payment Lifecycle exigeait encore la baseline pré-Step 3 ;
-- ce contrat a été aligné sur `main` certifié ;
-- le HEAD final humain `3f9f2daa...` a ensuite obtenu les trois certifications SUCCESS.
+**État : CLOS.**
 
-## Étape 5 — Gestion Clients / Catalogue
+Fonctionnel : gestion dédiée clients/catalogue, recherche/création/édition/suppression, snapshots historiques finalisés immuables, IndexedDB local-first.
 
-**Goal** : rendre les mémoires Clients et Catalogue réellement administrables sans passer par un document, tout en garantissant qu'une modification ou suppression de fiche ne réécrit jamais un document finalisé historique.
-
-**État : CLOS — PR #15 mergée et production READY.**
-
-Fonctionnel vérifié :
-- accès dédié `Clients & catalogue` depuis le dashboard ;
-- onglets Clients / Catalogue avec recherche ;
-- création, modification et suppression des fiches ;
-- validation métier des champs avant persistance ;
-- réutilisation des stores IndexedDB locaux existants, sans cloud ni compte imposé ;
-- suppression d'une fiche client sans suppression du document finalisé lié ;
-- modification d'une fiche client sans modification rétroactive du snapshot du document finalisé ;
-- interface responsive cohérente avec le reste de Factea.
-
-Preuve canonique :
-- PR `#15` : MERGED le 30 août 2026 ;
-- HEAD produit certifié : `3c938d23e5ad4d8db293a21f1252b13261c356f9` ;
-- HEAD final branche : `35ddfdbc260406fa4a654361b6dddb724d5f6fcb` ;
-- merge `main` : `52d83c768b868a19c7bc70e83daa8a48df4fe93e` ;
-- compare HEAD final → merge : `0` fichier différent ;
-- Client Catalog `33281911403` : SUCCESS ;
-- Search Filters `33281911465` : SUCCESS ;
-- Payment Lifecycle `33281911366` : SUCCESS ;
-- Dashboard Stats `33281911386` : SUCCESS ;
-- `22/22` fichiers de tests, `125/125` tests ;
-- build TypeScript/Vite/PWA feature + baseline `main` : SUCCESS ;
-- navigateur Client Catalog : `8/8` assertions ;
-- BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
-- artefact final `9723281876`, SHA-256 `73eb757f9a91da47031779b4f17c63b596d6be6afefc1f5d2bebf8e35153cd43` ;
-- score visuel inspecté : **9,6/10** ;
-- production auto `dpl_8De76g1SCeezHoXGeVrCdBWeL4hZ` : READY sur le commit exact de merge `52d83c768b868a19c7bc70e83daa8a48df4fe93e` ;
-- alias public `facture-pwa.vercel.app` : HTTP 200 ;
-- assets production observés : `/assets/index-tBl0w7k9.js` et `/assets/index-CkJyBvcs.css` ;
-- aucun déploiement Vercel manuel lancé.
-
-Note CI :
-- le rouge Search initial du Step 5 provenait d'un contrat historique qui exigeait encore l'échec de recherche ICE pré-Step 4 ;
-- le contrat a été aligné sur la baseline `main` déjà certifiée ;
-- le cycle final du HEAD certifié a obtenu les quatre certifications SUCCESS.
+Preuve :
+- PR `#15` MERGED ; merge `52d83c768b868a19c7bc70e83daa8a48df4fe93e` ;
+- HEAD produit certifié `3c938d23e5ad4d8db293a21f1252b13261c356f9` ;
+- Client Catalog `33281911403`, Search `33281911465`, Payment `33281911366`, Dashboard `33281911386` SUCCESS ;
+- `125/125` tests ; navigateur `8/8` ;
+- artefact `9723281876`, SHA-256 `73eb757f9a91da47031779b4f17c63b596d6be6afefc1f5d2bebf8e35153cd43` ;
+- visuel **9,6/10** ; production `dpl_8De76g1SCeezHoXGeVrCdBWeL4hZ` READY ; HTTP 200.
 
 ## Étape 6 — Garde-fous OCR / imports lourds
 
-**Goal** : empêcher un import local de bloquer ou saturer la PWA mobile, avec refus clair des fichiers déraisonnables et possibilité d’annuler un traitement en cours.
+**État : CLOS.**
 
-**État : CLOS — PR #16 mergée et production READY.**
+Fonctionnel : 15 MiB max, PDF 20 pages max avant rendu/OCR, timeout 45 s, annulation réelle, erreurs distinctes, flux normal conservé.
+
+Preuve :
+- PR `#16` MERGED ; merge `1220599ae0d63fb17891ffcc4ff1f642e09fcf89` ;
+- HEAD certifié `31bcf01c62fee24176e0522ba6862e221615d231` ;
+- Import Guards `33307434951`, Client Catalog `33307434930` SUCCESS ;
+- `130/130` tests ; navigateur Step 6 `8/8` ; régressions Dashboard `7/7`, Search `6/6`, Payment `10/10`, Client Catalog `8/8` ;
+- artefact `9730935808`, SHA-256 `efb59fbdc264e0aa16ee61411280e32a6e1463e22d4a7b008196ea8473ef99af` ;
+- visuel **9,7/10** ; production merge `dpl_5gZmu76QvwcZwhyXPP2QYUZTJ5yE` READY ; HTTP 200 ;
+- closeout main `bcb5693829d8310c3653883b6d63f525ed0a5084` ; déploiement closeout `dpl_H6UiiCeuP5c4QLRhZBrYcBNxRred` READY.
+
+## Étape 7 — Actions mortes / cohérence UX
+
+**Goal** : supprimer les affordances visibles sans action, sans inventer de menu ni dupliquer les fonctions existantes.
+
+**État : CERTIFIÉ — PR #17 ouverte, merge/production à prouver.**
 
 Fonctionnel vérifié :
-- taille maximale `15 MiB` contrôlée avant lecture lourde ;
-- PDF limité à `20 pages`, contrôle effectué avant rendu/OCR de toutes les pages ;
-- timeout contrôlé à `45 s` ;
-- bouton `Annuler l’analyse` visible pendant le traitement ;
-- annulation propagée aux lectures PDF, rendu et worker OCR quand le moteur le permet ;
-- messages distincts fichier trop lourd / PDF trop long / timeout / annulation ;
-- aucune création de devis après annulation ;
-- import CSV normal sous limite fonctionne encore après une annulation ;
-- interface local-first inchangée hors garde-fous.
+- `Plus d’options` de l’éditeur n’est plus visible ;
+- actions `Aperçu PDF`, `Enregistrer`, `Finaliser` conservées ;
+- titre éditeur centré exactement à 390 / 430 / 768 / 1280 ;
+- bouton dashboard `Réglages` vérifié fonctionnel et ouvre `SettingsScreen` ;
+- zéro overflow, erreur page ou erreur console aux 4 viewports ;
+- changement runtime limité à un CSS ciblé `.editor-more { display: none !important; }` et son import ;
+- le rouge Backup intermédiaire provenait d’un contrat historique exigeant que `main` n’ait pas le rappel Step 2 ; contrat réaligné sur la baseline actuelle sans changement runtime.
 
-Preuve canonique :
-- PR `#16` : MERGED le 30 août 2026 ;
-- HEAD produit certifié : `31bcf01c62fee24176e0522ba6862e221615d231` ;
-- HEAD final branche : `0314a2e6a751064f9a15f3e90a1d897ec4c933e6` ;
-- merge `main` : `1220599ae0d63fb17891ffcc4ff1f642e09fcf89` ;
-- compare HEAD final → merge : `0` fichier différent ;
-- delta HEAD certifié → HEAD final : uniquement `docs/FUNCTIONAL_AUDIT_REMEDIATION.md` ;
-- Import Guards `33307434951` : SUCCESS ;
-- Client Catalog `33307434930` : SUCCESS ;
+Preuve de certification :
+- branche `fix/action-coherence` ; PR `#17` ;
+- HEAD certifié `92426a3282bf9291d8da3e8ade8654eb57dc8697` ;
+- Action Coherence run `33308786300` : étapes produit, navigateur, régressions, vérification rapport et artefact SUCCESS ;
+- Backup Continuity `33308786307` : SUCCESS ;
+- Numbering Baseline du HEAD précédent `33308638815` : SUCCESS ;
 - `23/23` fichiers de tests, `130/130` tests ;
 - build TypeScript/Vite/PWA feature + baseline `main` : SUCCESS ;
-- navigateur Step 6 : `8/8` assertions ;
-- régressions navigateur : Dashboard `7/7`, Search `6/6`, Payment `10/10`, Client Catalog `8/8` ;
-- BEFORE/AFTER `390/430/768/1280`, `scrollWidth === innerWidth`, zéro erreur page/console ;
-- PDF réel `21 pages` refusé avec `PDF trop long. Limite : 20 pages.` ;
-- annulation contrôlée avec `Analyse annulée.` et zéro création de brouillon ;
-- import CSV post-annulation atteint `JSON CANONIQUE PRÊT` puis `Créer le devis` ;
-- artefact `9730935808`, taille `1 558 097` octets, SHA-256 `efb59fbdc264e0aa16ee61411280e32a6e1463e22d4a7b008196ea8473ef99af` ;
-- score visuel inspecté : **9,7/10** ;
-- preview Git du HEAD certifié `dpl_EoyrH9SVFHUMzvmksNoG8Pm8t2My` : READY ;
-- production Git automatique exacte du merge `dpl_5gZmu76QvwcZwhyXPP2QYUZTJ5yE` : READY ;
-- alias public `facture-pwa.vercel.app` : HTTP 200, assets observés `/assets/index-DvHz1Eat.js` et `/assets/index-CiFbtDcD.css` ;
+- navigateur Step 7 `7/7` ; régressions Dashboard `7/7`, Search `6/6`, Payment `10/10`, Client Catalog `8/8` ;
+- BEFORE/AFTER `390/430/768/1280`, titre centré au pixel près, zéro overflow/erreur ;
+- artefact exact HEAD `9731345392`, taille `4 247 413` octets, SHA-256 `542518a068532dd05cff62e531cb53d2df05c0eb84523761ca249c50775196f3` ;
+- score visuel inspecté : **9,8/10** ;
+- preview Git du HEAD certifié `92426a3282bf9291d8da3e8ade8654eb57dc8697` : `dpl_AXUqfKvkFhAKsanvWfkhfy3KLbZU` READY ;
 - aucun déploiement Vercel manuel lancé.
-
-Notes de certification :
-- les rouges intermédiaires provenaient des fixtures/serveurs de certification : MIME `.mjs`, fixture CSV et contrat historique Client Catalog ;
-- ces contrats ont été corrigés sans affaiblir les garde-fous runtime ;
-- le cycle final certifie Step 6 et les quatre régressions existantes.
 
 ## Avancement audit remediation
 
-**6/7 clos = 85,7 %.**
+**6/7 clos = 85,7 %.** Step 7 est certifié mais reste ouvert jusqu’à preuve du merge + production publique.
 
 ## Next exact
 
-Human gate. Étape 7 — Actions mortes / cohérence UX : démarrer uniquement après un nouveau `Go` utilisateur. Cible connue : traiter le contrôle visible `Plus d’options` dans l’éditeur et certifier qu’aucune action visible n’est morte.
+Merge PR #17 sur `main`, vérifier compare branche finale → merge sans delta produit, production Git automatique exacte du merge et alias public HTTP 200, puis marquer **7/7 CLOS = 100 %** et faire le closeout final de l’audit.
