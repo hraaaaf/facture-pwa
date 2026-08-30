@@ -21,7 +21,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 3. **Cycle facture / encaissement** — CLOS
 4. **Recherche / filtres** — CLOS
 5. **Gestion Clients / Catalogue** — CLOS
-6. **Garde-fous OCR / imports lourds** — CERTIFIÉ, merge/production en cours
+6. **Garde-fous OCR / imports lourds** — CLOS
 7. **Actions mortes / cohérence UX** — À FAIRE
 
 ## Étape 1 — Dashboard annuel fiable
@@ -175,7 +175,7 @@ Note CI :
 
 **Goal** : empêcher un import local de bloquer ou saturer la PWA mobile, avec refus clair des fichiers déraisonnables et possibilité d’annuler un traitement en cours.
 
-**État : CERTIFIÉ — merge PR #16 et production encore à prouver.**
+**État : CLOS — PR #16 mergée et production READY.**
 
 Fonctionnel vérifié :
 - taille maximale `15 MiB` contrôlée avant lecture lourde ;
@@ -188,8 +188,13 @@ Fonctionnel vérifié :
 - import CSV normal sous limite fonctionne encore après une annulation ;
 - interface local-first inchangée hors garde-fous.
 
-Preuve de certification :
-- HEAD certifié : `31bcf01c62fee24176e0522ba6862e221615d231` ;
+Preuve canonique :
+- PR `#16` : MERGED le 30 août 2026 ;
+- HEAD produit certifié : `31bcf01c62fee24176e0522ba6862e221615d231` ;
+- HEAD final branche : `0314a2e6a751064f9a15f3e90a1d897ec4c933e6` ;
+- merge `main` : `1220599ae0d63fb17891ffcc4ff1f642e09fcf89` ;
+- compare HEAD final → merge : `0` fichier différent ;
+- delta HEAD certifié → HEAD final : uniquement `docs/FUNCTIONAL_AUDIT_REMEDIATION.md` ;
 - Import Guards `33307434951` : SUCCESS ;
 - Client Catalog `33307434930` : SUCCESS ;
 - `23/23` fichiers de tests, `130/130` tests ;
@@ -202,18 +207,20 @@ Preuve de certification :
 - import CSV post-annulation atteint `JSON CANONIQUE PRÊT` puis `Créer le devis` ;
 - artefact `9730935808`, taille `1 558 097` octets, SHA-256 `efb59fbdc264e0aa16ee61411280e32a6e1463e22d4a7b008196ea8473ef99af` ;
 - score visuel inspecté : **9,7/10** ;
-- preview Git automatique du HEAD certifié : `dpl_EoyrH9SVFHUMzvmksNoG8Pm8t2My` READY ;
+- preview Git du HEAD certifié `dpl_EoyrH9SVFHUMzvmksNoG8Pm8t2My` : READY ;
+- production Git automatique exacte du merge `dpl_5gZmu76QvwcZwhyXPP2QYUZTJ5yE` : READY ;
+- alias public `facture-pwa.vercel.app` : HTTP 200, assets observés `/assets/index-DvHz1Eat.js` et `/assets/index-CiFbtDcD.css` ;
 - aucun déploiement Vercel manuel lancé.
 
 Notes de certification :
-- plusieurs rouges intermédiaires venaient des fixtures/serveurs de certification : MIME `.mjs`, fixture CSV et contrat historique Client Catalog ;
+- les rouges intermédiaires provenaient des fixtures/serveurs de certification : MIME `.mjs`, fixture CSV et contrat historique Client Catalog ;
 - ces contrats ont été corrigés sans affaiblir les garde-fous runtime ;
-- le cycle final certifie à la fois Step 6 et les quatre régressions existantes.
+- le cycle final certifie Step 6 et les quatre régressions existantes.
 
 ## Avancement audit remediation
 
-**5/7 clos = 71,4 %.** Step 6 est certifié mais pas encore clos tant que merge + production publique ne sont pas prouvés.
+**6/7 clos = 85,7 %.**
 
 ## Next exact
 
-Merge PR #16 sur `main`, vérifier le déploiement Git automatique exact du merge et l’alias public HTTP 200, puis marquer Step 6 CLOS et passer au human gate Step 7.
+Human gate. Étape 7 — Actions mortes / cohérence UX : démarrer uniquement après un nouveau `Go` utilisateur. Cible connue : traiter le contrôle visible `Plus d’options` dans l’éditeur et certifier qu’aucune action visible n’est morte.
