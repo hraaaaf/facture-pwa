@@ -21,7 +21,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 3. **Cycle facture / encaissement** — CLOS
 4. **Recherche / filtres** — CLOS
 5. **Gestion Clients / Catalogue** — CLOS
-6. **Garde-fous OCR / imports lourds** — À FAIRE
+6. **Garde-fous OCR / imports lourds** — CERTIFIÉ, merge/production en cours
 7. **Actions mortes / cohérence UX** — À FAIRE
 
 ## Étape 1 — Dashboard annuel fiable
@@ -171,10 +171,49 @@ Note CI :
 - le contrat a été aligné sur la baseline `main` déjà certifiée ;
 - le cycle final du HEAD certifié a obtenu les quatre certifications SUCCESS.
 
+## Étape 6 — Garde-fous OCR / imports lourds
+
+**Goal** : empêcher un import local de bloquer ou saturer la PWA mobile, avec refus clair des fichiers déraisonnables et possibilité d’annuler un traitement en cours.
+
+**État : CERTIFIÉ — merge PR #16 et production encore à prouver.**
+
+Fonctionnel vérifié :
+- taille maximale `15 MiB` contrôlée avant lecture lourde ;
+- PDF limité à `20 pages`, contrôle effectué avant rendu/OCR de toutes les pages ;
+- timeout contrôlé à `45 s` ;
+- bouton `Annuler l’analyse` visible pendant le traitement ;
+- annulation propagée aux lectures PDF, rendu et worker OCR quand le moteur le permet ;
+- messages distincts fichier trop lourd / PDF trop long / timeout / annulation ;
+- aucune création de devis après annulation ;
+- import CSV normal sous limite fonctionne encore après une annulation ;
+- interface local-first inchangée hors garde-fous.
+
+Preuve de certification :
+- HEAD certifié : `31bcf01c62fee24176e0522ba6862e221615d231` ;
+- Import Guards `33307434951` : SUCCESS ;
+- Client Catalog `33307434930` : SUCCESS ;
+- `23/23` fichiers de tests, `130/130` tests ;
+- build TypeScript/Vite/PWA feature + baseline `main` : SUCCESS ;
+- navigateur Step 6 : `8/8` assertions ;
+- régressions navigateur : Dashboard `7/7`, Search `6/6`, Payment `10/10`, Client Catalog `8/8` ;
+- BEFORE/AFTER `390/430/768/1280`, `scrollWidth === innerWidth`, zéro erreur page/console ;
+- PDF réel `21 pages` refusé avec `PDF trop long. Limite : 20 pages.` ;
+- annulation contrôlée avec `Analyse annulée.` et zéro création de brouillon ;
+- import CSV post-annulation atteint `JSON CANONIQUE PRÊT` puis `Créer le devis` ;
+- artefact `9730935808`, taille `1 558 097` octets, SHA-256 `efb59fbdc264e0aa16ee61411280e32a6e1463e22d4a7b008196ea8473ef99af` ;
+- score visuel inspecté : **9,7/10** ;
+- preview Git automatique du HEAD certifié : `dpl_EoyrH9SVFHUMzvmksNoG8Pm8t2My` READY ;
+- aucun déploiement Vercel manuel lancé.
+
+Notes de certification :
+- plusieurs rouges intermédiaires venaient des fixtures/serveurs de certification : MIME `.mjs`, fixture CSV et contrat historique Client Catalog ;
+- ces contrats ont été corrigés sans affaiblir les garde-fous runtime ;
+- le cycle final certifie à la fois Step 6 et les quatre régressions existantes.
+
 ## Avancement audit remediation
 
-**5/7 clos = 71,4 %.**
+**5/7 clos = 71,4 %.** Step 6 est certifié mais pas encore clos tant que merge + production publique ne sont pas prouvés.
 
 ## Next exact
 
-Human gate. Étape 6 — Garde-fous OCR / imports lourds : démarrer uniquement après un nouveau `Go` utilisateur.
+Merge PR #16 sur `main`, vérifier le déploiement Git automatique exact du merge et l’alias public HTTP 200, puis marquer Step 6 CLOS et passer au human gate Step 7.
