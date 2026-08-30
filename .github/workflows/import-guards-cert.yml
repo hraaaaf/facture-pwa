@@ -15,7 +15,7 @@ on:
 jobs:
   certify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,8 +40,14 @@ jobs:
           git archive origin/main | tar -x -C /tmp/facture-main
           ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
           (cd /tmp/facture-main && npm run build)
-      - name: Browser certification
+      - name: Step 6 browser certification
         run: timeout --signal=TERM --kill-after=5s 180s node scripts/import-guards-certification.mjs /tmp/facture-main .
+      - name: Regression browser certifications
+        run: |
+          timeout --signal=TERM --kill-after=5s 180s node scripts/dashboard-stats-certification.mjs /tmp/facture-main .
+          timeout --signal=TERM --kill-after=5s 180s node scripts/search-filters-certification.mjs /tmp/facture-main .
+          timeout --signal=TERM --kill-after=5s 180s node scripts/payment-lifecycle-certification.mjs /tmp/facture-main .
+          timeout --signal=TERM --kill-after=5s 180s node scripts/client-catalog-certification.mjs /tmp/facture-main .
       - name: Verify report
         run: |
           node - <<'NODE'
