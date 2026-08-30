@@ -171,6 +171,13 @@
   line-height: 1.4;
 }
 .quote-privacy-note { display: flex; align-items: center; gap: 8px; }
+.quote-limit-note {
+  margin: 7px 2px 0;
+  color: #6e7972;
+  font-size: .68rem;
+  line-height: 1.4;
+  text-align: center;
+}
 
 .quote-processing {
   min-height: 260px;
@@ -182,6 +189,18 @@
 }
 .quote-processing > span:not(.quote-spinner) { color: #6f7b73; font-size: .82rem; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quote-processing small { color: #87918b; font-size: .72rem; }
+.quote-cancel-processing {
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 16px;
+  border: 1px solid rgba(26, 52, 37, .10);
+  border-radius: 14px;
+  background: rgba(238,241,239,.94);
+  color: #425048;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 760;
+}
 .quote-spinner {
   width: 44px;
   height: 44px;
