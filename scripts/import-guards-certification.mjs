@@ -13,7 +13,7 @@ const widths = [390, 430, 768, 1280]
 const assertions = []
 const failures = []
 const report = { assertions, widths: {}, failure: null }
-const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.png':'image/png', '.svg':'image/svg+xml', '.webmanifest':'application/manifest+json' }
+const mime = { '.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.json':'application/json', '.png':'image/png', '.svg':'image/svg+xml', '.webmanifest':'application/manifest+json' }
 
 function serve(root) {
   const dist = resolve(root, 'dist')
@@ -52,12 +52,12 @@ function check(name, ok, detail='') {
   if (!ok) failures.push(`${name}: ${detail}`)
 }
 
-function pdfWithPages(pageCount) {
+function pdfWithPages(pageCount, { withText = true } = {}) {
   const pdf = new jsPDF({ compress:true })
-  pdf.text('Factea import guard certification', 20, 20)
+  if (withText) pdf.text('Factea import guard certification', 20, 20)
   for (let page = 2; page <= pageCount; page += 1) {
     pdf.addPage()
-    pdf.text(`Page ${page}`, 20, 20)
+    if (withText) pdf.text(`Page ${page}`, 20, 20)
   }
   return Buffer.from(pdf.output('arraybuffer'))
 }
@@ -110,7 +110,7 @@ try {
 
   await page.getByRole('button', { name:'Annuler', exact:true }).click()
   await page.locator('.quote-file-input').setInputFiles({
-    name:'cancel.pdf', mimeType:'application/pdf', buffer:pdfWithPages(20)
+    name:'cancel.pdf', mimeType:'application/pdf', buffer:pdfWithPages(20, { withText:false })
   })
   const cancelButton = page.getByRole('button', { name:'Annuler l’analyse', exact:true })
   await cancelButton.waitFor({ state:'visible', timeout:3000 })
