@@ -43,12 +43,19 @@ export const throwIfImportAborted = (signal?: AbortSignal) => {
 export const raceWithImportAbort = async <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
   if (!signal) return promise
   throwIfImportAborted(signal)
-  return await Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      signal.addEventListener('abort', () => reject(importAbortError(signal)), { once: true })
-    })
-  ])
+
+  return await new Promise<T>((resolve, reject) => {
+    const abort = () => {
+      cleanup()
+      reject(importAbortError(signal))
+    }
+    const cleanup = () => signal.removeEventListener('abort', abort)
+    signal.addEventListener('abort', abort, { once: true })
+    promise.then(
+      value => { cleanup(); resolve(value) },
+      error => { cleanup(); reject(error) }
+    )
+  })
 }
 
 export const runWithImportGuards = async <T>(
