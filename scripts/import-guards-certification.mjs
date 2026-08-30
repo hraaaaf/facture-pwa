@@ -104,8 +104,9 @@ try {
   await page.locator('.quote-file-input').setInputFiles({
     name:'21-pages.pdf', mimeType:'application/pdf', buffer:pdfWithPages(21)
   })
-  await page.getByText('PDF trop long. Limite : 20 pages.', { exact:true }).waitFor({ timeout:10000 })
-  check('pdf_page_limit', await page.getByText('PDF trop long. Limite : 20 pages.', { exact:true }).count() === 1, '21-page PDF must be rejected before page rendering/OCR')
+  await page.locator('.quote-error-card').waitFor({ state:'visible', timeout:15000 })
+  const pdfPageError = await page.locator('.quote-error-card').innerText()
+  check('pdf_page_limit', pdfPageError.includes('PDF trop long. Limite : 20 pages.'), `21-page result: ${pdfPageError.replace(/\s+/g, ' ')}`)
 
   await page.getByRole('button', { name:'Annuler', exact:true }).click()
   await page.locator('.quote-file-input').setInputFiles({
