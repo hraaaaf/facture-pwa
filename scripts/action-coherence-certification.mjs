@@ -130,7 +130,14 @@ try {
     const after = report.widths[width].after
     return typeof after.titleCenter === 'number' && Math.abs(after.titleCenter - after.viewportCenter) <= 2
   })
-  check('editor_title_centered', centered, JSON.stringify(Object.fromEntries(widths.map(width => [width, { title: report.widths[width].after.titleCenter, viewport: report.widths[width].after.viewportCenter }])))
+  const centers = Object.fromEntries(widths.map(width => [
+    width,
+    {
+      title: report.widths[width].after.titleCenter,
+      viewport: report.widths[width].after.viewportCenter
+    }
+  ]))
+  check('editor_title_centered', centered, JSON.stringify(centers))
 
   const settingsPage = await browser.newPage({ viewport: { width: 390, height: 844 } })
   const settingsErrors = []
