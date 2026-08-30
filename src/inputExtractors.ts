@@ -2,6 +2,7 @@ import type { QuoteInputKind, RawQuotePayload } from './quoteImport'
 import { extractDocumentDate, extractMultilineClientName } from './importMetadata'
 import { pdfItemsToCandidateTables } from './pdfLayout'
 import { importDebug } from './importDebug'
+import { assertImportFileSize, assertPdfPageCount, raceWithImportAbort, runWithImportGuards, throwIfImportAborted } from './importGuards'
 
 export interface ExtractedInput {
   kind: QuoteInputKind
@@ -153,13 +154,14 @@ export const extractedInputToRawQuote = (input: ExtractedInput): RawQuotePayload
   }
 }
 
-const extractTextFile = async (file: File): Promise<ExtractedInput> => ({
-  kind: 'TEXT', name: file.name, mimeType: file.type, text: cleanText(await file.text()), tables: [], warnings: []
+const extractTextFile = async (file: File, signal?: AbortSignal): Promise<ExtractedInput> => ({
+  kind: 'TEXT', name: file.name, mimeType: file.type, text: cleanText(await raceWithImportAbort(file.text(), signal)), tables: [], warnings: []
 })
 
-const extractExcel = async (file: File): Promise<ExtractedInput> => {
-  const XLSX = await import('xlsx')
-  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true })
+const extractExcel = async (file: File, signal?: AbortSignal): Promise<ExtractedInput> => {
+  throwIfImportAborted(signal)
+  const XLSX = await raceWithImportAbort(import('xlsx'), signal)
+  const workbook = XLSX.read(await raceWithImportAbort(file.arrayBuffer(), signal), { type: 'array', cellDates: true })
   const tables = workbook.SheetNames.map(name => {
     const sheet = workbook.Sheets[name]
     return XLSX.utils.sheet_to_json<Array<string | number | null>>(sheet, { header: 1, raw: false, defval: null })
@@ -173,9 +175,10 @@ const tableElementToMatrix = (table: HTMLTableElement): Array<Array<string | num
     Array.from(row.cells).map(cell => cleanText(cell.textContent ?? ''))
   ).filter(row => row.some(Boolean))
 
-const extractWord = async (file: File): Promise<ExtractedInput> => {
-  const mammoth = await import('mammoth')
-  const arrayBuffer = await file.arrayBuffer()
+const extractWord = async (file: File, signal?: AbortSignal): Promise<ExtractedInput> => {
+  throwIfImportAborted(signal)
+  const mammoth = await raceWithImportAbort(import('mammoth'), signal)
+  const arrayBuffer = await raceWithImportAbort(file.arrayBuffer(), signal)
   const [raw, html] = await Promise.all([
     mammoth.extractRawText({ arrayBuffer }),
     mammoth.convertToHtml({ arrayBuffer })
@@ -240,12 +243,13 @@ const pdfItemDebugSummary = (items: Array<unknown>) => {
   }
 }
 
-export const readPdfTextItems = async (stream: PdfTextStreamLike): Promise<Array<unknown>> => {
+export const readPdfTextItems = async (stream: PdfTextStreamLike, signal?: AbortSignal): Promise<Array<unknown>> => {
   const reader = stream.getReader()
   const items: Array<unknown> = []
   try {
     while (true) {
-      const { value, done } = await reader.read()
+      throwIfImportAborted(signal)
+      const { value, done } = await raceWithImportAbort(reader.read(), signal)
       if (done) break
       if (value?.items) items.push(...value.items)
     }
@@ -275,35 +279,53 @@ export const pdfItemsToText = (items: Array<unknown>): string => {
     .join('\n')
 }
 
-const ocrImages = async (images: Array<Blob | HTMLCanvasElement>) => {
-  const { createWorker } = await import('tesseract.js')
-  const worker = await createWorker(['fra', 'eng'])
+const ocrImages = async (images: Array<Blob | HTMLCanvasElement>, signal?: AbortSignal) => {
+  throwIfImportAborted(signal)
+  const { createWorker } = await raceWithImportAbort(import('tesseract.js'), signal)
+  const worker = await raceWithImportAbort(createWorker(['fra', 'eng']), signal)
+  const terminate = () => { void worker.terminate() }
+  signal?.addEventListener('abort', terminate, { once: true })
   try {
     const pages: string[] = []
     for (const image of images) {
-      const result = await worker.recognize(image)
+      throwIfImportAborted(signal)
+      const result = await raceWithImportAbort(worker.recognize(image), signal)
       pages.push(result.data.text)
     }
     return cleanText(pages.join('\n'))
   } finally {
-    await worker.terminate()
+    signal?.removeEventListener('abort', terminate)
+    await worker.terminate().catch(() => undefined)
   }
 }
 
-const extractPdf = async (file: File): Promise<ExtractedInput> => {
+const extractPdf = async (file: File, signal?: AbortSignal): Promise<ExtractedInput> => {
   importDebug('pdf.start', { fileSize: file.size, mimeType: file.type })
-  const pdfjs = await import('pdfjs-dist')
-  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
+  throwIfImportAborted(signal)
+  const pdfjs = await raceWithImportAbort(import('pdfjs-dist'), signal)
+  const workerUrl = (await raceWithImportAbort(import('pdfjs-dist/build/pdf.worker.min.mjs?url'), signal)).default
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+  const data = new Uint8Array(await raceWithImportAbort(file.arrayBuffer(), signal))
+  const loadingTask = pdfjs.getDocument({ data })
+  const destroyLoading = () => { void loadingTask.destroy() }
+  signal?.addEventListener('abort', destroyLoading, { once: true })
+  let pdf
+  try {
+    pdf = await raceWithImportAbort(loadingTask.promise, signal)
+  } finally {
+    signal?.removeEventListener('abort', destroyLoading)
+  }
+  throwIfImportAborted(signal)
+  assertPdfPageCount(pdf.numPages)
   importDebug('pdf.loaded', { numPages: pdf.numPages })
   const textPages: string[] = []
   const pdfTables: ExtractedInput['tables'] = []
   const pagesForOcr: HTMLCanvasElement[] = []
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber)
-    const items = await readPdfTextItems(page.streamTextContent() as unknown as PdfTextStreamLike)
+    throwIfImportAborted(signal)
+    const page = await raceWithImportAbort(pdf.getPage(pageNumber), signal)
+    const items = await readPdfTextItems(page.streamTextContent() as unknown as PdfTextStreamLike, signal)
     const pageTables = pdfItemsToCandidateTables(items)
     pdfTables.push(...pageTables)
     const pageText = cleanText(pdfItemsToText(items))
@@ -324,12 +346,20 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
     const canvas = document.createElement('canvas')
     canvas.width = Math.ceil(viewport.width)
     canvas.height = Math.ceil(viewport.height)
-    await page.render({ canvas, viewport }).promise
+    const renderTask = page.render({ canvas, viewport })
+    const cancelRender = () => renderTask.cancel()
+    signal?.addEventListener('abort', cancelRender, { once: true })
+    try {
+      await raceWithImportAbort(renderTask.promise, signal)
+    } finally {
+      signal?.removeEventListener('abort', cancelRender)
+    }
+    throwIfImportAborted(signal)
     pagesForOcr.push(canvas)
     importDebug('pdf.ocr_queued', { pageNumber, width: canvas.width, height: canvas.height })
   }
 
-  const ocrText = pagesForOcr.length ? await ocrImages(pagesForOcr) : ''
+  const ocrText = pagesForOcr.length ? await ocrImages(pagesForOcr, signal) : ''
   const text = cleanText([...textPages, ocrText].filter(Boolean).join('\n'))
   const textTables = textToCandidateTables(text)
   const tables = [...pdfTables, ...textTables]
@@ -355,8 +385,8 @@ const extractPdf = async (file: File): Promise<ExtractedInput> => {
   }
 }
 
-const extractImage = async (file: File): Promise<ExtractedInput> => {
-  const text = await ocrImages([file])
+const extractImage = async (file: File, signal?: AbortSignal): Promise<ExtractedInput> => {
+  const text = await ocrImages([file], signal)
   return {
     kind: 'IMAGE',
     name: file.name,
@@ -367,16 +397,22 @@ const extractImage = async (file: File): Promise<ExtractedInput> => {
   }
 }
 
-export const extractInputFile = async (file: File): Promise<ExtractedInput> => {
+export const extractInputFile = async (
+  file: File,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {}
+): Promise<ExtractedInput> => {
   const kind = detectInputKind(file)
   importDebug('import.start', { kind, fileSize: file.size, mimeType: file.type })
   try {
-    if (kind === 'TEXT') return await extractTextFile(file)
-    if (kind === 'EXCEL') return await extractExcel(file)
-    if (kind === 'WORD') return await extractWord(file)
-    if (kind === 'PDF') return await extractPdf(file)
-    if (kind === 'IMAGE') return await extractImage(file)
-    throw new Error('Format de fichier non supporté. Utilisez PDF, Excel, Word, image ou texte.')
+    assertImportFileSize(file)
+    return await runWithImportGuards(async signal => {
+      if (kind === 'TEXT') return await extractTextFile(file, signal)
+      if (kind === 'EXCEL') return await extractExcel(file, signal)
+      if (kind === 'WORD') return await extractWord(file, signal)
+      if (kind === 'PDF') return await extractPdf(file, signal)
+      if (kind === 'IMAGE') return await extractImage(file, signal)
+      throw new Error('Format de fichier non supporté. Utilisez PDF, Excel, Word, image ou texte.')
+    }, options)
   } catch (caught) {
     importDebug('import.error', {
       kind,

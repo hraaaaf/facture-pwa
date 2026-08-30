@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
+import { IMPORT_TIMEOUT_MS, MAX_IMPORT_BYTES, MAX_PDF_PAGES } from './importGuards'
 import { prepareImportDictionary } from './importDictionary'
 import { importDebug } from './importDebug'
 import { voiceToRawQuote } from './voiceQuoteParser'
@@ -149,6 +150,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const importAbortRef = useRef<AbortController | null>(null)
   const [mode, setMode] = useState<ImportMode>('PDF')
   const [step, setStep] = useState<Step>('PICKER')
   const [quote, setQuote] = useState<CanonicalQuoteJSON | null>(null)
@@ -230,7 +232,18 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
   }
 
+  const abortImport = () => {
+    if (importAbortRef.current && !importAbortRef.current.signal.aborted) importAbortRef.current.abort()
+  }
+
+  const closeSheet = () => {
+    abortImport()
+    onClose()
+  }
+
   const reset = () => {
+    abortImport()
+    importAbortRef.current = null
     recognitionRef.current?.abort()
     recognitionRef.current = null
     setVoiceListening(false)
@@ -245,11 +258,14 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
   }
 
   const importFile = async (file: File) => {
+    importAbortRef.current?.abort()
+    const controller = new AbortController()
+    importAbortRef.current = controller
     setStep('PROCESSING')
     setError('')
     setSourceName(file.name)
     try {
-      const extracted = await extractInputFile(file)
+      const extracted = await extractInputFile(file, { signal: controller.signal })
       const raw = extractedInputToRawQuote(extracted)
       const canonical = normalizeImportedRaw(raw, defaultVatRate)
       setWarnings(extracted.warnings)
@@ -259,6 +275,8 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Impossible de lire ce fichier.')
       setStep('ERROR')
+    } finally {
+      if (importAbortRef.current === controller) importAbortRef.current = null
     }
   }
 
@@ -294,11 +312,11 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
   }
 
   return (
-    <div className="quote-import-layer" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+    <div className="quote-import-layer" role="presentation" onMouseDown={event => event.target === event.currentTarget && closeSheet()}>
       <section className="quote-import-sheet" role="dialog" aria-modal="true" aria-label="Importer vers devis">
         <div className="sheet-handle" />
         <header className="quote-import-header">
-          <button className="sheet-close" onClick={onClose} aria-label="Fermer">×</button>
+          <button className="sheet-close" onClick={closeSheet} aria-label="Fermer">×</button>
           <div><span className="section-kicker">INPUT → DEVIS</span><h2>Importer un devis</h2><p>Lecture et correction sur cet appareil</p></div>
           <span className="quote-local-badge"><span className="status-dot" /> Local</span>
         </header>
@@ -333,6 +351,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
               </button>
             </div>
             <p className="quote-privacy-note"><span className="status-dot" /> Les documents restent locaux. La dictée native dépend du navigateur et peut utiliser son propre service vocal.</p>
+            <p className="quote-limit-note">Limites de sécurité : {Math.round(MAX_IMPORT_BYTES / 1024 / 1024)} Mo · PDF {MAX_PDF_PAGES} pages max · {Math.round(IMPORT_TIMEOUT_MS / 1000)} s max.</p>
           </>
         )}
 
@@ -366,6 +385,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
             <strong>Analyse du document…</strong>
             <span>{sourceName}</span>
             <small>Extraction → dictionnaire → validation → JSON canonique</small>
+            <button className="quote-cancel-processing" onClick={abortImport}>Annuler l’analyse</button>
           </div>
         )}
 
