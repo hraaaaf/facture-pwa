@@ -128,7 +128,7 @@ Preuve de certification :
 - BEFORE/AFTER `390/430/768/1280`, titre centré au pixel près, zéro overflow/erreur ;
 - artefact exact HEAD `9731345392`, taille `4 247 413` octets, SHA-256 `542518a068532dd05cff62e531cb53d2df05c0eb84523761ca249c50775196f3` ;
 - score visuel inspecté : **9,8/10** ;
-- preview Git du HEAD `dpl_Hoigtr68zKVFcVYc11aQeehemUHQ` : READY ;
+- preview Git du HEAD certifié `92426a3282bf9291d8da3e8ade8654eb57dc8697` : `dpl_AXUqfKvkFhAKsanvWfkhfy3KLbZU` READY ;
 - aucun déploiement Vercel manuel lancé.
 
 ## Avancement audit remediation
