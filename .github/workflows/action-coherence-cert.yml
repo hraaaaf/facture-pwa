@@ -1,0 +1,64 @@
+name: Action Coherence Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/main.tsx
+      - src/action-coherence.css
+      - scripts/action-coherence-certification.mjs
+      - .github/workflows/action-coherence-cert.yml
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build feature
+        run: npm run build
+      - name: Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Build main baseline
+        run: |
+          rm -rf /tmp/facture-main
+          mkdir -p /tmp/facture-main
+          git archive origin/main | tar -x -C /tmp/facture-main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
+          (cd /tmp/facture-main && npm run build)
+      - name: Step 7 browser certification
+        run: timeout --signal=TERM --kill-after=5s 180s node scripts/action-coherence-certification.mjs /tmp/facture-main .
+      - name: Regression browser certifications
+        run: |
+          timeout --signal=TERM --kill-after=5s 180s node scripts/dashboard-stats-certification.mjs /tmp/facture-main .
+          timeout --signal=TERM --kill-after=5s 180s node scripts/search-filters-certification.mjs /tmp/facture-main .
+          timeout --signal=TERM --kill-after=5s 180s node scripts/payment-lifecycle-certification.mjs /tmp/facture-main .
+          timeout --signal=TERM --kill-after=5s 180s node scripts/client-catalog-certification.mjs /tmp/facture-main .
+      - name: Verify report
+        run: |
+          node - <<'NODE'
+          const fs=require('fs')
+          const r=JSON.parse(fs.readFileSync('artifacts/action-coherence/report.json','utf8'))
+          if(r.failure) throw new Error(r.failure)
+          if(!Array.isArray(r.assertions)||r.assertions.length!==7||r.assertions.some(x=>!x.ok)) throw new Error('Action coherence assertions incomplete')
+          for(const w of [390,430,768,1280]) for(const p of ['before','after']) if(!fs.existsSync(`artifacts/action-coherence/${p}-${w}.png`)) throw new Error(`Missing ${p}-${w}`)
+          if(!fs.existsSync('artifacts/action-coherence/after-settings-390.png')) throw new Error('Missing settings proof')
+          console.log('ACTION COHERENCE REPORT VERIFIED: 7/7')
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: action-coherence-before-after
+          path: artifacts/action-coherence
+          if-no-files-found: error
+          retention-days: 5
