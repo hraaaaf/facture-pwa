@@ -1,0 +1,63 @@
+name: Client Catalog Certification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/App.tsx'
+      - 'src/EntityManager.tsx'
+      - 'src/entity-manager.css'
+      - 'src/entityManagement.ts'
+      - 'src/entityManagement.test.ts'
+      - 'scripts/client-catalog-certification.mjs'
+      - '.github/workflows/client-catalog-cert.yml'
+      - 'docs/STEP5_CLIENT_CATALOG_GOAL.md'
+permissions:
+  contents: read
+concurrency:
+  group: client-catalog-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build feature
+        run: npm run build
+      - name: Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Build main baseline
+        run: |
+          rm -rf /tmp/facture-main
+          mkdir -p /tmp/facture-main
+          git archive origin/main | tar -x -C /tmp/facture-main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
+          (cd /tmp/facture-main && npm run build)
+      - name: Browser certification
+        run: timeout --signal=TERM --kill-after=5s 180s node scripts/client-catalog-certification.mjs /tmp/facture-main .
+      - name: Verify report
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');const r=JSON.parse(fs.readFileSync('artifacts/client-catalog/report.json','utf8'))
+          if(r.failure) throw new Error(r.failure)
+          if(!Array.isArray(r.assertions)||r.assertions.length!==8||r.assertions.some(x=>!x.ok)) throw new Error('Client/catalog assertions incomplete')
+          for(const w of [390,430,768,1280]) for(const p of ['before','after']) if(!fs.existsSync(`artifacts/client-catalog/${p}-${w}.png`)) throw new Error(`Missing ${p}-${w}`)
+          console.log('CLIENT CATALOG REPORT VERIFIED: 8/8')
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-catalog-before-after
+          path: artifacts/client-catalog
+          if-no-files-found: error
+          retention-days: 5

@@ -12,6 +12,8 @@ import { activeAdvancedFilterCount, defaultDocumentSearchFilters, filterDocument
 import { invoicePaymentStateLabel, invoicePaymentSummary, paymentMethodLabel, paymentMethodOptions } from './paymentLifecycle'
 import { generatePdf } from './pdf'
 import { QuoteImportSheet, type ImportedQuoteFields } from './QuoteImportSheet'
+import { EntityManager } from './EntityManager'
+import { deleteManagedCatalogItem, deleteManagedClient, saveManagedCatalogItem, saveManagedClient } from './entityManagement'
 import {
   finalizeDocument,
   getCatalogItems,
@@ -39,7 +41,7 @@ import './memory.css'
 import './payment-lifecycle.css'
 import './search-filters.css'
 
-type View = 'home' | 'editor' | 'history'
+type View = 'home' | 'editor' | 'history' | 'memory'
 type IconName = 'home' | 'history' | 'plus' | 'settings' | 'search' | 'file' | 'invoice' | 'truck' | 'order' | 'chevron' | 'back' | 'save' | 'eye' | 'trash' | 'more' | 'check'
 
 const money = (value: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 }).format(value)
@@ -228,6 +230,30 @@ export default function App() {
     return saved
   }
 
+  const persistManagedClient = async (profile: ClientProfile) => {
+    await saveManagedClient(profile)
+    await refresh()
+    showNotice('Fiche client enregistrée')
+  }
+
+  const removeManagedClient = async (id: string) => {
+    await deleteManagedClient(id)
+    await refresh()
+    showNotice('Fiche client supprimée')
+  }
+
+  const persistManagedItem = async (item: CatalogItem) => {
+    await saveManagedCatalogItem(item)
+    await refresh()
+    showNotice('Article enregistré')
+  }
+
+  const removeManagedItem = async (id: string) => {
+    await deleteManagedCatalogItem(id)
+    await refresh()
+    showNotice('Article supprimé du catalogue')
+  }
+
   const recordPayment = async (input: { amount: number; date: string; method: PaymentMethod; note?: string }) => {
     if (!paymentTarget) throw new Error('Facture introuvable')
     const saved = await recordInvoicePayment(paymentTarget.id, input)
@@ -268,7 +294,11 @@ export default function App() {
       {notice && <div className="toast">{notice}</div>}
 
       {view === 'home' && (
-        <Home documents={documents} onEdit={editDocument} onHistory={() => setView('history')} onSettings={() => undefined} onNew={() => setNewOpen(true)} />
+        <Home documents={documents} onEdit={editDocument} onHistory={() => setView('history')} onSettings={() => undefined} onNew={() => setNewOpen(true)} onManage={() => setView('memory')} />
+      )}
+
+      {view === 'memory' && (
+        <EntityManager clients={clients} catalog={catalog} onBack={() => setView('home')} onSaveClient={persistManagedClient} onDeleteClient={removeManagedClient} onSaveItem={persistManagedItem} onDeleteItem={removeManagedItem} />
       )}
 
       {view === 'history' && (
@@ -311,12 +341,13 @@ export default function App() {
   )
 }
 
-function Home({ documents, onEdit, onHistory, onSettings, onNew }: {
+function Home({ documents, onEdit, onHistory, onSettings, onNew, onManage }: {
   documents: CommercialDocument[]
   onEdit: (document: CommercialDocument) => void
   onHistory: () => void
   onSettings: () => void
   onNew: () => void
+  onManage: () => void
 }) {
   const stats = dashboardStatsForYear(documents, new Date().getFullYear())
 
@@ -327,6 +358,7 @@ function Home({ documents, onEdit, onHistory, onSettings, onNew }: {
         <button className="profile-button" onClick={onSettings} aria-label="Réglages"><Icon name="settings" /></button>
       </header>
       <button className="search-surface" onClick={onHistory}><Icon name="search" /><span>Rechercher un document…</span></button>
+      <button className="management-surface" onClick={onManage}><span><strong>Clients & catalogue</strong><small>Gérer vos fiches réutilisables</small></span><Icon name="chevron" /></button>
 
       <section className="section-block compact-section">
         <div className="section-heading"><div><span className="section-kicker">Aperçu</span><h2>Vos documents</h2></div><span className="period-chip">Cette année</span></div>

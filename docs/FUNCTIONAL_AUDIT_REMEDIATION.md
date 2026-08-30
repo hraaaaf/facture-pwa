@@ -20,7 +20,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 2. **Continuité / sauvegarde des données** — CLOS
 3. **Cycle facture / encaissement** — CLOS
 4. **Recherche / filtres** — CLOS
-5. **Gestion Clients / Catalogue** — À FAIRE
+5. **Gestion Clients / Catalogue** — CERTIFIÉ, merge/prod à confirmer
 6. **Garde-fous OCR / imports lourds** — À FAIRE
 7. **Actions mortes / cohérence UX** — À FAIRE
 
@@ -129,10 +129,42 @@ Note CI :
 - ce contrat a été aligné sur `main` certifié ;
 - le HEAD final humain `3f9f2daa...` a ensuite obtenu les trois certifications SUCCESS.
 
+## Étape 5 — Gestion Clients / Catalogue
+
+**Goal** : rendre les mémoires Clients et Catalogue réellement administrables sans passer par un document, tout en garantissant qu'une modification ou suppression de fiche ne réécrit jamais un document finalisé historique.
+
+**État : CERTIFIÉ — merge PR #15 et production à confirmer.**
+
+Fonctionnel vérifié :
+- accès dédié `Clients & catalogue` depuis le dashboard ;
+- onglets Clients / Catalogue avec recherche ;
+- création, modification et suppression des fiches ;
+- validation métier des champs avant persistance ;
+- réutilisation des stores IndexedDB locaux existants, sans cloud ni compte imposé ;
+- suppression d'une fiche client sans suppression du document finalisé lié ;
+- modification d'une fiche client sans modification rétroactive du snapshot du document finalisé ;
+- interface responsive cohérente avec le reste de Factea.
+
+Preuve de certification avant merge :
+- PR `#15` ;
+- HEAD certifié : `3c938d23e5ad4d8db293a21f1252b13261c356f9` ;
+- Client Catalog `33281911403` : SUCCESS ;
+- Search Filters `33281911465` : SUCCESS ;
+- Payment Lifecycle `33281911366` : SUCCESS ;
+- Dashboard Stats `33281911386` : SUCCESS ;
+- `22/22` fichiers de tests, `125/125` tests ;
+- build TypeScript/Vite/PWA feature + baseline `main` : SUCCESS ;
+- navigateur Client Catalog : `8/8` assertions ;
+- BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
+- artefact final `9723281876`, SHA-256 `73eb757f9a91da47031779b4f17c63b596d6be6afefc1f5d2bebf8e35153cd43` ;
+- score visuel inspecté : **9,6/10** ;
+- ancien rouge Search identifié comme contrat historique exigeant encore l'échec ICE pré-Step 4 ; contrat aligné sur la baseline `main` certifiée ;
+- aucun déploiement Vercel manuel lancé.
+
 ## Avancement audit remediation
 
-**4/7 clos = 57,1 %.**
+**4/7 clos = 57,1 %. Step 5 certifié, non clos tant que merge + production ne sont pas prouvés.**
 
 ## Next exact
 
-Human gate. Étape 5 — Gestion Clients / Catalogue : démarrer uniquement après un nouveau `Go` utilisateur.
+Merge PR #15 sur le tree certifié, vérifier la production automatique exacte puis effectuer le closeout Step 5 sur `main`.
