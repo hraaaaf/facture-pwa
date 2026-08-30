@@ -54,10 +54,10 @@ jobs:
           const fs=require('fs')
           const r=JSON.parse(fs.readFileSync('artifacts/import-guards/report.json','utf8'))
           if(r.failure) throw new Error(r.failure)
-          if(!Array.isArray(r.assertions)||r.assertions.length!==7||r.assertions.some(x=>!x.ok)) throw new Error('Import guard assertions incomplete')
+          if(!Array.isArray(r.assertions)||r.assertions.length!==8||r.assertions.some(x=>!x.ok)) throw new Error('Import guard assertions incomplete')
           for(const w of [390,430,768,1280]) for(const p of ['before','after']) if(!fs.existsSync(`artifacts/import-guards/${p}-${w}.png`)) throw new Error(`Missing ${p}-${w}`)
           if(!fs.existsSync('artifacts/import-guards/after-processing-390.png')) throw new Error('Missing processing-state proof')
-          console.log('IMPORT GUARDS REPORT VERIFIED: 7/7')
+          console.log('IMPORT GUARDS REPORT VERIFIED: 8/8')
           NODE
       - uses: actions/upload-artifact@v4
         with:
