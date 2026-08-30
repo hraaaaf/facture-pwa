@@ -20,7 +20,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 2. **Continuité / sauvegarde des données** — CLOS
 3. **Cycle facture / encaissement** — CLOS
 4. **Recherche / filtres** — CLOS
-5. **Gestion Clients / Catalogue** — CERTIFIÉ, merge/prod à confirmer
+5. **Gestion Clients / Catalogue** — CLOS
 6. **Garde-fous OCR / imports lourds** — À FAIRE
 7. **Actions mortes / cohérence UX** — À FAIRE
 
@@ -133,7 +133,7 @@ Note CI :
 
 **Goal** : rendre les mémoires Clients et Catalogue réellement administrables sans passer par un document, tout en garantissant qu'une modification ou suppression de fiche ne réécrit jamais un document finalisé historique.
 
-**État : CERTIFIÉ — merge PR #15 et production à confirmer.**
+**État : CLOS — PR #15 mergée et production READY.**
 
 Fonctionnel vérifié :
 - accès dédié `Clients & catalogue` depuis le dashboard ;
@@ -145,9 +145,12 @@ Fonctionnel vérifié :
 - modification d'une fiche client sans modification rétroactive du snapshot du document finalisé ;
 - interface responsive cohérente avec le reste de Factea.
 
-Preuve de certification avant merge :
-- PR `#15` ;
-- HEAD certifié : `3c938d23e5ad4d8db293a21f1252b13261c356f9` ;
+Preuve canonique :
+- PR `#15` : MERGED le 30 août 2026 ;
+- HEAD produit certifié : `3c938d23e5ad4d8db293a21f1252b13261c356f9` ;
+- HEAD final branche : `35ddfdbc260406fa4a654361b6dddb724d5f6fcb` ;
+- merge `main` : `52d83c768b868a19c7bc70e83daa8a48df4fe93e` ;
+- compare HEAD final → merge : `0` fichier différent ;
 - Client Catalog `33281911403` : SUCCESS ;
 - Search Filters `33281911465` : SUCCESS ;
 - Payment Lifecycle `33281911366` : SUCCESS ;
@@ -158,13 +161,20 @@ Preuve de certification avant merge :
 - BEFORE/AFTER `390/430/768/1280`, zéro overflow, zéro erreur page/console ;
 - artefact final `9723281876`, SHA-256 `73eb757f9a91da47031779b4f17c63b596d6be6afefc1f5d2bebf8e35153cd43` ;
 - score visuel inspecté : **9,6/10** ;
-- ancien rouge Search identifié comme contrat historique exigeant encore l'échec ICE pré-Step 4 ; contrat aligné sur la baseline `main` certifiée ;
+- production auto `dpl_8De76g1SCeezHoXGeVrCdBWeL4hZ` : READY sur le commit exact de merge `52d83c768b868a19c7bc70e83daa8a48df4fe93e` ;
+- alias public `facture-pwa.vercel.app` : HTTP 200 ;
+- assets production observés : `/assets/index-tBl0w7k9.js` et `/assets/index-CkJyBvcs.css` ;
 - aucun déploiement Vercel manuel lancé.
+
+Note CI :
+- le rouge Search initial du Step 5 provenait d'un contrat historique qui exigeait encore l'échec de recherche ICE pré-Step 4 ;
+- le contrat a été aligné sur la baseline `main` déjà certifiée ;
+- le cycle final du HEAD certifié a obtenu les quatre certifications SUCCESS.
 
 ## Avancement audit remediation
 
-**4/7 clos = 57,1 %. Step 5 certifié, non clos tant que merge + production ne sont pas prouvés.**
+**5/7 clos = 71,4 %.**
 
 ## Next exact
 
-Merge PR #15 sur le tree certifié, vérifier la production automatique exacte puis effectuer le closeout Step 5 sur `main`.
+Human gate. Étape 6 — Garde-fous OCR / imports lourds : démarrer uniquement après un nouveau `Go` utilisateur.
