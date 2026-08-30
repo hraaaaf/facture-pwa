@@ -121,7 +121,7 @@ try {
   check('cancel_no_create', await page.getByText('Devis importé en brouillon', { exact:true }).count() === 0, 'cancelled import must never create a draft')
 
   await page.getByRole('button', { name:'Annuler', exact:true }).click()
-  const csv = 'Client: Atlas SARL\nObjet: Test garde-fous\nDate: 2026-08-30\nDésignation;Qte;P.U;TVA\nService test;1;100;20\n'
+  const csv = 'Client: Atlas SARL\nObjet: Test garde-fous\nDate: 2026-08-30\nArticle;Qte;P.U;TVA\nService test;1;100;20\n'
   await page.locator('.quote-file-input').setInputFiles({ name:'devis.csv', mimeType:'text/csv', buffer:Buffer.from(csv) })
   await page.waitForFunction(() => Boolean(document.querySelector('.quote-ready-hero,.quote-review-heading,.quote-error-card')), null, { timeout:15000 })
   const csvReady = await page.getByRole('button', { name:'Créer le devis', exact:true }).count() === 1
