@@ -21,7 +21,7 @@ Faire passer Factea de l’audit fonctionnel initial **8,6/10** à un niveau >= 
 4. **Recherche / filtres** — CLOS
 5. **Clients / Catalogue** — CLOS
 6. **Garde-fous OCR / imports lourds** — CLOS
-7. **Actions mortes / cohérence UX** — CERTIFIÉ, merge/production à prouver
+7. **Actions mortes / cohérence UX** — CLOS
 
 ## Étape 1 — Dashboard annuel fiable
 
@@ -53,7 +53,7 @@ Fonctionnel : échéance, règlements partiels/acompte, mode, reste dû, retard,
 Preuve :
 - PR `#13` MERGED ; merge `2d948ef1fa500eff9b2c42c73467733bf724a328` ;
 - HEAD certifié `9a2c95a92a2744bbaa78d8034cee9891f1aa60da` ;
-- runs Payment `33276330633`, Dashboard `33276330638`, Numbering `33276330645` SUCCESS ;
+- Payment `33276330633`, Dashboard `33276330638`, Numbering `33276330645` SUCCESS ;
 - `114/114` tests ; navigateur paiement `10/10` ;
 - artefact `9721508962`, SHA-256 `96383f57681d763bcfc569dab0acdc5f1f2956b8ce56f390173f8ff5da5ca1e4` ;
 - visuel **9,7/10** ; production `dpl_7qUeA92X8A8XnHAJtnABKknV8oQD` READY ; HTTP 200.
@@ -105,7 +105,7 @@ Preuve :
 
 **Goal** : supprimer les affordances visibles sans action, sans inventer de menu ni dupliquer les fonctions existantes.
 
-**État : CERTIFIÉ — PR #17 ouverte, merge/production à prouver.**
+**État : CLOS — PR #17 mergée et production READY.**
 
 Fonctionnel vérifié :
 - `Plus d’options` de l’éditeur n’est plus visible ;
@@ -114,27 +114,52 @@ Fonctionnel vérifié :
 - bouton dashboard `Réglages` vérifié fonctionnel et ouvre `SettingsScreen` ;
 - zéro overflow, erreur page ou erreur console aux 4 viewports ;
 - changement runtime limité à un CSS ciblé `.editor-more { display: none !important; }` et son import ;
-- le rouge Backup intermédiaire provenait d’un contrat historique exigeant que `main` n’ait pas le rappel Step 2 ; contrat réaligné sur la baseline actuelle sans changement runtime.
+- contrat historique Backup réaligné sur la baseline Step 2 sans modification runtime.
 
-Preuve de certification :
-- branche `fix/action-coherence` ; PR `#17` ;
+Preuve canonique :
+- PR `#17` MERGED le 30 août 2026 ;
 - HEAD certifié `92426a3282bf9291d8da3e8ade8654eb57dc8697` ;
-- Action Coherence run `33308786300` : étapes produit, navigateur, régressions, vérification rapport et artefact SUCCESS ;
-- Backup Continuity `33308786307` : SUCCESS ;
-- Numbering Baseline du HEAD précédent `33308638815` : SUCCESS ;
+- HEAD final branche `10c8af9839f29f37fca92c6256afbc6ea088250c` ;
+- delta HEAD certifié → HEAD final : uniquement `docs/FUNCTIONAL_AUDIT_REMEDIATION.md` ;
+- merge `main` `2b3ecabb6b58f09a65b92c160d007231d41d9149` ;
+- compare HEAD final → merge : `0` fichier différent ;
+- Action Coherence `33308786300`, Backup Continuity `33308786307`, Numbering Baseline `33308786301` : SUCCESS ;
 - `23/23` fichiers de tests, `130/130` tests ;
 - build TypeScript/Vite/PWA feature + baseline `main` : SUCCESS ;
 - navigateur Step 7 `7/7` ; régressions Dashboard `7/7`, Search `6/6`, Payment `10/10`, Client Catalog `8/8` ;
-- BEFORE/AFTER `390/430/768/1280`, titre centré au pixel près, zéro overflow/erreur ;
-- artefact exact HEAD `9731345392`, taille `4 247 413` octets, SHA-256 `542518a068532dd05cff62e531cb53d2df05c0eb84523761ca249c50775196f3` ;
-- score visuel inspecté : **9,8/10** ;
-- preview Git du HEAD certifié `92426a3282bf9291d8da3e8ade8654eb57dc8697` : `dpl_AXUqfKvkFhAKsanvWfkhfy3KLbZU` READY ;
+- artefact `9731345392`, taille `4 247 413` octets, SHA-256 `542518a068532dd05cff62e531cb53d2df05c0eb84523761ca249c50775196f3` ;
+- score visuel inspecté **9,8/10** ;
+- preview HEAD certifié `dpl_AXUqfKvkFhAKsanvWfkhfy3KLbZU` READY ;
+- production Git automatique exacte du merge `dpl_9JtD57jvhHJejUHM28vN5gpFhDaW` READY ;
+- alias public `facture-pwa.vercel.app` HTTP 200 ; assets `/assets/index-CSqoegBf.js` et `/assets/index-CRZB9ebV.css` ;
 - aucun déploiement Vercel manuel lancé.
+
+## Ré-audit final
+
+Méthode : ré-évaluation interne explicite des 8 axes fonctionnels historiques, moyenne arithmétique simple. Le `8,6/10` historique n’ayant pas de formule de pondération consignée, le score final est une mesure actuelle transparente, pas une reconstruction mathématique rétroactive.
+
+| Axe | Score final | Preuve principale |
+| --- | ---: | --- |
+| Fiabilité moteur métier | 9,5 | numérotation, finalisation, paiements, dashboard certifiés |
+| Création / gestion documents | 9,3 | cycle facture, historique, conversions et actions document |
+| Import + voix | 9,5 | parseurs existants + garde-fous 15 MiB / 20 pages / 45 s / annulation |
+| Mobile / offline / PWA | 9,1 | builds PWA + 390/430/768/1280 + local-first |
+| Clients + catalogue | 9,3 | CRUD dédié + snapshots historiques préservés |
+| Sauvegarde / continuité | 9,0 | rappel proactif + export complet + fraîcheur ; reste volontairement local/manual |
+| Recherche / gestion | 9,2 | ICE/IF/lignes/montant/période + filtres certifiés |
+| Efficacité technique | 8,8 | tests/builds solides ; résidu connu : chunks Vite > 500 kB |
+
+**Score final de ré-audit : 9,2/10** (`73,7 / 8 = 9,2125`, arrondi à un décimal).
 
 ## Avancement audit remediation
 
-**6/7 clos = 85,7 %.** Step 7 est certifié mais reste ouvert jusqu’à preuve du merge + production publique.
+**7/7 clos = 100 %.**
 
-## Next exact
+Le Goal global est atteint selon le ré-audit final documenté : score actuel **9,2/10 >= 9/10**.
 
-Merge PR #17 sur `main`, vérifier compare branche finale → merge sans delta produit, production Git automatique exacte du merge et alias public HTTP 200, puis marquer **7/7 CLOS = 100 %** et faire le closeout final de l’audit.
+## Résidus connus hors lot
+
+- optimisation du bundle : build Vite signale encore des chunks supérieurs à `500 kB` (`503,57 kB` et `786,14 kB` sur la certification Step 7) ;
+- la continuité reste volontairement local-first avec sauvegarde externe pilotée par l’utilisateur, pas une réplication cloud automatique.
+
+Ces résidus ne rouvrent aucun des 7 défauts ciblés mais constituent les prochains axes d’optimisation si un nouveau chantier est ouvert.
