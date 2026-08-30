@@ -109,7 +109,7 @@ try {
 
   await page.getByRole('button', { name:'Annuler', exact:true }).click()
   await page.locator('.quote-file-input').setInputFiles({
-    name:'cancel.pdf', mimeType:'application/pdf', buffer:Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF')
+    name:'cancel.pdf', mimeType:'application/pdf', buffer:pdfWithPages(20)
   })
   const cancelButton = page.getByRole('button', { name:'Annuler l’analyse', exact:true })
   await cancelButton.waitFor({ state:'visible', timeout:3000 })
