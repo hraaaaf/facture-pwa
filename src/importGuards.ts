@@ -64,14 +64,14 @@ export const runWithImportGuards = async <T>(
   if (options.signal?.aborted) cancelFromParent()
   else options.signal?.addEventListener('abort', cancelFromParent, { once: true })
 
-  const timer = window.setTimeout(() => {
+  const timer = globalThis.setTimeout(() => {
     if (!controller.signal.aborted) controller.abort(new ImportGuardError('TIMEOUT'))
   }, timeoutMs)
 
   try {
     return await raceWithImportAbort(operation(controller.signal), controller.signal)
   } finally {
-    window.clearTimeout(timer)
+    globalThis.clearTimeout(timer)
     options.signal?.removeEventListener('abort', cancelFromParent)
   }
 }
