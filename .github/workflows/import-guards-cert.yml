@@ -10,6 +10,10 @@ on:
       - src/QuoteImportSheet.tsx
       - src/quote-import.css
       - scripts/import-guards-certification.mjs
+      - scripts/dashboard-stats-certification.mjs
+      - scripts/search-filters-certification.mjs
+      - scripts/payment-lifecycle-certification.mjs
+      - scripts/client-catalog-certification.mjs
       - .github/workflows/import-guards-cert.yml
 
 jobs:
