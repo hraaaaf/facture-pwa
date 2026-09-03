@@ -63,8 +63,11 @@ AFTER : même hiérarchie + bouton compact `Affichage` ouvrant un panneau de tog
 - Les actions Partager / PDF / Imprimer restent disponibles avec les options actives.
 - Les signatures typographiques des 8 thèmes sont vérifiées.
 - Artifact visuel `pdf-personalization-before-after` : ID `9917157739`, SHA-256 `23bce1c30c71ee82f85ee9fad54c460284cbdabea5626bcc58f2faa03f67ee06`.
-- Preview Vercel de la branche : READY au dernier contrôle GitHub/Vercel.
+- Preview Vercel de la branche : READY.
 - Inspection visuelle : panneau lisible, aucun clipping critique observé ; score visuel 9.2/10.
+- PR #18 : MERGED le 2026-09-03T23:36:58Z.
+- Merge commit main : `9ed4253957c40e2d395630250fe9886bcb106340`.
+- Statut Vercel du merge commit : SUCCESS.
 
 ## État
-Certification feature acquise. Closeout définitif uniquement après merge et vérification post-merge/production automatique.
+CLOSED — Goal atteint et prouvé : feature certifiée, PR mergée sur main, déploiement automatique Vercel du merge commit réussi.
