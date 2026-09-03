@@ -109,13 +109,13 @@ async function capturePhase(browser, phase, url, feature = false) {
     if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
     assert.equal(await dialog.locator('.pdf-display-options button').count(), 9)
 
-    const toggle = async label => dialog.locator('.pdf-display-options button').filter({ hasText: label }).click()
+    const toggle = async label => dialog.locator('.pdf-display-options').getByRole('button', { name: label, exact: true }).click()
     await toggle('Objet')
     assert.equal(await dialog.getByText('OBJET', { exact: true }).count(), 0, 'Objet must disappear from preview')
     await toggle('Unité')
     assert.equal(await dialog.locator('.preview-table-head').getByText('Unité', { exact: true }).count(), 0, 'Unit column must disappear')
     await toggle('Prix unitaire HT')
-    assert.equal(await dialog.getByText('PU HT', { exact: true }).count(), 0, 'PU HT column must disappear')
+    assert.equal(await dialog.locator('.preview-table-head').getByText('PU HT', { exact: true }).count(), 0, 'PU HT column must disappear')
     await toggle('Total HT par ligne')
     assert.equal(await dialog.locator('.preview-table-head').getByText('Total HT', { exact: true }).count(), 0, 'Line Total HT column must disappear')
     await toggle('Total HT')
@@ -139,7 +139,7 @@ async function capturePhase(browser, phase, url, feature = false) {
       atlas: /Georgia|Times/i
     }
     for (const [theme, pattern] of Object.entries(themeExpectations)) {
-      const option = dialog.locator(`.template-option`).filter({ has: dialog.locator(`.theme-swatch-${theme}`) })
+      const option = dialog.locator(`.template-option:has(.theme-swatch-${theme})`)
       await option.click()
       const paper = dialog.locator(`[data-template="${theme}"]`)
       await paper.waitFor()
