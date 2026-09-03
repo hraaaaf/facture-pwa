@@ -45,3 +45,8 @@ export const resolvedPdfDisplayOptions = (options?: Partial<PdfDisplayOptions>):
   ...defaultPdfDisplayOptions,
   ...options
 })
+
+export const hasPdfDisplayCustomizations = (options?: Partial<PdfDisplayOptions>) => {
+  const resolved = resolvedPdfDisplayOptions(options)
+  return Object.keys(defaultPdfDisplayOptions).some(key => !resolved[key as PdfDisplayOptionKey])
+}
