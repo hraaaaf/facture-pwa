@@ -113,7 +113,7 @@ async function capturePhase(browser, phase, url, feature = false) {
     await toggle('Objet')
     assert.equal(await dialog.getByText('OBJET', { exact: true }).count(), 0, 'Objet must disappear from preview')
     await toggle('Unité')
-    assert.equal(await dialog.getByText('Unité', { exact: true }).count(), 0, 'Unit column must disappear')
+    assert.equal(await dialog.locator('.preview-table-head').getByText('Unité', { exact: true }).count(), 0, 'Unit column must disappear')
     await toggle('Prix unitaire HT')
     assert.equal(await dialog.getByText('PU HT', { exact: true }).count(), 0, 'PU HT column must disappear')
     await toggle('Total HT par ligne')
