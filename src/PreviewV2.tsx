@@ -7,10 +7,18 @@ import {
   shareThemedPdf,
   type PremiumThemeId
 } from './pdfThemes'
+import {
+  defaultPdfDisplayOptions,
+  pdfDisplayOptionLabels,
+  withPdfDisplayOption,
+  type PdfDisplayOptions,
+  type PdfDisplayOptionKey
+} from './pdfDisplayOptions'
 import { companyLegalLine } from './types'
 import type { CommercialDocument, CompanySettings } from './types'
 import './preview.css'
 import './premium-themes.css'
+import './pdf-personalization.css'
 
 const money = (value: number) =>
   new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
@@ -42,6 +50,8 @@ const lineDiscountTotal = (document: CommercialDocument) =>
 
 const shownNumber = (document: CommercialDocument) => document.number || 'Brouillon · numéro à la finalisation'
 
+const priceOptionKeys = new Set<PdfDisplayOptionKey>(['unitPriceHT', 'lineTotalHT', 'summaryTotalHT', 'vat', 'amountInWords'])
+
 export default function PdfPreviewScreen({
   document,
   company,
@@ -54,9 +64,17 @@ export default function PdfPreviewScreen({
   onBack: () => void
 }) {
   const [template, setTemplate] = useState<PremiumThemeId>(initialTemplate)
+  const [displayOpen, setDisplayOpen] = useState(false)
+  const [displayOptions, setDisplayOptions] = useState<PdfDisplayOptions>(defaultPdfDisplayOptions)
   const pricingVisible = document.type !== 'BL' || document.blShowPrices
   const totals = documentTotals(document)
   const selected = premiumThemeOptions.find(option => option.id === template) ?? premiumThemeOptions[1]
+  const hiddenCount = Object.values(displayOptions).filter(value => !value).length
+
+  const toggleDisplay = (key: PdfDisplayOptionKey) => {
+    if (!pricingVisible && priceOptionKeys.has(key)) return
+    setDisplayOptions(current => withPdfDisplayOption(current, key, !current[key]))
+  }
 
   return (
     <main className="preview-screen">
@@ -87,26 +105,63 @@ export default function PdfPreviewScreen({
         </div>
       </section>
 
+      <section className="pdf-display-control" aria-label="Personnaliser l’affichage du PDF">
+        <button
+          className={`pdf-display-trigger ${displayOpen ? 'active' : ''}`}
+          onClick={() => setDisplayOpen(open => !open)}
+          aria-expanded={displayOpen}
+        >
+          <span><strong>Affichage</strong><small>{hiddenCount ? `${hiddenCount} élément${hiddenCount > 1 ? 's' : ''} masqué${hiddenCount > 1 ? 's' : ''}` : 'Standard premium'}</small></span>
+          <b>{displayOpen ? '−' : '+'}</b>
+        </button>
+        {displayOpen && (
+          <div className="pdf-display-panel">
+            <div className="pdf-display-panel-head">
+              <div><strong>Éléments facultatifs</strong><small>Les données restent enregistrées. Seul le rendu change.</small></div>
+              <span>Ce document</span>
+            </div>
+            <div className="pdf-display-options">
+              {pdfDisplayOptionLabels.map(option => {
+                const disabled = !pricingVisible && priceOptionKeys.has(option.key)
+                return (
+                  <button
+                    key={option.key}
+                    className={displayOptions[option.key] ? 'visible' : 'hidden'}
+                    onClick={() => toggleDisplay(option.key)}
+                    aria-pressed={displayOptions[option.key]}
+                    disabled={disabled}
+                  >
+                    <span>{option.label}</span>
+                    <i aria-hidden="true" />
+                  </button>
+                )
+              })}
+            </div>
+            <p className="pdf-display-lock-note">Toujours visibles : type, numéro, date, client, désignation, quantité et Total TTC lorsque les prix sont affichés.</p>
+          </div>
+        )}
+      </section>
+
       <div className="paper-stage">
         <article className={`pdf-paper ${template === 'original' ? 'original' : 'premium'} theme-${template}`} data-template={template}>
           {template === 'original' ? (
-            <OriginalPreview document={document} company={company} pricingVisible={pricingVisible} />
+            <OriginalPreview document={document} company={company} pricingVisible={pricingVisible} options={displayOptions} />
           ) : (
-            <PremiumPreview document={document} company={company} pricingVisible={pricingVisible} />
+            <PremiumPreview document={document} company={company} pricingVisible={pricingVisible} options={displayOptions} />
           )}
         </article>
       </div>
 
       <nav className="preview-actions" aria-label="Actions PDF">
-        <button onClick={() => void shareThemedPdf(document, company, template)}>
+        <button onClick={() => void shareThemedPdf(document, company, template, displayOptions)}>
           <ActionIcon kind="share" />
           <span>Partager</span>
         </button>
-        <button className="download" onClick={() => downloadThemedPdf(document, company, template)}>
+        <button className="download" onClick={() => downloadThemedPdf(document, company, template, displayOptions)}>
           <ActionIcon kind="download" />
           <span>PDF</span>
         </button>
-        <button onClick={() => printThemedPdf(document, company, template)}>
+        <button onClick={() => printThemedPdf(document, company, template, displayOptions)}>
           <ActionIcon kind="print" />
           <span>Imprimer</span>
         </button>
@@ -118,7 +173,7 @@ export default function PdfPreviewScreen({
   )
 }
 
-function OriginalPreview({ document, company, pricingVisible }: { document: CommercialDocument; company: CompanySettings; pricingVisible: boolean }) {
+function OriginalPreview({ document, company, pricingVisible, options }: { document: CommercialDocument; company: CompanySettings; pricingVisible: boolean; options: PdfDisplayOptions }) {
   const totals = documentTotals(document)
   const lineDiscount = lineDiscountTotal(document)
   return (
@@ -135,28 +190,28 @@ function OriginalPreview({ document, company, pricingVisible }: { document: Comm
           {document.clientIfNumber && <small>IF : {document.clientIfNumber}</small>}
         </div>
       )}
-      <div className="original-meta">
-        <p><strong>OBJET :</strong> {document.object || '—'}</p>
+      <div className={`original-meta ${options.object ? '' : 'object-hidden'}`}>
+        {options.object && <p><strong>OBJET :</strong> {document.object || '—'}</p>}
         <p><strong>{company.cityLabel} LE :</strong><br />{formattedDate(document.date)}</p>
       </div>
-      <PreviewTable document={document} pricingVisible={pricingVisible} variant="original" />
+      <PreviewTable document={document} pricingVisible={pricingVisible} variant="original" options={options} />
       {pricingVisible && (
         <div className="original-totals">
           {lineDiscount > 0 && <span>REMISES LIGNES : <strong>{money(lineDiscount)}</strong></span>}
           {totals.globalDiscount > 0 && <span>REMISE GLOBALE : <strong>{money(totals.globalDiscount)}</strong></span>}
-          <span>TOTAL HT : <strong>{money(totals.totalHT)}</strong></span>
-          <span>{vatLabel(document)} : <strong>{money(totals.totalVAT)}</strong></span>
+          {options.summaryTotalHT && <span>TOTAL HT : <strong>{money(totals.totalHT)}</strong></span>}
+          {options.vat && <span>{vatLabel(document)} : <strong>{money(totals.totalVAT)}</strong></span>}
           <span>TOTAL TTC : <strong>{money(totals.totalTTC)}</strong></span>
         </div>
       )}
-      {pricingVisible && <p className="original-words">{stoppedAtLabel(document)} {amountToFrenchDirhams(totals.totalTTC)} TTC</p>}
-      <PreviewSignatures company={company} />
-      <PreviewFooter company={company} />
+      {pricingVisible && options.amountInWords && <p className="original-words">{stoppedAtLabel(document)} {amountToFrenchDirhams(totals.totalTTC)} TTC</p>}
+      {options.signatures && <PreviewSignatures company={company} />}
+      {options.footer && <PreviewFooter company={company} />}
     </>
   )
 }
 
-function PremiumPreview({ document, company, pricingVisible }: { document: CommercialDocument; company: CompanySettings; pricingVisible: boolean }) {
+function PremiumPreview({ document, company, pricingVisible, options }: { document: CommercialDocument; company: CompanySettings; pricingVisible: boolean; options: PdfDisplayOptions }) {
   const totals = documentTotals(document)
   const lineDiscount = lineDiscountTotal(document)
   return (
@@ -170,44 +225,53 @@ function PremiumPreview({ document, company, pricingVisible }: { document: Comme
         </div>
       </div>
       <div className="premium-rule" />
-      <div className="premium-info-grid">
+      <div className={`premium-info-grid ${options.object ? '' : 'object-hidden'}`}>
         <section>
           <span>FACTURÉ À</span><strong>{document.client || 'Client à renseigner'}</strong>
           {document.clientAddress && <small>{document.clientAddress}</small>}
           {document.clientIce && <small>ICE : {document.clientIce}</small>}
           {document.clientIfNumber && <small>IF : {document.clientIfNumber}</small>}
         </section>
-        <section><span>OBJET</span><strong>{document.object || 'Objet du document'}</strong></section>
+        {options.object && <section><span>OBJET</span><strong>{document.object || 'Objet du document'}</strong></section>}
       </div>
-      <PreviewTable document={document} pricingVisible={pricingVisible} variant="premium" />
+      <PreviewTable document={document} pricingVisible={pricingVisible} variant="premium" options={options} />
       {pricingVisible && (
         <div className="premium-summary-wrap">
-          <div className="premium-words"><span>Montant en lettres</span><p>{amountToFrenchDirhams(totals.totalTTC)}</p></div>
+          {options.amountInWords && <div className="premium-words"><span>Montant en lettres</span><p>{amountToFrenchDirhams(totals.totalTTC)}</p></div>}
           <div className="premium-summary">
             {lineDiscount > 0 && <div><span>Remises lignes</span><strong>- {money(lineDiscount)}</strong></div>}
             {totals.globalDiscount > 0 && <div><span>Remise globale</span><strong>- {money(totals.globalDiscount)}</strong></div>}
-            <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div>
-            <div><span>{vatLabel(document)}</span><strong>{money(totals.totalVAT)}</strong></div>
+            {options.summaryTotalHT && <div><span>Total HT</span><strong>{money(totals.totalHT)}</strong></div>}
+            {options.vat && <div><span>{vatLabel(document)}</span><strong>{money(totals.totalVAT)}</strong></div>}
             <div className="premium-summary-total"><span>Total TTC</span><strong>{money(totals.totalTTC)} MAD</strong></div>
           </div>
         </div>
       )}
-      <PreviewSignatures company={company} premium />
-      <PreviewFooter company={company} premium />
+      {options.signatures && <PreviewSignatures company={company} premium />}
+      {options.footer && <PreviewFooter company={company} premium />}
     </>
   )
 }
 
-function PreviewTable({ document, pricingVisible, variant }: { document: CommercialDocument; pricingVisible: boolean; variant: 'original' | 'premium' }) {
+function PreviewTable({ document, pricingVisible, variant, options }: { document: CommercialDocument; pricingVisible: boolean; variant: 'original' | 'premium'; options: PdfDisplayOptions }) {
+  const columns = [
+    { key: 'designation', visible: true, weight: 2.3 },
+    { key: 'unit', visible: options.unit, weight: 0.8 },
+    { key: 'quantity', visible: true, weight: 0.7 },
+    { key: 'unitPriceHT', visible: pricingVisible && options.unitPriceHT, weight: 1 },
+    { key: 'lineTotalHT', visible: pricingVisible && options.lineTotalHT, weight: 1.1 }
+  ].filter(column => column.visible)
+  const gridTemplateColumns = columns.map(column => `${column.weight}fr`).join(' ')
+
   return (
     <div className={`preview-table ${variant}`}>
-      <div className="preview-table-head">
-        <span>Désignation</span><span>Unité</span><span>Qté</span>{pricingVisible && <span>PU HT</span>}{pricingVisible && <span>Total HT</span>}
+      <div className="preview-table-head" style={{ gridTemplateColumns }}>
+        <span>Désignation</span>{options.unit && <span>Unité</span>}<span>Qté</span>{pricingVisible && options.unitPriceHT && <span>PU HT</span>}{pricingVisible && options.lineTotalHT && <span>Total HT</span>}
       </div>
       {document.lines.map(line => (
-        <div className="preview-table-row" key={line.id}>
+        <div className="preview-table-row" key={line.id} style={{ gridTemplateColumns }}>
           <span>{line.designation || '—'}{(line.discountPercent ?? 0) > 0 && <small>Remise {line.discountPercent}%</small>}</span>
-          <span>{line.unit || '—'}</span><span>{line.quantity}</span>{pricingVisible && <span>{money(line.unitPriceHT)}</span>}{pricingVisible && <span>{money(lineTotalHT(line))}</span>}
+          {options.unit && <span>{line.unit || '—'}</span>}<span>{line.quantity}</span>{pricingVisible && options.unitPriceHT && <span>{money(line.unitPriceHT)}</span>}{pricingVisible && options.lineTotalHT && <span>{money(lineTotalHT(line))}</span>}
         </div>
       ))}
     </div>
