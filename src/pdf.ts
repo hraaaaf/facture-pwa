@@ -53,6 +53,9 @@ const stoppedAtLabel = (document: CommercialDocument) => {
   return 'ARRÊTÉ LE PRÉSENT BON DE COMMANDE À LA SOMME DE'
 }
 
+export const stoppedAtTaxSuffix = (type: CommercialDocument['type'], vatRates: number[]) =>
+  type === 'BL' && vatRates.every(rate => rate === 0) ? '' : ' TTC'
+
 const setMetadata = (pdf: jsPDF, document: CommercialDocument, company: CompanySettings) => {
   pdf.setProperties({
     title: `${documentLabel(document.type)} ${document.number}`,
@@ -408,7 +411,7 @@ const buildOriginal = (document: CommercialDocument, company: CompanySettings) =
     pdf.setFont('helvetica', 'bold')
     pdf.setFontSize(11.1)
     setBlack(pdf)
-    const words = `${stoppedAtLabel(document)} ${amountToFrenchDirhams(totals.totalTTC)} TTC`
+    const words = `${stoppedAtLabel(document)} ${amountToFrenchDirhams(totals.totalTTC)}${stoppedAtTaxSuffix(document.type, document.lines.map(line => line.vatRate))}`
     pdf.text(pdf.splitTextToSize(words, 174), 18, wordsY)
   }
 
@@ -543,7 +546,7 @@ const buildPremium = (document: CommercialDocument, company: CompanySettings) =>
     pdf.setFont('helvetica', 'bold')
     pdf.setTextColor(32,46,37)
     pdf.setFontSize(7.6)
-    const words = `${stoppedAtLabel(document)} ${amountToFrenchDirhams(totals.totalTTC)} TTC`
+    const words = `${stoppedAtLabel(document)} ${amountToFrenchDirhams(totals.totalTTC)}${stoppedAtTaxSuffix(document.type, document.lines.map(line => line.vatRate))}`
     pdf.text(pdf.splitTextToSize(words, 78), 16, y)
 
     pdf.setFillColor(249,252,250)
