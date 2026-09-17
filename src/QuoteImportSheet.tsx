@@ -415,7 +415,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
                       <input
                         type={issueInputType(issue)}
                         inputMode={issueInputType(issue) === 'number' ? 'decimal' : undefined}
-                        value={getFieldValue(quote, issue.field)}
+                        defaultValue={getFieldValue(quote, issue.field)}
                         onChange={event => changeIssue(issue, event.target.value)}
                       />
                     ) : <small>Corrigez la source puis relancez l’import. Aucune conversion ou ligne ne sera inventée.</small>}
