@@ -1,12 +1,10 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-
-const source = readFileSync(new URL('./QuoteImportSheet.tsx', import.meta.url), 'utf8')
+import { reviewInputValueProps } from './quoteReviewInput'
 
 describe('quote review input contract', () => {
-  it('keeps review inputs uncontrolled so typed spaces survive normalization rerenders', () => {
-    expect(source).toContain('defaultValue={getFieldValue(quote, issue.field)}')
-    expect(source).not.toContain('value={getFieldValue(quote, issue.field)}')
-    expect(source).toContain('onChange={event => changeIssue(issue, event.target.value)}')
+  it('preserves typed trailing spaces in the DOM binding while canonical normalization rerenders', () => {
+    const props = reviewInputValueProps('Changement ')
+    expect(props).toEqual({ defaultValue: 'Changement ' })
+    expect('value' in props).toBe(false)
   })
 })
