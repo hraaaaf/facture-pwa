@@ -1,0 +1,57 @@
+name: Review Input Space Runtime
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/QuoteImportSheet.tsx
+      - src/quoteReviewInput.ts
+      - scripts/review-input-space-certification.mjs
+      - .github/workflows/review-input-space-cert.yml
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Build exact HEAD
+        run: npm run build
+      - name: Install Playwright Chromium + WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Reproduce PDF review typing
+        run: node scripts/review-input-space-certification.mjs .
+      - name: Verify runtime proof
+        run: |
+          node - <<'NODE'
+          const fs = require('fs')
+          const report = JSON.parse(fs.readFileSync('artifacts/review-input-space/report.json', 'utf8'))
+          if (report.failure) throw new Error(report.failure)
+          for (const engine of ['chromium', 'webkit']) {
+            const row = report.results.find(item => item.engine === engine)
+            if (!row?.exact || !row?.trailingSpacePreserved) throw new Error(`${engine}: space proof missing`)
+            for (const phase of ['before', 'after']) {
+              const path = `artifacts/review-input-space/${phase}-${engine}-390.png`
+              if (!fs.existsSync(path)) throw new Error(`Missing ${path}`)
+            }
+          }
+          console.log('REVIEW INPUT SPACE REPORT VERIFIED')
+          NODE
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-input-space-runtime
+          path: artifacts/review-input-space
+          if-no-files-found: warn
+          retention-days: 5
