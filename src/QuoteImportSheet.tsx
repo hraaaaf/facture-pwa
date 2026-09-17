@@ -3,6 +3,7 @@ import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
 import { IMPORT_TIMEOUT_MS, MAX_IMPORT_BYTES, MAX_PDF_PAGES } from './importGuards'
 import { prepareImportDictionary } from './importDictionary'
 import { importDebug } from './importDebug'
+import { reviewInputValueProps } from './quoteReviewInput'
 import { voiceToRawQuote } from './voiceQuoteParser'
 import {
   canonicalQuoteToDocumentFields,
@@ -415,7 +416,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
                       <input
                         type={issueInputType(issue)}
                         inputMode={issueInputType(issue) === 'number' ? 'decimal' : undefined}
-                        value={getFieldValue(quote, issue.field)}
+                        {...reviewInputValueProps(getFieldValue(quote, issue.field))}
                         onChange={event => changeIssue(issue, event.target.value)}
                       />
                     ) : <small>Corrigez la source puis relancez l’import. Aucune conversion ou ligne ne sera inventée.</small>}
