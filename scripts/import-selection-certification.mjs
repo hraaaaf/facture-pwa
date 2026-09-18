@@ -121,7 +121,7 @@ try {
 
   await page.getByRole('button', { name:'Tout décocher', exact:true }).click()
   const clientRow = page.locator('.quote-selection-row').filter({ hasText:'Institut Atlas' }).first()
-  await clientRow.locator('input').check()
+  await clientRow.click()
   check('client_only_count', await page.getByText('1 élément sélectionné', { exact:true }).count() === 1, 'selection count must be 1')
   await page.screenshot({ path:join(artifactDir, 'selected-client-only-390.png'), fullPage:true })
 
