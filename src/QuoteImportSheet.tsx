@@ -3,24 +3,25 @@ import { extractInputFile, extractedInputToRawQuote } from './inputExtractors'
 import { IMPORT_TIMEOUT_MS, MAX_IMPORT_BYTES, MAX_PDF_PAGES } from './importGuards'
 import { prepareImportDictionary } from './importDictionary'
 import { importDebug } from './importDebug'
-import { reviewInputValueProps } from './quoteReviewInput'
 import { voiceToRawQuote } from './voiceQuoteParser'
 import {
-  canonicalQuoteToDocumentFields,
   normalizeQuotePayload,
-  type CanonicalQuoteJSON,
-  type QuoteIssue,
-  type RawQuotePayload
+  type CanonicalQuoteJSON
 } from './quoteImport'
-import type { CommercialDocument } from './types'
+import {
+  defaultQuoteImportSelection,
+  isImportableQuoteLine,
+  selectedQuoteImportCount,
+  selectedQuoteToDraftFields,
+  type ImportedQuoteFields,
+  type QuoteImportSelection,
+  type QuoteSelectionField
+} from './quoteImportSelection'
 import './quote-import.css'
-
-export type ImportedQuoteFields = Pick<CommercialDocument,
-  'client' | 'clientAddress' | 'clientIce' | 'clientIfNumber' | 'object' | 'date' | 'lines' | 'globalDiscountPercent'>
 
 type FileImportMode = 'PHOTO' | 'PDF' | 'EXCEL' | 'WORD'
 type ImportMode = FileImportMode | 'VOICE'
-type Step = 'PICKER' | 'VOICE' | 'PROCESSING' | 'REVIEW' | 'READY' | 'ERROR'
+type Step = 'PICKER' | 'VOICE' | 'PROCESSING' | 'SUMMARY' | 'ERROR'
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean
@@ -56,28 +57,6 @@ const acceptByMode: Record<FileImportMode, string> = {
 const modeLabel: Record<ImportMode, string> = { PHOTO: 'Photo', PDF: 'PDF', EXCEL: 'Excel', WORD: 'Word', VOICE: 'Vocal' }
 const modeMark: Record<ImportMode, string> = { PHOTO: 'IMG', PDF: 'PDF', EXCEL: 'XLS', WORD: 'DOC', VOICE: 'MIC' }
 
-const canonicalToRaw = (quote: CanonicalQuoteJSON): RawQuotePayload => ({
-  source: quote.source,
-  client: {
-    name: quote.client.name,
-    address: quote.client.address,
-    ice: quote.client.ice,
-    ifNumber: quote.client.ifNumber
-  },
-  object: quote.quote.object,
-  date: quote.quote.date,
-  currency: quote.quote.currency,
-  globalDiscountPercent: quote.quote.globalDiscountPercent,
-  lines: quote.lines.map(line => ({
-    designation: line.designation,
-    unit: line.unit,
-    quantity: line.quantity,
-    unitPriceHT: line.unitPriceHT,
-    vatRate: line.vatRate,
-    discountPercent: line.discountPercent
-  }))
-})
-
 const normalizeImportedRaw = (raw: RawQuotePayload, defaultVatRate: number) => {
   const prepared = prepareImportDictionary(raw)
   return normalizeQuotePayload(prepared.raw, { defaultVatRate, defaultUnit: 'Unité', dictionary: prepared.dictionary })
@@ -99,45 +78,6 @@ const localToday = () => {
   return `${year}-${month}-${day}`
 }
 
-const getFieldValue = (quote: CanonicalQuoteJSON, field: string): string | number => {
-  if (field === 'client.name') return quote.client.name ?? ''
-  if (field === 'quote.object') return quote.quote.object ?? ''
-  if (field === 'quote.date') return quote.quote.date ?? ''
-  const match = field.match(/^lines\.(\d+)\.(designation|unit|quantity|unitPriceHT|vatRate|discountPercent)$/)
-  if (!match) return ''
-  const line = quote.lines[Number(match[1])]
-  if (!line) return ''
-  const value = line[match[2] as keyof typeof line]
-  return typeof value === 'number' || typeof value === 'string' ? value : ''
-}
-
-const patchRawField = (raw: RawQuotePayload, field: string, value: string): RawQuotePayload => {
-  const next = structuredClone(raw)
-  if (field === 'client.name') {
-    next.client = { ...next.client, name: value }
-    return next
-  }
-  if (field === 'quote.object') {
-    next.object = value
-    return next
-  }
-  if (field === 'quote.date') {
-    next.date = value
-    return next
-  }
-  const match = field.match(/^lines\.(\d+)\.(designation|unit|quantity|unitPriceHT|vatRate|discountPercent)$/)
-  if (!match || !next.lines) return next
-  const index = Number(match[1])
-  next.lines[index] = { ...next.lines[index], [match[2]]: value }
-  return next
-}
-
-const issueInputType = (issue: QuoteIssue) => {
-  if (issue.field === 'quote.date') return 'date'
-  if (/\.(quantity|unitPriceHT|vatRate|discountPercent)$/.test(issue.field)) return 'number'
-  return 'text'
-}
-
 const totalHT = (quote: CanonicalQuoteJSON) => quote.lines.reduce((sum, line) => {
   if (line.quantity === null || line.unitPriceHT === null) return sum
   const gross = line.quantity * line.unitPriceHT
@@ -155,7 +95,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
   const [mode, setMode] = useState<ImportMode>('PDF')
   const [step, setStep] = useState<Step>('PICKER')
   const [quote, setQuote] = useState<CanonicalQuoteJSON | null>(null)
-  const [reviewIssues, setReviewIssues] = useState<QuoteIssue[]>([])
+  const [selection, setSelection] = useState<QuoteImportSelection | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState('')
   const [sourceName, setSourceName] = useState('')
@@ -228,9 +168,9 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     if (!raw.date) raw.date = localToday()
     const canonical = normalizeImportedRaw(raw, defaultVatRate)
     setQuote(canonical)
-    setReviewIssues(canonical.issues.filter(issue => issue.severity === 'ERROR'))
+    setSelection(defaultQuoteImportSelection(canonical))
     setWarnings([])
-    setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
+    setStep('SUMMARY')
   }
 
   const abortImport = () => {
@@ -250,7 +190,7 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     setVoiceListening(false)
     setStep('PICKER')
     setQuote(null)
-    setReviewIssues([])
+    setSelection(null)
     setWarnings([])
     setError('')
     setSourceName('')
@@ -271,8 +211,8 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
       const canonical = normalizeImportedRaw(raw, defaultVatRate)
       setWarnings(extracted.warnings)
       setQuote(canonical)
-      setReviewIssues(canonical.issues.filter(issue => issue.severity === 'ERROR'))
-      setStep(canonical.status === 'READY' ? 'READY' : 'REVIEW')
+      setSelection(defaultQuoteImportSelection(canonical))
+      setStep('SUMMARY')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Impossible de lire ce fichier.')
       setStep('ERROR')
@@ -281,35 +221,46 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
     }
   }
 
-  const changeIssue = (issue: QuoteIssue, value: string) => {
-    if (!quote) return
-    const raw = patchRawField(canonicalToRaw(quote), issue.field, value)
-    const next = normalizeImportedRaw(raw, defaultVatRate)
-    setQuote(next)
-    importDebug('voice.review.change', {
-      mode,
-      field: issue.field,
-      valueLength: value.length,
-      status: next.status,
-      remainingErrors: next.issues.filter(item => item.severity === 'ERROR').length
+  const toggleField = (field: QuoteSelectionField) => {
+    setSelection(current => current ? {
+      ...current,
+      fields: { ...current.fields, [field]: !current.fields[field] }
+    } : current)
+  }
+
+  const toggleLine = (index: number) => {
+    setSelection(current => {
+      if (!current) return current
+      const lines = [...current.lines]
+      lines[index] = !lines[index]
+      return { ...current, lines }
     })
   }
 
-  const confirmReview = () => {
-    if (!quote || errors.length > 0) return
-    importDebug('voice.review.confirm', { mode, status: quote.status, remainingErrors: errors.length })
-    setStep('READY')
+  const selectAllDetected = () => {
+    if (!quote) return
+    setSelection(defaultQuoteImportSelection(quote))
+  }
+
+  const clearSelection = () => {
+    setSelection(current => current ? {
+      fields: Object.fromEntries(
+        Object.keys(current.fields).map(key => [key, false])
+      ) as QuoteImportSelection['fields'],
+      lines: current.lines.map(() => false)
+    } : current)
   }
 
   const create = () => {
-    if (!quote) return
-    try {
-      const fields = canonicalQuoteToDocumentFields(quote, () => crypto.randomUUID())
-      onCreate(fields)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Le devis doit encore être vérifié.')
-      setStep('REVIEW')
-    }
+    if (!quote || !selection || selectedQuoteImportCount(selection) === 0) return
+    const fields = selectedQuoteToDraftFields(quote, selection, () => crypto.randomUUID())
+    importDebug('quote.summary.confirm', {
+      mode,
+      selectedCount: selectedQuoteImportCount(selection),
+      detectedLines: quote.lines.length,
+      importedLines: fields.lines.length
+    })
+    onCreate(fields)
   }
 
   return (
@@ -398,51 +349,109 @@ export function QuoteImportSheet({ defaultVatRate, onClose, onCreate }: {
           </div>
         )}
 
-        {step === 'REVIEW' && quote && (
+        {step === 'SUMMARY' && quote && selection && (
           <>
             <div className="quote-import-summary">
               <div><span>Source</span><strong>{quote.source.kind}</strong><small>{sourceName}</small></div>
               <div><span>Lignes</span><strong>{quote.lines.length}</strong><small>détectées</small></div>
-              <div className="needs-review"><span>À vérifier</span><strong>{errors.length}</strong><small>champ{errors.length > 1 ? 's' : ''}</small></div>
+              <div className={errors.length > 0 ? 'needs-review' : ''}>
+                <span>À compléter</span><strong>{errors.length}</strong><small>dans le brouillon</small>
+              </div>
             </div>
-            <div className="quote-review-heading"><div><span className="section-kicker">Revue ciblée</span><h3>Uniquement les incertitudes</h3></div><button onClick={reset}>Changer de source</button></div>
-            <div className="quote-review-list">
-              {reviewIssues.map(issue => {
-                const editable = !['CURRENCY_UNSUPPORTED', 'LINES_REQUIRED'].includes(issue.code)
-                return (
-                  <label className={`quote-review-field ${editable ? '' : 'blocked'}`} key={`${issue.code}-${issue.field}`}>
-                    <span>{issue.message}</span>
-                    {editable ? (
+
+            <div className="quote-review-heading">
+              <div><span className="section-kicker">Résumé de l’import</span><h3>Choisissez ce que vous gardez</h3></div>
+              <button onClick={reset}>Changer de source</button>
+            </div>
+
+            <div className="quote-selection-toolbar">
+              <span><strong>{selectedQuoteImportCount(selection)}</strong> élément{selectedQuoteImportCount(selection) > 1 ? 's' : ''} sélectionné{selectedQuoteImportCount(selection) > 1 ? 's' : ''}</span>
+              <div>
+                <button type="button" onClick={selectAllDetected}>Tout sélectionner</button>
+                <button type="button" onClick={clearSelection}>Tout décocher</button>
+              </div>
+            </div>
+
+            <div className="quote-selection-section">
+              <div className="quote-selection-section-title">
+                <span className="section-kicker">Informations</span>
+                <small>Décochez ce que vous ne voulez pas importer.</small>
+              </div>
+              <div className="quote-selection-list">
+                {([
+                  { key: 'client', label: 'Client', value: quote.client.name },
+                  { key: 'object', label: 'Objet', value: quote.quote.object },
+                  { key: 'date', label: 'Date', value: quote.quote.date },
+                  { key: 'clientAddress', label: 'Adresse', value: quote.client.address },
+                  { key: 'clientIce', label: 'ICE', value: quote.client.ice },
+                  { key: 'clientIfNumber', label: 'IF', value: quote.client.ifNumber },
+                  ...(quote.quote.globalDiscountPercent > 0
+                    ? [{ key: 'globalDiscountPercent' as QuoteSelectionField, label: 'Remise globale', value: `${quote.quote.globalDiscountPercent} %` }]
+                    : [])
+                ] as Array<{ key: QuoteSelectionField; label: string; value: string | null }>).map(item => {
+                  const available = Boolean(item.value && String(item.value).trim())
+                  return (
+                    <label className={`quote-selection-row ${available ? '' : 'unavailable'}`} key={item.key}>
                       <input
-                        type={issueInputType(issue)}
-                        inputMode={issueInputType(issue) === 'number' ? 'decimal' : undefined}
-                        {...reviewInputValueProps(getFieldValue(quote, issue.field))}
-                        onChange={event => changeIssue(issue, event.target.value)}
+                        type="checkbox"
+                        checked={available && selection.fields[item.key]}
+                        disabled={!available}
+                        onChange={() => toggleField(item.key)}
                       />
-                    ) : <small>Corrigez la source puis relancez l’import. Aucune conversion ou ligne ne sera inventée.</small>}
-                  </label>
-                )
-              })}
+                      <span className="quote-selection-check" aria-hidden="true" />
+                      <span className="quote-selection-copy">
+                        <strong>{item.label}</strong>
+                        <small>{available ? item.value : 'Non détecté · restera vide'}</small>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
+
+            <div className="quote-selection-section">
+              <div className="quote-selection-section-title">
+                <span className="section-kicker">Articles</span>
+                <small>Chaque ligne peut être importée ou ignorée.</small>
+              </div>
+              <div className="quote-selection-list">
+                {quote.lines.length > 0 ? quote.lines.map((line, index) => {
+                  const available = isImportableQuoteLine(line)
+                  return (
+                    <label className={`quote-selection-row quote-selection-line ${available ? '' : 'unavailable'}`} key={index}>
+                      <input
+                        type="checkbox"
+                        checked={available && Boolean(selection.lines[index])}
+                        disabled={!available}
+                        onChange={() => toggleLine(index)}
+                      />
+                      <span className="quote-selection-check" aria-hidden="true" />
+                      <span className="quote-selection-copy">
+                        <strong>{line.designation || `Article ${index + 1}`}</strong>
+                        <small>{available
+                          ? `${line.quantity} × ${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(line.unitPriceHT ?? 0)} MAD · TVA ${line.vatRate}%`
+                          : 'Ligne incomplète · non importée automatiquement'}</small>
+                      </span>
+                    </label>
+                  )
+                }) : <p className="quote-selection-empty">Aucune ligne exploitable détectée. Vous pourrez ajouter les articles dans le brouillon.</p>}
+              </div>
+            </div>
+
+            {errors.length > 0 && (
+              <p className="quote-selection-note">
+                {errors.length} champ{errors.length > 1 ? 's' : ''} ou valeur{errors.length > 1 ? 's' : ''} reste{errors.length > 1 ? 'nt' : ''} à compléter. Cela ne bloque pas l’import du brouillon ; la finalisation gardera ses contrôles habituels.
+              </p>
+            )}
             {(warnings.length > 0 || quoteWarnings.length > 0) && <p className="quote-warning-note">{[...warnings, ...quoteWarnings.map(item => item.message)].join(' · ')}</p>}
+
             <div className="quote-ready-actions">
               <button onClick={reset}>Recommencer</button>
-              <button className="quote-primary" onClick={confirmReview} disabled={errors.length > 0}>Valider les corrections</button>
+              <button className="quote-primary" onClick={create} disabled={selectedQuoteImportCount(selection) === 0}>Importer la sélection</button>
             </div>
           </>
         )}
 
-        {step === 'READY' && quote && (
-          <>
-            <div className="quote-ready-hero"><span className="quote-ready-check">✓</span><div><span className="section-kicker">JSON CANONIQUE PRÊT</span><h3>{quote.client.name}</h3><p>{quote.quote.object}</p></div></div>
-            <div className="quote-ready-grid">
-              <div><span>Lignes</span><strong>{quote.lines.length}</strong></div>
-              <div><span>Total HT détecté</span><strong>{new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(totalHT(quote))} MAD</strong></div>
-            </div>
-            {(warnings.length > 0 || quoteWarnings.length > 0) && <p className="quote-warning-note">{[...warnings, ...quoteWarnings.map(item => item.message)].join(' · ')}</p>}
-            <div className="quote-ready-actions"><button onClick={reset}>Recommencer</button><button className="quote-primary" onClick={create}>Créer le devis</button></div>
-          </>
-        )}
       </section>
     </div>
   )
