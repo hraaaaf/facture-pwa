@@ -36,12 +36,17 @@ async function seed(page, url) {
       name:'TAPISTOR',brand:'TAPISTOR',address:'Rabat',cityLabel:'Rabat',phone:'',fax:'',email:'',ice:'001',ifNumber:'001',rc:'',patente:'',cnss:'',bankName:'',rib:'',legalLine:'',defaultVatRate:20,logoDataUrl:'',managerSignatureDataUrl:'',pdfTemplate:'premium',onboardingCompleted:true,
       numberingPrefixes:{DEVIS:'DEV',FACTURE:'F',BL:'BL',BC:'BC'},numberingBaseline:{year:2026,lastUsed:{DEVIS:0,FACTURE:3,BL:0,BC:0}}
     }, 'company')
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const previous = new Date(yyyy, now.getMonth() - 1, 10)
+    const previousDate = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}-10`
     const common = {
-      type:'FACTURE',clientId:'',clientAddress:'Rabat',clientIfNumber:'',object:'Fourniture',blShowPrices:false,globalDiscountPercent:0,dueDate:'',paymentMethod:'UNSPECIFIED',payments:[],status:'FINALIZED',finalizedAt:'2026-08-01T09:00:00.000Z',paidAt:'',cancelledAt:'',sourceDocumentId:'',createdAt:'2026-08-01T09:00:00.000Z',updatedAt:'2026-08-01T09:00:00.000Z'
+      type:'FACTURE',clientId:'',clientAddress:'Rabat',clientIfNumber:'',object:'Fourniture',blShowPrices:false,globalDiscountPercent:0,dueDate:'',paymentMethod:'UNSPECIFIED',payments:[],status:'FINALIZED',finalizedAt:`${yyyy}-${mm}-01T09:00:00.000Z`,paidAt:'',cancelledAt:'',sourceDocumentId:'',createdAt:`${yyyy}-${mm}-01T09:00:00.000Z`,updatedAt:`${yyyy}-${mm}-01T09:00:00.000Z`
     }
-    tx.objectStore('documents').put({ ...common, id:'d1', number:'F-2026-001', date:'2026-08-05', client:'Atlas Hôtel', clientIce:'001111111111111', lines:[{id:'l1',designation:'Nettoyage tapis premium',unit:'Forfait',quantity:1,unitPriceHT:1000,vatRate:20,discountPercent:0}] })
-    tx.objectStore('documents').put({ ...common, id:'d2', number:'F-2026-002', date:'2026-08-17', client:'Riad Bleu', clientIce:'002222222222222', lines:[{id:'l2',designation:'Rideaux chambre',unit:'Pièce',quantity:2,unitPriceHT:200,vatRate:20,discountPercent:0}] })
-    tx.objectStore('documents').put({ ...common, id:'d3', number:'F-2026-003', date:'2026-07-10', client:'Maison Rouge', clientIce:'003333333333333', lines:[{id:'l3',designation:'Canapé réception',unit:'Pièce',quantity:1,unitPriceHT:300,vatRate:20,discountPercent:0}] })
+    tx.objectStore('documents').put({ ...common, id:'d1', number:`F-${yyyy}-001`, date:`${yyyy}-${mm}-05`, client:'Atlas Hôtel', clientIce:'001111111111111', lines:[{id:'l1',designation:'Nettoyage tapis premium',unit:'Forfait',quantity:1,unitPriceHT:1000,vatRate:20,discountPercent:0}] })
+    tx.objectStore('documents').put({ ...common, id:'d2', number:`F-${yyyy}-002`, date:`${yyyy}-${mm}-17`, client:'Riad Bleu', clientIce:'002222222222222', lines:[{id:'l2',designation:'Rideaux chambre',unit:'Pièce',quantity:2,unitPriceHT:200,vatRate:20,discountPercent:0}] })
+    tx.objectStore('documents').put({ ...common, id:'d3', number:`F-${yyyy}-003`, date:previousDate, client:'Maison Rouge', clientIce:'003333333333333', lines:[{id:'l3',designation:'Canapé réception',unit:'Pièce',quantity:1,unitPriceHT:300,vatRate:20,discountPercent:0}] })
     await new Promise((resolve, reject) => { tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error) })
     db.close()
   })
@@ -95,7 +100,7 @@ try {
   await page.getByRole('button', { name: /^Filtres/ }).click()
   await page.getByLabel('Période').selectOption('THIS_MONTH')
   await page.waitForTimeout(100)
-  check('period_filter', await page.locator('.premium-history-card').count() === 2, 'current month should keep two August documents')
+  check('period_filter', await page.locator('.premium-history-card').count() === 2, 'current month should keep the two current-month documents')
 
   await page.getByLabel('Période').selectOption('ALL')
   await page.getByLabel('Montant min. TTC').fill('1000')
