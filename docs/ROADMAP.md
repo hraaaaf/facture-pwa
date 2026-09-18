@@ -1,6 +1,6 @@
 # Facture PWA — Roadmap canonique
 
-Dernière mise à jour : 27 août 2026
+Dernière mise à jour : 18 septembre 2026
 
 > Ordre de reprise : `docs/HANDOVER.md` → ce fichier → `docs/VOICE_INPUT_V1.md` → `docs/MOBILE_RUNTIME_AUDIT.md` → `docs/PDF_RUNTIME_CERTIFICATION.md` → `docs/PDF_ORIGINAL_REFERENCE.md` → `docs/PDF_ORIGINAL_GEOMETRY.md` → `docs/PDF_PREMIUM_VALIDATION.md` → `docs/UI_V1_MOBILE_SPEC.md` → `docs/mockups/MOCKUPS_LOCK.md`.
 
@@ -277,6 +277,30 @@ Runtime final F3 : XLSX réel → exactement 2 champs incertains → READY → D
 
 **Score visuel F3 : 9,4/10.**
 
+## Extension F3 — Import sélectif
+
+**État : CANDIDAT CERTIFIÉ, NON MERGÉ**
+
+- [x] résumé post-extraction ;
+- [x] cases à cocher pour Client / Objet / Date / Adresse / ICE / IF ;
+- [x] sélection indépendante de chaque ligne/article ;
+- [x] détecté exploitable = coché par défaut ;
+- [x] décoché = volontairement vide dans le brouillon ;
+- [x] champ absent = reste vide ;
+- [x] ligne incomplète = non importée automatiquement ;
+- [x] aucune valeur inventée ;
+- [x] brouillon autorisé même avec champs volontairement laissés vides ;
+- [x] validations métier conservées à la finalisation ;
+- [x] BEFORE/AFTER 390 / 430 / 768 ;
+- [x] scénario Client seul importé ;
+- [x] Import Selection Certification `35328806122` SUCCESS ;
+- [x] Search Filters Certification `35328806166` SUCCESS ;
+- [x] Import Guards Certification `35328806157` SUCCESS.
+
+PR : `#22` ; HEAD certifié : `05a2d1995b4b28cec9f92f5a6855333c6ae4717b`.
+
+**Score visuel sévère : 9,2/10.**
+
 ## F4 — Dictionnaire déterministe import — 6/6
 
 - [x] BEFORE runtime avec BC fictif fautif figé ;
@@ -324,11 +348,12 @@ Le core F1–F4 reste historiquement `37/37`. V1 est une extension séparée et 
 
 # NEXT EXACT
 
-1. Certifier le HEAD de closeout PR #7 après suppression de `voice-debug` et synchronisation de `5bd8755…`.
-2. Préparer le merge V1 ; aucune promotion Production sans autorisation explicite.
-3. Sur appareil réel : installation iPhone/Android puis fermeture/réouverture sans perte.
-4. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
-5. Human gate final de la PWA complète.
+1. Obtenir l'autorisation explicite de merge/Production pour PR #22 — import sélectif — puis merger et vérifier la Production.
+2. Certifier le HEAD de closeout PR #7 après suppression de `voice-debug` et synchronisation de `5bd8755…`.
+3. Préparer le merge V1 ; aucune promotion Production sans autorisation explicite.
+4. Sur appareil réel : installation iPhone/Android puis fermeture/réouverture sans perte.
+5. Tester partage PDF iOS/Android et partage/téléchargement/impression navigateur réel.
+6. Human gate final de la PWA complète.
 
 ## Avancement mécanique historique PWA
 
