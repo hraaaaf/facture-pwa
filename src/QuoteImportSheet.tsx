@@ -6,7 +6,8 @@ import { importDebug } from './importDebug'
 import { voiceToRawQuote } from './voiceQuoteParser'
 import {
   normalizeQuotePayload,
-  type CanonicalQuoteJSON
+  type CanonicalQuoteJSON,
+  type RawQuotePayload
 } from './quoteImport'
 import {
   defaultQuoteImportSelection,
@@ -18,6 +19,8 @@ import {
   type QuoteSelectionField
 } from './quoteImportSelection'
 import './quote-import.css'
+
+export type { ImportedQuoteFields } from './quoteImportSelection'
 
 type FileImportMode = 'PHOTO' | 'PDF' | 'EXCEL' | 'WORD'
 type ImportMode = FileImportMode | 'VOICE'
