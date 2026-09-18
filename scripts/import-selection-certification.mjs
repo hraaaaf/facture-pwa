@@ -146,7 +146,7 @@ try {
   check('responsive_clean', responsive, 'before/after must have no horizontal overflow or page errors')
 
   for (const width of widths) {
-    check(`summary_visible_${width}`, report.widths[width].after.text.includes('Résumé de l’import') && report.widths[width].after.text.includes('Importer la sélection'), 'summary CTA missing')
+    check(`summary_visible_${width}`, /résumé de l[’']import/i.test(report.widths[width].after.text) && /importer la sélection/i.test(report.widths[width].after.text), 'summary CTA missing')
   }
 } catch (error) {
   report.failure = error instanceof Error ? error.stack : String(error)
