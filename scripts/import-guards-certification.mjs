@@ -86,7 +86,7 @@ try {
   const beforePage = await browser.newPage({ viewport:{ width:390, height:844 } })
   await seedAndOpen(beforePage, baseline.url)
   const baselineText = await beforePage.locator('body').innerText()
-  check('baseline_defect', !baselineText.includes('Limites de sécurité') && !baselineText.includes('15 Mo'), 'baseline must not advertise import guardrails')
+  check('baseline_guardrails_present', baselineText.includes('Limites de sécurité') && baselineText.includes('15 Mo'), 'baseline must preserve established import guardrails')
   await beforePage.close()
 
   const page = await browser.newPage({ viewport:{ width:390, height:844 } })
