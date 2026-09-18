@@ -1,0 +1,68 @@
+name: Import Selection Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/QuoteImportSheet.tsx
+      - src/quoteImportSelection.ts
+      - src/quoteImportSelection.test.ts
+      - src/quote-import.css
+      - scripts/import-selection-certification.mjs
+      - .github/workflows/import-selection-cert.yml
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build feature
+        run: npm run build
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Build main baseline
+        run: |
+          rm -rf /tmp/facture-main
+          mkdir -p /tmp/facture-main
+          git archive origin/main | tar -x -C /tmp/facture-main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/facture-main/node_modules
+          (cd /tmp/facture-main && npm run build)
+      - name: Runtime before-after certification
+        run: node scripts/import-selection-certification.mjs /tmp/facture-main .
+      - name: Verify evidence
+        run: |
+          node - <<'NODE'
+          const fs=require('fs')
+          const r=JSON.parse(fs.readFileSync('artifacts/import-selection/report.json','utf8'))
+          if(r.failure) throw new Error(r.failure)
+          if(!Array.isArray(r.assertions)||r.assertions.some(x=>!x.ok)) throw new Error('Import selection assertions failed')
+          for(const w of [390,430,768]) for(const p of ['before','after']) {
+            if(!fs.existsSync(`artifacts/import-selection/${p}-${w}.png`)) throw new Error(`Missing ${p}-${w}`)
+          }
+          for(const p of ['selected-client-only-390.png','draft-client-only-390.png']) {
+            if(!fs.existsSync(`artifacts/import-selection/${p}`)) throw new Error(`Missing ${p}`)
+          }
+          console.log(`IMPORT SELECTION REPORT VERIFIED: ${r.assertions.length}/${r.assertions.length}`)
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: import-selection-before-after
+          path: artifacts/import-selection
+          if-no-files-found: warn
+          retention-days: 5

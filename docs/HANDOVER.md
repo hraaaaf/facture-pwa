@@ -1,6 +1,6 @@
 # Factea — HANDOVER CANONIQUE
 
-Date : 27 août 2026
+Date : 18 septembre 2026
 
 ## Goal global
 
@@ -67,6 +67,20 @@ La preuve finale exact-head est la check-suite GitHub attachée au HEAD de close
 - spec/certification : `docs/VOICE_INPUT_V1.md` ;
 - score visuel V1 : **9,6/10**.
 
+## Import sélectif — état actuel
+
+- repository : `hraaaaf/facture-pwa` ;
+- branche : `feat/selective-import-summary` ;
+- PR : `#22 — Add selective import summary` ;
+- HEAD fonctionnel certifié : `05a2d1995b4b28cec9f92f5a6855333c6ae4717b` ;
+- Import Selection Certification `35328806122` : **SUCCESS** ;
+- Search Filters Certification `35328806166` : **SUCCESS** ;
+- Import Guards Certification `35328806157` : **SUCCESS** ;
+- preview Vercel : **READY** ;
+- comportement certifié : sélection indépendante des données extraites, décoché = vide volontaire, aucune valeur inventée, validation finale inchangée ;
+- score visuel sévère : **9,2/10** ;
+- Production : **non mergée / non modifiée par ce lot**.
+
 ## Gates globales encore ouvertes
 
 1. Installation réelle iPhone/Android.
@@ -79,8 +93,8 @@ Le gate V1 Vocal appareil réel est fermé. Il ne ferme pas automatiquement les 
 
 ## NEXT EXACT
 
-Certifier le HEAD de closeout de la PR #7, vérifier le Preview sans instrumentation de diagnostic, puis préparer le merge. **Aucune promotion Production sans autorisation explicite.**
+Obtenir l'autorisation explicite de merge/Production pour la PR #22, merger si autorisé, vérifier le déploiement Production et le comportement réel ; ensuite reprendre le closeout V1 Vocal. **Aucune promotion Production sans autorisation explicite.**
 
 ## Prompt de reprise
 
-`Reprends Factea depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/VOICE_INPUT_V1.md. V1 Vocal est validée sur iPhone réel : micro, transcription et Analyser PASS. La transcription Safari réelle "Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams" produit client Pierra, 1 ligne, quantité 5, PU 150. Le closeout final doit être exact-head, sans voice-debug, avec les 34 tests historiques + 6 régressions Safari, base 5bd8755 synchronisée, Preview seulement. PWA historique 110/116 = 94,8 %, core Input→Devis F1-F4 37/37. Aucun déploiement Production sans autorisation explicite.`
+`Reprends Factea depuis docs/HANDOVER.md, docs/ROADMAP.md et docs/F3_INPUT_TO_QUOTE.md. PR #22 ajoute l'import sélectif et est certifiée sur HEAD 05a2d199… par runs 35328806122 / 35328806166 / 35328806157, preview READY, Production non mergée faute d'autorisation explicite. Puis reprends docs/VOICE_INPUT_V1.md. V1 Vocal est validée sur iPhone réel : micro, transcription et Analyser PASS. La transcription Safari réelle "Client Pierra article draps de 2,30 m sur deux 2,20 m quantité cinq prix unitaire 150 dirhams" produit client Pierra, 1 ligne, quantité 5, PU 150. Le closeout final doit être exact-head, sans voice-debug, avec les 34 tests historiques + 6 régressions Safari, base 5bd8755 synchronisée, Preview seulement. PWA historique 110/116 = 94,8 %, core Input→Devis F1-F4 37/37. Aucun déploiement Production sans autorisation explicite.`

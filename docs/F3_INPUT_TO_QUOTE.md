@@ -59,3 +59,37 @@ Référence : `docs/mockups/F3_INPUT_TO_QUOTE_390.svg`.
 ## État
 
 **CLOSED — mergé dans `m0/pwa-foundation` via `656c919da7e4dd7f59087bc3839533026cb0ffff`.**
+
+
+## Extension — Import sélectif (18 septembre 2026)
+
+### Goal
+
+Après extraction, permettre à l'utilisateur de choisir exactement quelles données détectées seront reprises dans le brouillon.
+
+### Contrat UX/métier
+
+- chaque donnée détectée exploitable est cochée par défaut ;
+- Client, Objet, Date, Adresse, ICE, IF et chaque ligne/article sont sélectionnables séparément ;
+- décoché = volontairement laissé vide dans le brouillon ;
+- champ absent = non sélectionnable et reste vide ;
+- ligne incomplète = non importée automatiquement ;
+- aucune valeur manquante n'est inventée ;
+- les champs manquants n'empêchent pas la création du brouillon ;
+- les validations métier existantes restent appliquées au moment de la finalisation.
+
+### Preuves
+
+- PR : `#22 — Add selective import summary` ;
+- HEAD fonctionnel certifié : `05a2d1995b4b28cec9f92f5a6855333c6ae4717b` ;
+- Import Selection Certification : run `35328806122` — **SUCCESS** ;
+- Search Filters Certification : run `35328806166` — **SUCCESS** ;
+- Import Guards Certification : run `35328806157` — **SUCCESS** ;
+- preview Vercel exact-head : **READY** ;
+- BEFORE/AFTER : 390 / 430 / 768 ;
+- scénario runtime : PDF → résumé → tout décocher → cocher uniquement Client → brouillon avec Client importé, Objet / métadonnées / lignes vides ;
+- score visuel sévère : **9,2/10**.
+
+### État
+
+**CANDIDAT CERTIFIÉ — merge Production non autorisé à ce stade.**

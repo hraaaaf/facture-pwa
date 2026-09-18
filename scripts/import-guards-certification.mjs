@@ -86,7 +86,7 @@ try {
   const beforePage = await browser.newPage({ viewport:{ width:390, height:844 } })
   await seedAndOpen(beforePage, baseline.url)
   const baselineText = await beforePage.locator('body').innerText()
-  check('baseline_defect', !baselineText.includes('Limites de sécurité') && !baselineText.includes('15 Mo'), 'baseline must not advertise import guardrails')
+  check('baseline_guardrails_present', baselineText.includes('Limites de sécurité') && baselineText.includes('15 Mo'), 'baseline must preserve established import guardrails')
   await beforePage.close()
 
   const page = await browser.newPage({ viewport:{ width:390, height:844 } })
@@ -123,10 +123,10 @@ try {
   await page.getByRole('button', { name:'Annuler', exact:true }).click()
   const csv = 'Client: Atlas SARL\nObjet: Test garde-fous\nDate: 2026-08-30\nArticle;Qte;P.U;TVA\nService test;1;100;20\n'
   await page.locator('.quote-file-input').setInputFiles({ name:'devis.csv', mimeType:'text/csv', buffer:Buffer.from(csv) })
-  await page.waitForFunction(() => Boolean(document.querySelector('.quote-ready-hero,.quote-review-heading,.quote-error-card')), null, { timeout:15000 })
-  const csvReady = await page.getByRole('button', { name:'Créer le devis', exact:true }).count() === 1
+  await page.waitForFunction(() => Boolean(document.querySelector('.quote-review-heading,.quote-error-card')), null, { timeout:15000 })
+  const csvReady = await page.getByRole('button', { name:'Importer la sélection', exact:true }).count() === 1
   const csvState = (await page.locator('.quote-import-sheet').innerText()).replace(/\s+/g, ' ')
-  check('normal_import_unchanged', csvReady, `post-cancel CSV state: ${csvState}`)
+  check('normal_import_unchanged', csvReady && csvState.includes('Atlas SARL') && csvState.includes('Service test'), `post-cancel CSV state: ${csvState}`)
   await page.close()
 
   const responsive = widths.every(width => ['before','after'].every(phase => {
